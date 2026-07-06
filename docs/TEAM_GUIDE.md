@@ -47,6 +47,15 @@ git switch feat-member3-product-category-sku-inventory
 git pull --ff-only
 ```
 
+每次开始编辑代码或文档前，都先拉取一次自己的分支：
+
+```powershell
+git switch 你的分支名
+git pull --ff-only
+```
+
+如果 `git pull --ff-only` 提示不能快进，先停止编辑，联系组长处理分支差异，不要直接强推或覆盖别人提交。
+
 ## 3. 第一次运行
 
 需要安装 .NET 8 SDK 或更高版本。
