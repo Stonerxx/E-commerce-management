@@ -43,9 +43,9 @@
                     {
                         name: "项目骨架与部署",
                         branch: "feat-member1-foundation-oracle-deploy",
-                        percent: 35,
+                        percent: 55,
                         barClass: "bg-primary",
-                        nextStep: "补 Oracle 实连、部署环境变量和服务器截图"
+                        nextStep: "填真实 Oracle__ConnectionString，执行 db-check，补服务器访问和部署截图"
                     },
                     {
                         name: "用户、权限、地址、日志",

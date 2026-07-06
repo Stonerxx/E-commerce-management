@@ -15,9 +15,10 @@ public sealed class OracleConnectionFactory : IOracleConnectionFactory
 
     public async Task<DbConnection> CreateOpenConnectionAsync(CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_options.ConnectionString))
+        if (!_options.HasUsableConnectionString)
         {
-            throw new InvalidOperationException("Oracle connection string is not configured.");
+            throw new InvalidOperationException(
+                "Oracle connection string is not configured. Set Oracle__ConnectionString before checking the database.");
         }
 
         var connection = new OracleConnection(_options.ConnectionString);

@@ -54,7 +54,31 @@ http://localhost:5052/admin/dashboard
 - 未完成：真实登录注册、商品维护、购物车、订单、支付、优惠券、物流、评价、统计导出等业务实现。
 - 现阶段目标：所有组员在各自分支基于已定义接口补实现，不再重新发明接口。
 
-Oracle 连接配置位于 `src/ECommerce.Web/appsettings.json` 的 `Oracle:ConnectionString`，本地开发时按自己的数据库账号修改，不要提交真实密码。
+Oracle 连接默认是占位配置，不要提交真实密码。本地开发推荐用环境变量覆盖：
+
+```powershell
+$env:Oracle__ConnectionString = "User Id=ECOMMERCE;Password=你的密码;Data Source=localhost:1521/XEPDB1"
+dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj
+```
+
+启动后可以验证：
+
+```powershell
+Invoke-RestMethod http://localhost:5052/api/v1/system/db-check
+```
+
+第 1 人基础设施当前交付：
+
+- `IUnitOfWork` 已提供 Oracle 连接复用、事务开启、提交、回滚和释放。
+- `/api/v1/system/db-check` 已能检查 Oracle 配置和连接耗时。
+- `deployment/` 下已提供发布脚本、环境变量样例、systemd 服务样例和 Nginx 反向代理样例。
+- 服务器最终验收还需要填真实 `Oracle__ConnectionString`，运行初始化脚本，截图证明服务器公网地址能访问。
+
+发布包生成：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deployment/publish.ps1
+```
 
 ### 项目功能点
 1. 用户注册/登录/权限控制
