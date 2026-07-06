@@ -93,6 +93,45 @@ $env:Oracle__ConnectionString = "User Id=...;Password=...;Data Source=localhost:
 | `feat-member5-payment-coupon-logistics-review` | 支付、优惠券、物流、评价 | `ICouponService`、`IPaymentService`、`ILogisticsService`、`IReviewService` |
 | `feat-member6-stats-export-ui-docs` | 统计、导出、UI、测试、文档、PPT | `IStatisticsService`、`IExportService`、后台首页、统一 Bootstrap 页面 |
 
+### 5.1 数据表归属
+
+数据表以 `migration/init_database.sql` 为准。主责人负责对应表的 Repository、写入规则、状态流转和后台维护页面；其他人需要写这些表时，必须通过主责人的 Service 接口协作，不要跨模块直接改表。
+
+| 人员 | 主责表 | 依赖表 | 边界说明 |
+| --- | --- | --- | --- |
+| 第 1 人 | 全部表的建表脚本、索引、约束、初始化顺序 | 全部业务表 | 负责 `migration/init_database.sql`、Oracle 连接、`IUnitOfWork`、部署配置；不负责业务 CRUD 规则。 |
+| 第 2 人 | `"USER"`、`"ROLE"`、`"PERMISSION"`、`USER_ROLE`、`ROLE_PERMISSION`、`ADDRESS`、`OPERATION_LOG` | 其他模块会引用 `"USER"` 和 `OPERATION_LOG` | 负责注册登录、角色权限、地址、操作日志；其他模块记录后台操作日志时调用 `IOperationLogService`。 |
+| 第 3 人 | `"CATEGORY"`、`PRODUCT`、`PRODUCT_IMAGE`、`PRODUCT_SPEC`、`SKU`、`INVENTORY_LOG` | `"USER"`、`ORDER_MAIN` | 负责商品、分类、图片、规格、SKU、库存和库存日志；订单模块只能通过 `IInventoryService` 锁定、释放、扣减库存。 |
+| 第 4 人 | `CART`、`ORDER_MAIN`、`ORDER_ITEM`、`ORDER_LOG` | `"USER"`、`ADDRESS`、`USER_COUPON`、`SKU`、`PRODUCT` | 负责购物车、订单主流程和订单日志；创建订单时依赖地址、SKU、库存锁定、优惠券校验。 |
+| 第 5 人 | `COUPON_TEMPLATE`、`USER_COUPON`、`PAYMENT`、`LOGISTICS`、`LOGISTICS_TRACK`、`REVIEW` | `"USER"`、`ORDER_MAIN`、`ORDER_ITEM`、`PRODUCT`、`SKU` | 负责优惠券、模拟支付、物流轨迹、评价；支付成功后通过订单和库存接口完成状态流转。 |
+| 第 6 人 | `ORDER_STAT_SNAPSHOT` | `ORDER_MAIN`、`ORDER_ITEM`、`PAYMENT`、`PRODUCT`、`SKU`、`INVENTORY_LOG`、`"USER"`、`REVIEW`、`LOGISTICS` | 负责统计、导出、后台首页和 UI 整合；统计和导出默认只读上游业务表，必要快照写入 `ORDER_STAT_SNAPSHOT`。 |
+
+### 5.2 表级依赖关系
+
+外键和业务依赖按下面关系处理：
+
+| 分组 | 表级依赖 |
+| --- | --- |
+| 用户权限 | `USER_ROLE.user_id -> "USER".id`；`USER_ROLE.role_id -> "ROLE".id`；`ROLE_PERMISSION.role_id -> "ROLE".id`；`ROLE_PERMISSION.permission_id -> "PERMISSION".id`。 |
+| 地址与日志 | `ADDRESS.user_id -> "USER".id`；`OPERATION_LOG.operator_id -> "USER".id`。 |
+| 商品与库存 | `PRODUCT.category_id -> "CATEGORY".id`；`PRODUCT_IMAGE.product_id -> PRODUCT.id`；`PRODUCT_SPEC.product_id -> PRODUCT.id`；`SKU.product_id -> PRODUCT.id`；`INVENTORY_LOG.sku_id -> SKU.id`；`INVENTORY_LOG.operator_id -> "USER".id`。 |
+| 购物车 | `CART.user_id -> "USER".id`；`CART.sku_id -> SKU.id`。 |
+| 订单 | `ORDER_MAIN.user_id -> "USER".id`；`ORDER_MAIN.address_id -> ADDRESS.id`；`ORDER_MAIN.user_coupon_id -> USER_COUPON.id`；`ORDER_ITEM.order_id -> ORDER_MAIN.id`；`ORDER_ITEM.sku_id -> SKU.id`；`ORDER_LOG.order_id -> ORDER_MAIN.id`；`ORDER_LOG.operator_id -> "USER".id`。 |
+| 优惠券 | `USER_COUPON.user_id -> "USER".id`；`USER_COUPON.coupon_template_id -> COUPON_TEMPLATE.id`；`USER_COUPON.order_id` 业务上关联订单。 |
+| 支付物流评价 | `PAYMENT.order_id -> ORDER_MAIN.id`；`LOGISTICS.order_id -> ORDER_MAIN.id`；`LOGISTICS_TRACK.logistics_id -> LOGISTICS.id`；`REVIEW.order_id -> ORDER_MAIN.id`；`REVIEW.product_id -> PRODUCT.id`；`REVIEW.user_id -> "USER".id`。 |
+| 统计 | `ORDER_STAT_SNAPSHOT` 没有外键，数据来源是订单、支付、商品、库存、用户等表的汇总快照。 |
+
+跨模块协作规则：
+
+- 只能直接写自己主责表；其他表的写入必须调用对应 Service。
+- 可以只读依赖表做展示和校验，但不要绕过主责模块修改状态。
+- 订单创建必须通过 `IInventoryService.LockForOrderAsync` 锁库存，通过 `ICouponService.ValidateAsync` 校验优惠券。
+- 订单取消必须通过 `IInventoryService.ReleaseForCancelledOrderAsync` 释放锁定库存。
+- 支付成功必须通过 `IOrderService.MarkPaidAsync`、`IInventoryService.DeductForPaidOrderAsync`、`ICouponService.UseForOrderAsync` 串起状态流转。
+- 后台关键写操作统一通过 `IOperationLogService` 写 `OPERATION_LOG`。
+- 统计和导出默认只读上游表；如果要增加统计口径，先和对应业务表主责人确认状态含义。
+- 修改表结构、外键、状态字段、索引时，必须同步更新 `migration/init_database.sql`、本文件和相关 DTO/Service 接口。
+
 ## 6. 路由与权限
 
 认证：
