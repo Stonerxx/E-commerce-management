@@ -1,0 +1,89 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Dashboard";
+}
+
+<div id="dashboardApp" v-cloak>
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">后台 Dashboard 示例</h1>
+            <p class="text-muted mb-0">这是 Vue + Razor + Bootstrap 的页面样板，业务数据目前使用示例数据，后续统一改为调用 `/api/v1/...` 接口。</p>
+        </div>
+        <button class="btn btn-primary" type="button" v-on:click="refreshSystemStatus" v-bind:disabled="loading">
+            <span v-if="loading" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+            刷新系统状态
+        </button>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-6 col-xl-3" v-for="card in summaryCards" v-bind:key="card.key">
+            <div class="border rounded p-3 h-100 bg-white">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="text-muted small mb-1">{{ card.label }}</p>
+                        <p class="h3 mb-0">{{ card.value }}</p>
+                    </div>
+                    <span class="badge" v-bind:class="card.badgeClass">{{ card.badge }}</span>
+                </div>
+                <p class="small text-muted mb-0 mt-3">{{ card.hint }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-xl-7">
+            <div class="border rounded p-3 bg-white h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="h5 mb-0">模块开发进度</h2>
+                    <span class="text-muted small">示例数据，供页面结构参考</span>
+                </div>
+
+                <div class="vstack gap-3">
+                    <div v-for="module in moduleProgress" v-bind:key="module.branch">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div>
+                                <strong>{{ module.name }}</strong>
+                                <span class="text-muted small ms-2">{{ module.branch }}</span>
+                            </div>
+                            <span class="small">{{ module.percent }}%</span>
+                        </div>
+                        <div class="progress" role="progressbar" v-bind:aria-valuenow="module.percent" aria-valuemin="0" aria-valuemax="100">
+                            <div class="progress-bar" v-bind:class="module.barClass" v-bind:style="{ width: module.percent + '%' }"></div>
+                        </div>
+                        <p class="text-muted small mb-0 mt-1">{{ module.nextStep }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-5">
+            <div class="border rounded p-3 bg-white mb-3">
+                <h2 class="h5 mb-3">接口联通检查</h2>
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item px-0 d-flex justify-content-between align-items-start" v-for="item in apiChecks" v-bind:key="item.url">
+                        <div>
+                            <code>{{ item.url }}</code>
+                            <p class="small text-muted mb-0">{{ item.message }}</p>
+                        </div>
+                        <span class="badge" v-bind:class="item.badgeClass">{{ item.status }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border rounded p-3 bg-white">
+                <h2 class="h5 mb-3">页面开发约定</h2>
+                <ul class="mb-0">
+                    <li>Razor 负责页面路由和首屏结构。</li>
+                    <li>Vue 负责列表、状态切换、筛选、局部交互。</li>
+                    <li>业务数据通过 `/api/v1/...` 获取，响应统一按 `ApiResponse&lt;T&gt;` 解析。</li>
+                    <li>提交前至少运行 `dotnet build ECommerce.sln` 和 `dotnet test ECommerce.sln`。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/admin-dashboard.js" asp-append-version="true"></script>
+}

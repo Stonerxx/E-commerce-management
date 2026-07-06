@@ -1,5 +1,61 @@
 # 电商购物平台——订单与商品管理系统
 
+## 协作基线
+
+本项目确定采用 B/S 模式，后端使用 ASP.NET Core MVC，数据库使用 Oracle。
+
+- [组员开工指南](docs/TEAM_GUIDE.md)：分支、运行、提交、PR 和日常协作流程。
+- [开发规范](docs/DEVELOPMENT_SPEC.md)：项目结构、接口规范、代码规范、API 格式、路由、事务和跨模块协作。
+- [Oracle 初始化脚本](migration/init_database.sql)：24 张业务表、约束和索引。
+
+## 项目启动
+
+项目已创建为 ASP.NET Core MVC + 五层类库结构：
+
+```text
+ECommerce.sln
+src/ECommerce.Web
+src/ECommerce.Application
+src/ECommerce.Domain
+src/ECommerce.Infrastructure
+src/ECommerce.Shared
+tests/ECommerce.Tests
+```
+
+本地运行：
+
+```powershell
+dotnet restore ECommerce.sln
+dotnet build ECommerce.sln
+dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj
+```
+
+看到类似下面输出时，服务才是在运行中：
+
+```text
+Now listening on: http://localhost:5052
+Application started. Press Ctrl+C to shut down.
+```
+
+不要关闭这个终端，然后在浏览器打开：
+
+```text
+http://localhost:5052/
+http://localhost:5052/health
+http://localhost:5052/account/login
+http://localhost:5052/admin/dashboard
+```
+
+如果终端已经回到 `PS C:\...>`，说明 Web 服务已经停止，需要重新执行 `dotnet run`。
+
+当前项目状态：
+
+- 已完成：解决方案、五层项目、统一响应、DTO、Service 接口、API 路由骨架、登录/注册占位页、健康检查、Oracle 连接配置入口、Vue Dashboard 示例页。
+- 未完成：真实登录注册、商品维护、购物车、订单、支付、优惠券、物流、评价、统计导出等业务实现。
+- 现阶段目标：所有组员在各自分支基于已定义接口补实现，不再重新发明接口。
+
+Oracle 连接配置位于 `src/ECommerce.Web/appsettings.json` 的 `Oracle:ConnectionString`，本地开发时按自己的数据库账号修改，不要提交真实密码。
+
 ### 项目功能点
 1. 用户注册/登录/权限控制
 2. 商品分类管理（增删改查）

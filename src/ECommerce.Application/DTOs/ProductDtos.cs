@@ -1,0 +1,106 @@
+using ECommerce.Shared.Contracts;
+
+namespace ECommerce.Application.DTOs;
+
+public sealed record CategoryRequest(
+    int? ParentId,
+    string Name,
+    int TreeLevel,
+    int SortOrder,
+    int Status,
+    string? IconUrl);
+
+public sealed record CategoryTreeDto(
+    int CategoryId,
+    int? ParentId,
+    string Name,
+    int TreeLevel,
+    int SortOrder,
+    int Status,
+    string? IconUrl,
+    IReadOnlyList<CategoryTreeDto> Children);
+
+public sealed record ProductImageRequest(
+    string ImageUrl,
+    int SortOrder);
+
+public sealed record ProductSpecRequest(
+    string SpecName,
+    string SpecValue,
+    int SortOrder);
+
+public sealed record ProductSaveRequest(
+    long CategoryId,
+    string Name,
+    string? Description,
+    string MainImage,
+    int Status,
+    IReadOnlyList<ProductImageRequest> Images,
+    IReadOnlyList<ProductSpecRequest> Specs,
+    IReadOnlyList<SkuSaveRequest> Skus);
+
+public sealed record SkuSaveRequest(
+    string SpecDescJson,
+    decimal Price,
+    decimal? OriginalPrice,
+    int Stock,
+    int WarningStock,
+    string? SkuImage,
+    int Status);
+
+public sealed record ProductQuery : PageQuery
+{
+    public long? CategoryId { get; init; }
+
+    public string? Keyword { get; init; }
+
+    public int? Status { get; init; }
+}
+
+public sealed record ProductListItemDto(
+    long ProductId,
+    long CategoryId,
+    string Name,
+    string MainImage,
+    decimal PriceMin,
+    int SalesCount,
+    decimal AvgRating,
+    int Status);
+
+public sealed record ProductImageDto(
+    long ImageId,
+    string ImageUrl,
+    int SortOrder);
+
+public sealed record ProductSpecDto(
+    long SpecId,
+    string SpecName,
+    string SpecValue,
+    int SortOrder);
+
+public sealed record SkuDto(
+    long SkuId,
+    long ProductId,
+    string SpecDescJson,
+    decimal Price,
+    decimal? OriginalPrice,
+    int Stock,
+    int LockedStock,
+    int WarningStock,
+    string? SkuImage,
+    int Status);
+
+public sealed record ProductDetailDto(
+    long ProductId,
+    long CategoryId,
+    string Name,
+    string? Description,
+    string MainImage,
+    int Status,
+    decimal PriceMin,
+    int SalesCount,
+    int ViewCount,
+    decimal AvgRating,
+    IReadOnlyList<ProductImageDto> Images,
+    IReadOnlyList<ProductSpecDto> Specs,
+    IReadOnlyList<SkuDto> Skus);
