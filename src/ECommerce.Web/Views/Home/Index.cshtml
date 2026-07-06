@@ -1,8 +1,65 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{
+    ViewData["Title"] = "项目状态";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="container py-4">
+    <div class="mb-4">
+        <h1 class="h2">电商购物平台 - 项目状态</h1>
+        <p class="text-muted mb-0">
+            当前版本是 ASP.NET Core MVC 项目骨架，已定义五层目录、接口 DTO、Service 接口、API 路由骨架、登录页和健康检查。
+            业务功能还没有正式实现，各成员需要在自己的分支补齐对应 Service、Repository、Controller 和页面。
+        </p>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="border rounded p-3 h-100">
+                <h2 class="h5">可以直接打开</h2>
+                <ul class="mb-0">
+                    <li><a href="/health">/health</a>：应用健康检查</li>
+                    <li><a href="/account/login">/account/login</a>：登录页占位</li>
+                    <li><a href="/account/register">/account/register</a>：注册页占位</li>
+                </ul>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="border rounded p-3 h-100">
+                <h2 class="h5">接口当前状态</h2>
+                <p class="mb-2"><code>/api/v1/...</code> 路由已占位。</p>
+                <p class="mb-0">大多数业务接口当前会返回 <code>501 NOT_IMPLEMENTED</code>，表示接口已定义但实现等待对应成员完成。</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="border rounded p-3 h-100">
+                <h2 class="h5">开发前先看</h2>
+                <ul class="mb-0">
+                    <li><a href="/docs/team-guide">组员开工指南</a></li>
+                    <li><a href="/docs/development-spec">开发规范</a></li>
+                    <li><a href="https://github.com/Stonerxx/E-commerce-management/pull/1">当前 PR</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="border rounded p-3 mb-4">
+        <h2 class="h5">启动后怎么用</h2>
+        <ol class="mb-0">
+            <li>在终端运行 <code>dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj</code>。</li>
+            <li>不要关闭该终端；看到 <code>Now listening on: http://localhost:5052</code> 表示服务正在运行。</li>
+            <li>浏览器打开 <code>http://localhost:5052/</code>。</li>
+            <li>如果终端回到 PowerShell 提示符，说明服务已经停止，需要重新运行命令。</li>
+        </ol>
+    </div>
+
+    <div class="border rounded p-3">
+        <h2 class="h5">下一步开发顺序</h2>
+        <ol class="mb-0">
+            <li>第 1 人补 Oracle 连接验证、部署说明和基础设施。</li>
+            <li>第 2 人实现登录注册、角色权限、地址、操作日志。</li>
+            <li>第 3 人实现分类、商品、SKU、库存。</li>
+            <li>第 4 人实现购物车、创建订单、取消订单、确认收货。</li>
+            <li>第 5 人实现优惠券、支付、物流、评价。</li>
+            <li>第 6 人实现后台首页、统计、导出、UI 统一、测试和文档。</li>
+        </ol>
+    </div>
 </div>

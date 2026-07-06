@@ -30,6 +30,29 @@ dotnet build ECommerce.sln
 dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj
 ```
 
+看到类似下面输出时，服务才是在运行中：
+
+```text
+Now listening on: http://localhost:5052
+Application started. Press Ctrl+C to shut down.
+```
+
+不要关闭这个终端，然后在浏览器打开：
+
+```text
+http://localhost:5052/
+http://localhost:5052/health
+http://localhost:5052/account/login
+```
+
+如果终端已经回到 `PS C:\...>`，说明 Web 服务已经停止，需要重新执行 `dotnet run`。
+
+当前项目状态：
+
+- 已完成：解决方案、五层项目、统一响应、DTO、Service 接口、API 路由骨架、登录/注册占位页、健康检查、Oracle 连接配置入口。
+- 未完成：真实登录注册、商品维护、购物车、订单、支付、优惠券、物流、评价、统计导出等业务实现。
+- 现阶段目标：所有组员在各自分支基于已定义接口补实现，不再重新发明接口。
+
 Oracle 连接配置位于 `src/ECommerce.Web/appsettings.json` 的 `Oracle:ConnectionString`，本地开发时按自己的数据库账号修改，不要提交真实密码。
 
 ### 项目功能点
