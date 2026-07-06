@@ -461,8 +461,8 @@ public interface IInventoryService
 {
     Task AdjustAsync(long skuId, InventoryAdjustRequest request, long operatorId);
     Task LockForOrderAsync(long orderId, IReadOnlyList<OrderSkuQuantity> items);
-    Task ReleaseForCancelledOrderAsync(long orderId);
-    Task DeductForPaidOrderAsync(long orderId);
+    Task ReleaseForCancelledOrderAsync(long orderId, IReadOnlyList<OrderSkuQuantity> items);
+    Task DeductForPaidOrderAsync(long orderId, IReadOnlyList<OrderSkuQuantity> items);
     Task<PagedResult<InventoryLogDto>> SearchLogsAsync(InventoryLogQuery query);
     Task<PagedResult<InventoryWarningDto>> SearchWarningsAsync(PageQuery query);
 }
@@ -484,8 +484,12 @@ public interface IOrderService
     Task<PagedResult<OrderListItemDto>> SearchAdminAsync(AdminOrderQuery query);
     Task<OrderDetailDto> GetDetailAsync(long userId, long orderId);
     Task<OrderDetailDto> GetAdminDetailAsync(long orderId);
+    Task<OrderPaymentContextDto> GetPaymentContextAsync(long userId, long orderId);
+    Task<IReadOnlyList<OrderSkuQuantity>> GetSkuQuantitiesAsync(long orderId);
     Task CancelAsync(long userId, long orderId, string? reason);
     Task ConfirmAsync(long userId, long orderId);
+    Task MarkPaidAsync(long orderId, long paymentId);
+    Task MarkShippedAsync(long orderId, long logisticsId, long operatorId);
 }
 
 public interface ICouponService
@@ -497,6 +501,7 @@ public interface ICouponService
     Task ReceiveAsync(long userId, int templateId);
     Task<IReadOnlyList<UserCouponDto>> GetMineAsync(long userId);
     Task<CouponValidationDto> ValidateAsync(long userId, long userCouponId, decimal orderAmount);
+    Task UseForOrderAsync(long userId, long userCouponId, long orderId, decimal orderAmount);
 }
 
 public interface IPaymentService
@@ -593,3 +598,72 @@ public interface IUnitOfWork
 | 第 6 人 | 统计、Excel、后台首页、UI、测试、文档、PPT | 公共布局、导出字段、统计口径 |
 
 跨模块改动先更新本文档，再开发代码。
+
+## 11. 分支协作接口清单
+
+本节定义每个分支对其他分支开放的协作接口。开发时只依赖这些接口和 DTO，不直接访问其他成员模块的数据表、Repository 或页面代码。
+
+### 11.1 协作规则
+
+- Controller 只能调用本模块 Application Service。
+- 跨模块调用优先使用本文档第 7 节的 Service 接口。
+- 当依赖方接口尚未实现时，先在本分支使用 Mock/Fake 实现联调页面，不改接口签名。
+- 接口入参、出参、状态枚举、错误码变更必须先改本文档。
+- 订单、库存、优惠券、支付相关操作必须在同一业务事务里完成；事务由发起业务流程的 Service 统一编排。
+
+### 11.2 分支提供与依赖关系
+
+| 分支 | 对外提供接口 | 依赖接口 | 主要联调对象 |
+| --- | --- | --- | --- |
+| `feat-member1-foundation-oracle-deploy` | `IUnitOfWork`、统一响应 `ApiResponse<T>`、分页 `PagedResult<T>`、认证 Cookie、Policy、Oracle 连接、DI 注册模板 | 无 | 全员 |
+| `feat-member2-user-permission-address-log` | `IAuthService`、`IUserService`、`IAddressService`、`IOperationLogService` | 第 1 人的认证、DI、数据库连接 | 第 4 人下单地址；第 3/5/6 人后台操作日志 |
+| `feat-member3-product-category-sku-inventory` | `ICategoryService`、`IProductService`、`ISkuService`、`IInventoryService` | 第 1 人公共基础；第 2 人操作日志 | 第 4 人购物车和订单锁库存；第 5 人支付扣库存；第 6 人库存导出 |
+| `feat-member4-cart-order-core` | `ICartService`、`IOrderService`、订单状态日志 API | 第 2 人用户和地址；第 3 人商品、SKU、库存锁定；第 5 人优惠券校验 | 第 5 人支付、发货、评价；第 6 人订单统计和导出 |
+| `feat-member5-payment-coupon-logistics-review` | `ICouponService`、`IPaymentService`、`ILogisticsService`、`IReviewService` | 第 4 人订单支付上下文和状态流转；第 3 人库存扣减；第 2 人用户身份 | 第 4 人订单流程；第 6 人支付、物流、评价统计 |
+| `feat-member6-stats-export-ui-docs` | `IStatisticsService`、`IExportService`、后台首页 ViewModel、统一 Bootstrap 布局 | 第 2 人用户/日志；第 3 人商品/库存；第 4 人订单；第 5 人支付/物流/评价 | 全员 UI 统一、测试截图、文档整合 |
+
+### 11.3 关键跨分支调用链
+
+| 业务场景 | 发起分支 | 必须调用的协作接口 | 成功后的状态 |
+| --- | --- | --- | --- |
+| 用户登录 | 第 2 人 | 第 1 人 Cookie Authentication、Policy | 生成登录 Cookie，可访问授权页面 |
+| 加入购物车 | 第 4 人 | 第 3 人 `IProductService.GetDetailAsync` 或 `ISkuService.GetByProductAsync` | 只允许加入上架商品和在售 SKU |
+| 创建订单 | 第 4 人 | 第 2 人 `IAddressService`；第 3 人 `IInventoryService.LockForOrderAsync`；第 5 人 `ICouponService.ValidateAsync` | 订单 `待支付`，SKU `locked_stock` 增加，购物车项清理 |
+| 取消订单 | 第 4 人 | 第 3 人 `IInventoryService.ReleaseForCancelledOrderAsync` | 订单 `已取消`，锁定库存释放，订单日志可查 |
+| 模拟支付成功 | 第 5 人 | 第 4 人 `IOrderService.GetPaymentContextAsync`、`MarkPaidAsync`、`GetSkuQuantitiesAsync`；第 3 人 `IInventoryService.DeductForPaidOrderAsync`；第 5 人 `ICouponService.UseForOrderAsync` | 支付 `成功`，订单 `已支付`，库存扣减，优惠券 `已使用` |
+| 后台发货 | 第 5 人 | 第 4 人 `IOrderService.MarkShippedAsync` | 物流生成，订单 `已发货`，订单日志可查 |
+| 确认收货 | 第 4 人 | 第 5 人 `ILogisticsService.GetByOrderAsync` 可选校验 | 订单 `已完成`，允许评价 |
+| 商品评价 | 第 5 人 | 第 4 人 `IOrderService.GetAdminDetailAsync` 或订单明细查询能力 | 仅已完成订单可评价 |
+| 后台统计 | 第 6 人 | 第 4 人订单查询口径；第 5 人支付状态；第 3 人商品信息 | 统计口径与订单/支付实际状态一致 |
+| Excel 导出 | 第 6 人 | 第 4 人 `AdminOrderQuery`；第 3 人 `InventoryLogQuery` | 导出字段与后台查询条件一致 |
+
+### 11.4 共享 DTO 必须统一
+
+以下 DTO 属于跨分支共享类型，放在 `ECommerce.Application/DTOs` 或 `ECommerce.Shared`，不得在各分支重复定义同名不同字段的版本。
+
+```csharp
+public sealed record OrderSkuQuantity(long SkuId, int Quantity);
+
+public sealed record OrderPaymentContextDto(
+    long OrderId,
+    string OrderNo,
+    long UserId,
+    int Status,
+    decimal PayAmount,
+    long? UserCouponId,
+    DateTime PayExpireTime);
+
+public sealed record FileExportDto(
+    string FileName,
+    string ContentType,
+    byte[] Content);
+```
+
+### 11.5 联调顺序
+
+1. 第 1 人先合并项目骨架、Oracle 连接、认证与 DI。
+2. 第 2 人合并登录、角色、地址和操作日志。
+3. 第 3 人合并分类、商品、SKU 和库存接口。
+4. 第 4 人联调购物车、创建订单、取消订单和库存锁定。
+5. 第 5 人联调优惠券、支付成功、扣库存、发货和评价。
+6. 第 6 人最后统一后台首页、统计、导出、UI、测试截图和文档。
