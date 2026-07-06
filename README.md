@@ -1,5 +1,13 @@
 # 电商购物平台——订单与商品管理系统
 
+## 协作基线
+
+本项目确定采用 B/S 模式，后端使用 ASP.NET Core MVC，数据库使用 Oracle。
+
+- [B/S 架构与接口契约](docs/ARCHITECTURE_AND_INTERFACES.md)：五层目录、页面路由、JSON API、DTO、Service 接口、事务边界。
+- [团队协作、命名与提交规范](docs/DEVELOPMENT_WORKFLOW.md)：成员分工、独立分支、命名规范、提交信息格式、合并检查清单。
+- [Oracle 初始化脚本](migration/init_database.sql)：24 张业务表、约束和索引。
+
 ### 项目功能点
 1. 用户注册/登录/权限控制
 2. 商品分类管理（增删改查）
