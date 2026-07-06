@@ -71,13 +71,14 @@ Application started. Press Ctrl+C to shut down.
 http://localhost:5052/
 http://localhost:5052/health
 http://localhost:5052/account/login
+http://localhost:5052/admin/dashboard
 http://localhost:5052/docs/team-guide
 http://localhost:5052/docs/development-spec
 ```
 
 如果终端回到 PowerShell 提示符，说明服务已经停止，需要重新运行 `dotnet run`。
 
-当前能看到的是项目状态页、健康检查、登录/注册占位页和两份文档。业务页面和业务接口还没有实现，大多数 `/api/v1/...` 接口会返回 `501 NOT_IMPLEMENTED`。
+当前能看到的是项目状态页、健康检查、登录/注册占位页、Vue Dashboard 示例页和两份文档。业务页面和业务接口还没有实现，大多数 `/api/v1/...` 接口会返回 `501 NOT_IMPLEMENTED`。
 
 ## 4. 当前阶段是什么状态
 
@@ -92,7 +93,7 @@ http://localhost:5052/docs/development-spec
 | 公共契约 | 统一响应、分页、错误码、权限常量、状态枚举已定义 |
 | 业务接口 | DTO 和 Service 接口已放在 `src/ECommerce.Application` |
 | API 入口 | `/api/v1/...` Controller 路由骨架已占位 |
-| 页面入口 | 首页、登录页、注册页、后台布局已占位 |
+| 页面入口 | 首页、登录页、注册页、后台布局、Vue Dashboard 示例页已占位 |
 | 数据库入口 | Oracle 连接配置和健康检查服务已占位 |
 | 测试入口 | `tests/ECommerce.Tests` 已能运行 |
 
@@ -104,7 +105,7 @@ http://localhost:5052/docs/development-spec
 | 商品分类/SKU/库存 | API 路由已占位，未连数据库 | `feat-member3-product-category-sku-inventory` |
 | 购物车/订单 | API 路由已占位，未实现业务事务 | `feat-member4-cart-order-core` |
 | 支付/优惠券/物流/评价 | API 路由已占位，未实现状态流转 | `feat-member5-payment-coupon-logistics-review` |
-| 统计/导出/后台首页 | API 路由已占位，未实现页面和 Excel | `feat-member6-stats-export-ui-docs` |
+| 统计/导出/后台首页 | API 路由已占位，Vue Dashboard 示例页已提供，未实现统计和 Excel | `feat-member6-stats-export-ui-docs` |
 | 部署 | 还需要服务器配置、环境变量、部署截图 | `feat-member1-foundation-oracle-deploy` |
 
 技术负责人验收骨架时，看这几项即可：

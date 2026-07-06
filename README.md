@@ -43,13 +43,14 @@ Application started. Press Ctrl+C to shut down.
 http://localhost:5052/
 http://localhost:5052/health
 http://localhost:5052/account/login
+http://localhost:5052/admin/dashboard
 ```
 
 如果终端已经回到 `PS C:\...>`，说明 Web 服务已经停止，需要重新执行 `dotnet run`。
 
 当前项目状态：
 
-- 已完成：解决方案、五层项目、统一响应、DTO、Service 接口、API 路由骨架、登录/注册占位页、健康检查、Oracle 连接配置入口。
+- 已完成：解决方案、五层项目、统一响应、DTO、Service 接口、API 路由骨架、登录/注册占位页、健康检查、Oracle 连接配置入口、Vue Dashboard 示例页。
 - 未完成：真实登录注册、商品维护、购物车、订单、支付、优惠券、物流、评价、统计导出等业务实现。
 - 现阶段目标：所有组员在各自分支基于已定义接口补实现，不再重新发明接口。
 
