@@ -1,33 +1,28 @@
 # 组员开工指南
 
-这份指南给所有组员统一开工用。先把项目跑起来，再在自己的分支上实现负责模块。
+这份文档给组员本人看。接口细节不用在这里翻，写代码或让 AI 帮忙时，让 AI 先读 `docs/AI_DEVELOPMENT_CONTEXT.md`。
 
-## 1. 先看三份文档
+## 1. 项目是什么
 
-开工前按顺序阅读：
+- 模式：B/S。
+- 后端：ASP.NET Core MVC，目标框架 `net8.0`。
+- 数据库：Oracle，建表脚本在 `migration/init_database.sql`。
+- 前端页面：Razor Views + Bootstrap。
+- JSON API：统一使用 `/api/v1/...` 前缀。
 
-1. `README.md`：项目功能、启动命令、文档入口。
-2. `docs/ARCHITECTURE_AND_INTERFACES.md`：B/S 架构、五层目录、页面路由、API、DTO、Service 接口、跨分支协作接口。
-3. `docs/DEVELOPMENT_WORKFLOW.md`：分工、分支名、命名规范、提交信息规范、合并检查清单。
+项目入口：
 
-## 2. 拉取项目
-
-```powershell
-git clone https://github.com/Stonerxx/E-commerce-management.git
-cd E-commerce-management
-git fetch origin
+```text
+ECommerce.sln
+src/ECommerce.Web
+src/ECommerce.Application
+src/ECommerce.Domain
+src/ECommerce.Infrastructure
+src/ECommerce.Shared
+tests/ECommerce.Tests
 ```
 
-如果已经 clone 过：
-
-```powershell
-git fetch origin
-git status
-```
-
-## 3. 切到自己的分支
-
-每个人只在自己的分支开发：
+## 2. 每个人在哪个分支做
 
 | 人员 | 分支 | 主责 |
 | --- | --- | --- |
@@ -38,22 +33,23 @@ git status
 | 第 5 人 | `feat-member5-payment-coupon-logistics-review` | 支付、优惠券、物流、评价 |
 | 第 6 人 | `feat-member6-stats-export-ui-docs` | 统计、导出、UI、测试、文档、PPT |
 
-示例：
+切分支：
+
+```powershell
+git fetch origin
+git switch --track origin/feat-member3-product-category-sku-inventory
+```
+
+如果本地已经有分支：
 
 ```powershell
 git switch feat-member3-product-category-sku-inventory
 git pull --ff-only
 ```
 
-如果本地还没有该分支：
+## 3. 第一次运行
 
-```powershell
-git switch --track origin/feat-member3-product-category-sku-inventory
-```
-
-## 4. 本地运行项目
-
-需要安装 .NET 8 SDK 或更高版本。当前项目目标框架是 `net8.0`。
+需要安装 .NET 8 SDK 或更高版本。
 
 ```powershell
 dotnet restore ECommerce.sln
@@ -62,16 +58,16 @@ dotnet test ECommerce.sln
 dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj
 ```
 
-启动后访问：
+启动后检查：
 
 ```text
 /health
 /account/login
 ```
 
-`/health` 应返回统一 JSON 响应，登录页应能打开。
+`/health` 应返回统一 JSON，登录页应能打开。
 
-## 5. 配置 Oracle 连接
+## 4. Oracle 怎么配
 
 默认占位配置在：
 
@@ -79,7 +75,7 @@ dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj
 src/ECommerce.Web/appsettings.json
 ```
 
-不要提交真实数据库密码。推荐本地用环境变量覆盖：
+不要提交真实数据库密码。推荐用环境变量：
 
 ```powershell
 $env:Oracle__ConnectionString = "User Id=你的账号;Password=你的密码;Data Source=localhost:1521/XEPDB1"
@@ -92,31 +88,37 @@ dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj
 migration/init_database.sql
 ```
 
-## 6. 接口和文件放哪里
+## 5. 让 AI 帮你写代码时怎么说
 
-公共接口已经建好，优先在这些位置继续写：
+把下面这段发给 AI，再补上你的具体任务：
 
-| 内容 | 目录 |
+```text
+请先阅读 docs/AI_DEVELOPMENT_CONTEXT.md，并严格按里面的项目结构、接口契约、分支职责和提交规范开发。不要改无关模块，不要发明新接口；确需改公共接口时，同时更新 AI 文档和源码接口。
+我的分支是：feat-memberX-...
+我的任务是：...
+```
+
+AI 应该优先看这些源码：
+
+| 内容 | 位置 |
 | --- | --- |
-| 页面 Controller、API Controller、Views | `src/ECommerce.Web` |
-| DTO、Service 接口 | `src/ECommerce.Application` |
-| 状态枚举、领域常量 | `src/ECommerce.Domain` |
-| Oracle 连接、Repository、UnitOfWork | `src/ECommerce.Infrastructure` |
-| 统一响应、分页、错误码、权限常量 | `src/ECommerce.Shared` |
-| 测试 | `tests/ECommerce.Tests` |
+| DTO | `src/ECommerce.Application/DTOs` |
+| Service 接口 | `src/ECommerce.Application/Services` |
+| API Controller 路由 | `src/ECommerce.Web/Controllers/Api` |
+| 权限常量、响应、分页、错误码 | `src/ECommerce.Shared` |
+| 状态枚举 | `src/ECommerce.Domain/Enums` |
+| Oracle 连接与基础设施 | `src/ECommerce.Infrastructure` |
 
-所有 `/api/v1/...` Controller 目前已经占好路由，默认返回 `501 NOT_IMPLEMENTED`。各成员实现自己模块时，把对应 Controller 改成调用自己的 Service。
-
-## 7. 开发规则
+## 6. 开发规矩
 
 - Controller 只调用 Application Service，不直接访问数据库。
 - 不直接改其他成员模块的 Repository 或表操作。
-- 跨模块调用只依赖 `docs/ARCHITECTURE_AND_INTERFACES.md` 里定义的 Service 接口和 DTO。
-- 要改公共接口、DTO、状态枚举、错误码，先改文档并通知其他成员。
+- 跨模块调用只依赖已有 Service 接口和 DTO。
+- 要改公共接口、DTO、状态枚举、错误码，先沟通，再同时改源码和 `docs/AI_DEVELOPMENT_CONTEXT.md`。
 - 后台写操作要记录操作日志。
 - 订单、库存、优惠券、支付相关逻辑必须注意事务，不能出现半成功状态。
 
-## 8. 提交规范
+## 7. 提交规范
 
 提交信息格式：
 
@@ -129,11 +131,23 @@ migration/init_database.sql
 ```text
 feat(product)：新增商品分类维护页面
 fix(order)：修复取消订单未释放锁定库存
-docs(workflow)：补充组员开工指南
+docs(workflow)：整理组员开工文档
 test(cart)：新增购物车数量校验测试
 ```
 
-提交前检查：
+常用 `type`：
+
+```text
+feat fix docs style refactor test build chore perf
+```
+
+常用 `scope`：
+
+```text
+foundation oracle auth user permission address log category product sku inventory cart order payment coupon logistics review statistics export ui docs test
+```
+
+提交前：
 
 ```powershell
 dotnet build ECommerce.sln
@@ -149,7 +163,7 @@ git commit -m "feat(product)：新增商品分类维护页面"
 git push origin 当前分支名
 ```
 
-## 9. 合并流程
+## 8. 合并流程
 
 `main` 分支受保护，不能直接推送。功能完成后：
 
@@ -167,9 +181,7 @@ git push origin 当前分支名
 5. 第 5 人支付、优惠券、物流、评价。
 6. 第 6 人统计、导出、UI、测试、文档、PPT。
 
-## 10. 避免提交的内容
-
-不要提交：
+## 9. 不要提交
 
 - 真实数据库密码。
 - `bin/`、`obj/` 构建产物。
