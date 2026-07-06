@@ -8,6 +8,30 @@
 - [团队协作、命名与提交规范](docs/DEVELOPMENT_WORKFLOW.md)：成员分工、独立分支、命名规范、提交信息格式、合并检查清单。
 - [Oracle 初始化脚本](migration/init_database.sql)：24 张业务表、约束和索引。
 
+## 项目启动
+
+项目已创建为 ASP.NET Core MVC + 五层类库结构：
+
+```text
+ECommerce.sln
+src/ECommerce.Web
+src/ECommerce.Application
+src/ECommerce.Domain
+src/ECommerce.Infrastructure
+src/ECommerce.Shared
+tests/ECommerce.Tests
+```
+
+本地运行：
+
+```powershell
+dotnet restore ECommerce.sln
+dotnet build ECommerce.sln
+dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj
+```
+
+Oracle 连接配置位于 `src/ECommerce.Web/appsettings.json` 的 `Oracle:ConnectionString`，本地开发时按自己的数据库账号修改，不要提交真实密码。
+
 ### 项目功能点
 1. 用户注册/登录/权限控制
 2. 商品分类管理（增删改查）
