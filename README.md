@@ -4,8 +4,8 @@
 
 本项目确定采用 B/S 模式，后端使用 ASP.NET Core MVC，数据库使用 Oracle。
 
-- [组员开工指南](docs/TEAM_GUIDE.md)：给组员本人看，包含分支、运行、提交、PR 和如何让 AI 帮忙。
-- [AI 开发上下文](docs/AI_DEVELOPMENT_CONTEXT.md)：给 AI 看，包含项目结构、接口约束、路由、跨模块协作和事务边界。
+- [组员开工指南](docs/TEAM_GUIDE.md)：分支、运行、提交、PR 和日常协作流程。
+- [开发规范](docs/DEVELOPMENT_SPEC.md)：项目结构、接口规范、代码规范、API 格式、路由、事务和跨模块协作。
 - [Oracle 初始化脚本](migration/init_database.sql)：24 张业务表、约束和索引。
 
 ## 项目启动

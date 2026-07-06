@@ -1,6 +1,6 @@
 # 组员开工指南
 
-这份文档给组员本人看。接口细节不用在这里翻，写代码或让 AI 帮忙时，让 AI 先读 `docs/AI_DEVELOPMENT_CONTEXT.md`。
+这份文档用于组员开工、切换分支、运行项目、提交代码和发起 PR。接口、代码、API、事务等细节以 `docs/DEVELOPMENT_SPEC.md` 为准。
 
 ## 1. 项目是什么
 
@@ -88,17 +88,15 @@ dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj
 migration/init_database.sql
 ```
 
-## 5. 让 AI 帮你写代码时怎么说
+## 5. 开发前先看规范
 
-把下面这段发给 AI，再补上你的具体任务：
+开始写代码前，先确认自己的任务是否涉及公共接口、DTO、路由、状态码或事务边界。涉及这些内容时，先查看：
 
 ```text
-请先阅读 docs/AI_DEVELOPMENT_CONTEXT.md，并严格按里面的项目结构、接口契约、分支职责和提交规范开发。不要改无关模块，不要发明新接口；确需改公共接口时，同时更新 AI 文档和源码接口。
-我的分支是：feat-memberX-...
-我的任务是：...
+docs/DEVELOPMENT_SPEC.md
 ```
 
-AI 应该优先看这些源码：
+开发时优先看这些源码：
 
 | 内容 | 位置 |
 | --- | --- |
@@ -114,7 +112,7 @@ AI 应该优先看这些源码：
 - Controller 只调用 Application Service，不直接访问数据库。
 - 不直接改其他成员模块的 Repository 或表操作。
 - 跨模块调用只依赖已有 Service 接口和 DTO。
-- 要改公共接口、DTO、状态枚举、错误码，先沟通，再同时改源码和 `docs/AI_DEVELOPMENT_CONTEXT.md`。
+- 要改公共接口、DTO、状态枚举、错误码，先沟通，再同时改源码和 `docs/DEVELOPMENT_SPEC.md`。
 - 后台写操作要记录操作日志。
 - 订单、库存、优惠券、支付相关逻辑必须注意事务，不能出现半成功状态。
 
