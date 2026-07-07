@@ -1,11 +1,13 @@
 ﻿using ECommerce.Application.DTOs;
 using ECommerce.Application.Services;
 using ECommerce.Domain.Entities;
+using ECommerce.Domain.Enums;
 using ECommerce.Infrastructure.Models;
 using ECommerce.Infrastructure.Repositories;
 using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Contracts;
 using ECommerce.Shared.Exceptions;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace ECommerce.Infrastructure.Services;
@@ -20,6 +22,7 @@ public class OrderService : IOrderService
     private readonly IInventoryService _inventoryService;
     private readonly ICouponService _couponService;
     private readonly IOperationLogService _operationLogService;
+    private readonly ILogger<OrderService> _logger;
 
     private const int PAY_EXPIRE_MINUTES = 30;
 
@@ -31,7 +34,8 @@ public class OrderService : IOrderService
         IAddressService addressService,
         IInventoryService inventoryService,
         ICouponService couponService,
-        IOperationLogService operationLogService)
+        IOperationLogService operationLogService,
+        ILogger<OrderService> logger)
     {
         _orderRepository = orderRepository;
         _cartRepository = cartRepository;
@@ -41,6 +45,7 @@ public class OrderService : IOrderService
         _inventoryService = inventoryService;
         _couponService = couponService;
         _operationLogService = operationLogService;
+        _logger = logger;
     }
 
     public async Task<OrderPreviewDto> PreviewAsync(long userId, CreateOrderRequest request, CancellationToken cancellationToken = default)
@@ -59,10 +64,9 @@ public class OrderService : IOrderService
             var sku = await _skuService.GetByIdAsync(item.SkuId, cancellationToken);
             if (sku == null)
                 throw new BusinessException("SKU_NOT_FOUND", $"SKU {item.SkuId} 不存在");
-            if (sku.Status != 1)
+            if (sku.Status != (int)SkuStatus.Enabled)
                 throw new BusinessException("SKU_NOT_AVAILABLE", $"SKU {item.SkuId} 已停售");
 
-            // 业务层快速校验：可用库存是否充足
             var availableStock = sku.Stock - sku.LockedStock;
             if (availableStock < item.Quantity)
                 throw new BusinessException("INSUFFICIENT_STOCK", $"SKU {item.SkuId} 库存不足，当前可用：{availableStock}");
@@ -101,51 +105,53 @@ public class OrderService : IOrderService
 
     public async Task<long> CreateAsync(long userId, CreateOrderRequest request, CancellationToken cancellationToken = default)
     {
-        // 1. 前置校验
-        var address = await ValidateAddressAsync(userId, request.AddressId, cancellationToken);
-
-        var cartItems = await GetSelectedCartItemsAsync(userId, request.CartItemIds, cancellationToken);
-        if (cartItems.Count == 0)
-            throw new BusinessException("CART_EMPTY", "购物车为空，请先添加商品");
-
-        // 2. 校验每个 SKU（通过 Service 接口）
-        foreach (var item in cartItems)
-        {
-            var sku = await _skuService.GetByIdAsync(item.SkuId, cancellationToken);
-            if (sku == null)
-                throw new BusinessException("SKU_NOT_FOUND", $"SKU {item.SkuId} 不存在");
-            if (sku.Status != 1)
-                throw new BusinessException("SKU_NOT_AVAILABLE", $"SKU {item.SkuId} 已停售");
-
-            var availableStock = sku.Stock - sku.LockedStock;
-            if (availableStock < item.Quantity)
-                throw new BusinessException("INSUFFICIENT_STOCK", $"SKU {item.SkuId} 库存不足，当前可用：{availableStock}");
-        }
-
-        // 3. 计算金额
-        decimal totalAmount = cartItems.Sum(x => x.UnitPrice * x.Quantity);
-        decimal discountAmount = 0;
-        long? userCouponId = request.UserCouponId;
-
-        if (userCouponId.HasValue)
-        {
-            var validation = await _couponService.ValidateAsync(userId, userCouponId.Value, totalAmount, cancellationToken);
-            if (!validation.Available)
-                throw new BusinessException("COUPON_INVALID", validation.Reason ?? "优惠券不可用");
-            discountAmount = validation.DiscountAmount;
-        }
-
-        var payAmount = totalAmount - discountAmount;
-        if (payAmount < 0) payAmount = 0;
-
-        // 4. 生成订单编号
-        var orderNo = GenerateOrderNo();
-
-        // 5. 开启事务
-        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        string? orderNo = null;
 
         try
         {
+            // 1. 前置校验
+            var address = await ValidateAddressAsync(userId, request.AddressId, cancellationToken);
+
+            var cartItems = await GetSelectedCartItemsAsync(userId, request.CartItemIds, cancellationToken);
+            if (cartItems.Count == 0)
+                throw new BusinessException("CART_EMPTY", "购物车为空，请先添加商品");
+
+            // 2. 校验每个 SKU（通过 Service 接口）
+            foreach (var item in cartItems)
+            {
+                var sku = await _skuService.GetByIdAsync(item.SkuId, cancellationToken);
+                if (sku == null)
+                    throw new BusinessException("SKU_NOT_FOUND", $"SKU {item.SkuId} 不存在");
+                if (sku.Status != (int)SkuStatus.Enabled)
+                    throw new BusinessException("SKU_NOT_AVAILABLE", $"SKU {item.SkuId} 已停售");
+
+                var availableStock = sku.Stock - sku.LockedStock;
+                if (availableStock < item.Quantity)
+                    throw new BusinessException("INSUFFICIENT_STOCK", $"SKU {item.SkuId} 库存不足，当前可用：{availableStock}");
+            }
+
+            // 3. 计算金额
+            decimal totalAmount = cartItems.Sum(x => x.UnitPrice * x.Quantity);
+            decimal discountAmount = 0;
+            long? userCouponId = request.UserCouponId;
+
+            if (userCouponId.HasValue)
+            {
+                var validation = await _couponService.ValidateAsync(userId, userCouponId.Value, totalAmount, cancellationToken);
+                if (!validation.Available)
+                    throw new BusinessException("COUPON_INVALID", validation.Reason ?? "优惠券不可用");
+                discountAmount = validation.DiscountAmount;
+            }
+
+            var payAmount = totalAmount - discountAmount;
+            if (payAmount < 0) payAmount = 0;
+
+            // 4. 生成订单编号
+            orderNo = GenerateOrderNo();
+
+            // 5. 开启事务
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
             // 6. 创建订单主表
             var order = new OrderMain
             {
@@ -153,7 +159,7 @@ public class OrderService : IOrderService
                 UserId = userId,
                 AddressId = request.AddressId,
                 UserCouponId = userCouponId,
-                Status = 0,
+                Status = (int)OrderStatus.PendingPayment,  // 使用枚举
                 TotalAmount = totalAmount,
                 DiscountAmount = discountAmount,
                 PayAmount = payAmount,
@@ -194,7 +200,7 @@ public class OrderService : IOrderService
             {
                 OrderId = orderId,
                 FromStatus = null,
-                ToStatus = 0,
+                ToStatus = (int)OrderStatus.PendingPayment,
                 OperatorId = null,
                 Remark = "用户创建订单",
                 CreatedAt = DateTime.Now
@@ -212,8 +218,9 @@ public class OrderService : IOrderService
 
             return orderId;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "创建订单失败，UserId: {UserId}, OrderNo: {OrderNo}", userId, orderNo ?? "未生成");
             await _unitOfWork.RollbackAsync(cancellationToken);
             throw;
         }
@@ -269,39 +276,68 @@ public class OrderService : IOrderService
 
     public async Task CancelAsync(long userId, long orderId, long operatorId, string operatorName, string? reason, CancellationToken cancellationToken = default)
     {
+        // 1. 查询订单
         var order = await _orderRepository.GetOrderByIdAsync(orderId, cancellationToken);
         if (order == null)
             throw new BusinessException("ORDER_NOT_FOUND", "订单不存在");
 
-        if (order.Status != 0)
+        // 2. 校验订单状态：只有待支付可以取消
+        if (order.Status != (int)OrderStatus.PendingPayment)
             throw new BusinessException("ORDER_CANNOT_CANCEL", $"当前订单状态（{order.Status}）不允许取消");
-
-        if (order.UserId != userId)
-            throw new BusinessException("FORBIDDEN", "无权取消此订单");
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            await _orderRepository.UpdateOrderStatusAsync(orderId, 4, DateTime.Now, cancellationToken);
+            // 3. 更新订单状态为已取消
+            await _orderRepository.UpdateOrderStatusAsync(
+                orderId,
+                (int)OrderStatus.Cancelled,
+                DateTime.Now,
+                cancellationToken);
 
+            // 4. 写入订单状态日志（ORDER_LOG）
             await _orderRepository.InsertOrderLogAsync(new OrderLog
             {
                 OrderId = orderId,
-                FromStatus = 0,
-                ToStatus = 4,
-                OperatorId = operatorId,
-                OperatorName = operatorName,
-                Remark = reason ?? "用户主动取消",
+                FromStatus = (int)OrderStatus.PendingPayment,
+                ToStatus = (int)OrderStatus.Cancelled,
+                OperatorId = operatorId,  // 记录实际操作人
+                Remark = reason ?? (operatorId == userId ? "用户主动取消" : "后台管理员取消"),
                 CreatedAt = DateTime.Now
             }, cancellationToken);
 
+            // 5. 释放锁定库存
             var skuQuantities = await _orderRepository.GetOrderSkuQuantitiesAsync(orderId, cancellationToken);
             await _inventoryService.ReleaseForCancelledOrderAsync(orderId, skuQuantities, cancellationToken);
 
+            // 6. 判断是否需要写入 OPERATION_LOG
+            //    规范要求：只有"后台关键写操作"才写入 OPERATION_LOG
+            //    判断标准：操作人不是订单主人 → 视为后台管理员操作 → 写入 OPERATION_LOG
+            //              操作人是订单主人 → 前台用户自取消 → 只写 ORDER_LOG，不写 OPERATION_LOG
+            if (operatorId != userId)
+            {
+                // 后台管理员取消订单 → 必须写入 OPERATION_LOG
+                await _operationLogService.WriteAsync(new OperationLogRequest(
+                    OperatorId: operatorId,
+                    OperatorName: operatorName,  // 真实管理员姓名
+                    Module: "订单管理",
+                    Action: "后台取消订单",
+                    Description: $"管理员 {operatorName} 取消订单 {order.OrderNo}，原因：{reason ?? "无"}",
+                    IpAddress: "",  // TODO: 由 Controller 传入真实 IP
+                    RequestParams: null,
+                    Result: (int)OperationResult.Success
+                ), cancellationToken);
+            }
+            // 如果 operatorId == userId，说明是用户自己取消，不写入 OPERATION_LOG
+
+            // 8. 提交事务
             await _unitOfWork.CommitAsync(cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex,
+                "取消订单失败，OrderId: {OrderId}, OperatorId: {OperatorId}, UserId: {UserId}",
+                orderId, operatorId, userId);
             await _unitOfWork.RollbackAsync(cancellationToken);
             throw;
         }
@@ -313,7 +349,7 @@ public class OrderService : IOrderService
         if (order == null)
             throw new BusinessException("ORDER_NOT_FOUND", "订单不存在");
 
-        if (order.Status != 2)
+        if (order.Status != (int)OrderStatus.Shipped)
             throw new BusinessException("ORDER_CANNOT_CONFIRM", $"当前订单状态（{order.Status}）不允许确认收货");
 
         if (order.UserId != userId)
@@ -322,22 +358,23 @@ public class OrderService : IOrderService
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            await _orderRepository.UpdateOrderStatusAsync(orderId, 3, DateTime.Now, cancellationToken);
+            await _orderRepository.UpdateOrderStatusAsync(orderId, (int)OrderStatus.Completed, DateTime.Now, cancellationToken);
 
             await _orderRepository.InsertOrderLogAsync(new OrderLog
             {
                 OrderId = orderId,
-                FromStatus = 2,
-                ToStatus = 3,
-                OperatorId = null,
+                FromStatus = (int)OrderStatus.Shipped,
+                ToStatus = (int)OrderStatus.Completed,
+                OperatorId = userId,
                 Remark = "用户确认收货",
                 CreatedAt = DateTime.Now
             }, cancellationToken);
 
             await _unitOfWork.CommitAsync(cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "确认收货失败，OrderId: {OrderId}", orderId);
             await _unitOfWork.RollbackAsync(cancellationToken);
             throw;
         }
@@ -349,27 +386,38 @@ public class OrderService : IOrderService
         if (order == null)
             throw new BusinessException("ORDER_NOT_FOUND", "订单不存在");
 
-        if (order.Status != 0)
+        // 幂等性检查：如果已经支付，直接返回（不再重复处理）
+        if (order.Status == (int)OrderStatus.Paid)
+        {
+            _logger.LogWarning("订单 {OrderId} 已支付，重复调用 MarkPaidAsync", orderId);
+            return;
+        }
+
+        if (order.Status != (int)OrderStatus.PendingPayment)
             throw new BusinessException("ORDER_STATUS_INVALID", $"当前订单状态（{order.Status}）不允许支付");
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            await _orderRepository.UpdateOrderStatusAsync(orderId, 1, DateTime.Now, cancellationToken);
+            // 更新订单状态为已支付（使用枚举）
+            await _orderRepository.UpdateOrderStatusAsync(orderId, (int)OrderStatus.Paid, DateTime.Now, cancellationToken);
 
+            // 记录订单日志
             await _orderRepository.InsertOrderLogAsync(new OrderLog
             {
                 OrderId = orderId,
-                FromStatus = 0,
-                ToStatus = 1,
-                OperatorId = null,
+                FromStatus = (int)OrderStatus.PendingPayment,
+                ToStatus = (int)OrderStatus.Paid,
+                OperatorId = null,  // 系统自动操作
                 Remark = $"支付成功，支付记录ID：{paymentId}",
                 CreatedAt = DateTime.Now
             }, cancellationToken);
 
+            // 扣减库存（实际库存，释放锁定库存）
             var skuQuantities = await _orderRepository.GetOrderSkuQuantitiesAsync(orderId, cancellationToken);
             await _inventoryService.DeductForPaidOrderAsync(orderId, skuQuantities, cancellationToken);
 
+            // 核销优惠券
             if (order.UserCouponId.HasValue)
             {
                 await _couponService.UseForOrderAsync(order.UserId, order.UserCouponId.Value, orderId, order.PayAmount, cancellationToken);
@@ -377,8 +425,9 @@ public class OrderService : IOrderService
 
             await _unitOfWork.CommitAsync(cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "支付成功处理失败，OrderId: {OrderId}, PaymentId: {PaymentId}", orderId, paymentId);
             await _unitOfWork.RollbackAsync(cancellationToken);
             throw;
         }
@@ -390,40 +439,43 @@ public class OrderService : IOrderService
         if (order == null)
             throw new BusinessException("ORDER_NOT_FOUND", "订单不存在");
 
-        if (order.Status != 1)
+        if (order.Status != (int)OrderStatus.Paid)
             throw new BusinessException("ORDER_STATUS_INVALID", $"当前订单状态（{order.Status}）不允许发货");
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            await _orderRepository.UpdateOrderStatusAsync(orderId, 2, DateTime.Now, cancellationToken);
+            // 更新订单状态为已发货（使用枚举）
+            await _orderRepository.UpdateOrderStatusAsync(orderId, (int)OrderStatus.Shipped, DateTime.Now, cancellationToken);
 
+            // 记录订单日志
             await _orderRepository.InsertOrderLogAsync(new OrderLog
             {
                 OrderId = orderId,
-                FromStatus = 1,
-                ToStatus = 2,
+                FromStatus = (int)OrderStatus.Paid,
+                ToStatus = (int)OrderStatus.Shipped,
                 OperatorId = operatorId,
-                OperatorName = operatorName,
                 Remark = $"已发货，物流ID：{logisticsId}",
                 CreatedAt = DateTime.Now
             }, cancellationToken);
 
+            // 记录操作日志（后台关键操作，必须记录）
             await _operationLogService.WriteAsync(new OperationLogRequest(
                 operatorId,
-                operatorName,
+                operatorName,  // 使用真实操作人姓名
                 "订单管理",
                 "发货",
                 $"订单 {order.OrderNo} 已发货，物流ID：{logisticsId}",
-                "",
+                "",  // IP 由 Controller 传入
                 null,
-                1
+                (int)OperationResult.Success
             ), cancellationToken);
 
             await _unitOfWork.CommitAsync(cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "发货失败，OrderId: {OrderId}", orderId);
             await _unitOfWork.RollbackAsync(cancellationToken);
             throw;
         }

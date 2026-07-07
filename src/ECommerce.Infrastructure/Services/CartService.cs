@@ -1,10 +1,12 @@
 ﻿using ECommerce.Application.DTOs;
 using ECommerce.Application.Services;
 using ECommerce.Domain.Entities;
+using ECommerce.Domain.Enums;
 using ECommerce.Infrastructure.Models;
 using ECommerce.Infrastructure.Repositories;
 using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Exceptions;
+using Microsoft.Extensions.Logging;
 
 namespace ECommerce.Infrastructure.Services;
 
@@ -13,15 +15,18 @@ public class CartService : ICartService
     private readonly ICartRepository _cartRepository;
     private readonly ISkuService _skuService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<CartService> _logger;
 
     public CartService(
         ICartRepository cartRepository,
         ISkuService skuService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ILogger<CartService> logger)
     {
         _cartRepository = cartRepository;
         _skuService = skuService;
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<CartDto> GetCartAsync(long userId, CancellationToken cancellationToken = default)
@@ -51,12 +56,9 @@ public class CartService : ICartService
         if (sku == null)
             throw new BusinessException("SKU_NOT_FOUND", "SKU不存在");
 
-        // 校验 SKU 是否在售（1=在售）
-        if (sku.Status != 1)
+        // 校验 SKU 是否在售（使用枚举）
+        if (sku.Status != (int)SkuStatus.Enabled)
             throw new BusinessException("SKU_NOT_AVAILABLE", "SKU已停售");
-
-        // 注意：商品上下架状态由 SKU 的 Status 间接覆盖，不单独校验 Product.Status
-        // 如果后续需要校验商品状态，可调用 IProductService
 
         // 2. 校验库存（可用库存 = stock - locked_stock）
         var availableStock = sku.Stock - sku.LockedStock;
@@ -107,6 +109,10 @@ public class CartService : ICartService
         if (sku == null)
             throw new BusinessException("SKU_NOT_FOUND", "SKU不存在");
 
+        // 校验 SKU 是否在售（使用枚举）
+        if (sku.Status != (int)SkuStatus.Enabled)
+            throw new BusinessException("SKU_NOT_AVAILABLE", "SKU已停售");
+
         var availableStock = sku.Stock - sku.LockedStock;
         if (availableStock < request.Quantity)
             throw new BusinessException("INSUFFICIENT_STOCK", $"库存不足，当前可用库存：{availableStock}");
@@ -136,10 +142,7 @@ public class CartService : ICartService
 
     public async Task ClearAsync(long userId, CancellationToken cancellationToken = default)
     {
-        var items = await _cartRepository.GetUserCartWithDetailsAsync(userId, cancellationToken);
-        foreach (var item in items)
-        {
-            await _cartRepository.RemoveAsync(item.CartItemId, cancellationToken);
-        }
+        // 一次性清空，避免循环删除
+        await _cartRepository.ClearAllAsync(userId, cancellationToken);
     }
 }
