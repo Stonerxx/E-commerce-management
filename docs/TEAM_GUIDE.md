@@ -21,7 +21,7 @@
 | ApiResponse | JSON 接口统一返回格式，包含 `success`、`code`、`message`、`data`、`traceId`。 |
 | 事务 | 多个数据库写操作要么全部成功，要么全部撤回，避免半成功。 |
 
-项目入口：
+项目入口。注意：`src/ECommerce.Web` 这些是已经建好的 C# 项目，不是让大家在 `src` 下面随便新建文件夹。
 
 ```text
 ECommerce.sln
@@ -32,6 +32,19 @@ src/ECommerce.Infrastructure
 src/ECommerce.Shared
 tests/ECommerce.Tests
 ```
+
+常用子目录也已经预建好：
+
+```text
+src/ECommerce.Web/ViewModels
+src/ECommerce.Web/Filters
+src/ECommerce.Application/Validators
+src/ECommerce.Domain/Entities
+src/ECommerce.Infrastructure/Services
+src/ECommerce.Infrastructure/Repositories
+```
+
+空目录里的 `.gitkeep` 只是为了让 Git 保留这个目录；以后放了真实代码文件，可以保留也可以删除。
 
 ## 2. 每个人在哪个分支做
 
