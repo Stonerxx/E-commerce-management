@@ -10,6 +10,17 @@
 - 前端页面：Razor Views + Bootstrap。
 - JSON API：统一使用 `/api/v1/...` 前缀。
 
+几个常见词先说明：
+
+| 词 | 说明 |
+| --- | --- |
+| Controller | 接收浏览器请求的入口，页面 Controller 返回页面，API Controller 返回 JSON。 |
+| DTO | 接口请求/响应对象，只放字段，不写业务逻辑。 |
+| Service | 业务能力，例如登录、创建订单、锁库存。Controller 应该调用 Service。 |
+| Repository | 数据访问类，集中写 SQL 和表操作。不要在 Controller 里写 SQL。 |
+| ApiResponse | JSON 接口统一返回格式，包含 `success`、`code`、`message`、`data`、`traceId`。 |
+| 事务 | 多个数据库写操作要么全部成功，要么全部撤回，避免半成功。 |
+
 项目入口：
 
 ```text
@@ -91,7 +102,7 @@ http://localhost:5052/docs/development-spec
 
 ## 4. 当前阶段是什么状态
 
-现在项目处在“可运行骨架 + 接口契约已定”的阶段，不是完整业务系统。
+现在项目处在“可运行骨架 + 接口格式已定”的阶段，不是完整业务系统。
 
 已完成：
 
@@ -99,9 +110,9 @@ http://localhost:5052/docs/development-spec
 | --- | --- |
 | 解决方案 | `ECommerce.sln` 已包含 Web、Application、Domain、Infrastructure、Shared、Tests |
 | 目录结构 | 五层目录已经建好，各层项目引用已经配置 |
-| 公共契约 | 统一响应、分页、错误码、权限常量、状态枚举已定义 |
-| 业务接口 | DTO 和 Service 接口已放在 `src/ECommerce.Application` |
-| API 入口 | `/api/v1/...` Controller 路由骨架已占位 |
+| 公共约定 | 统一响应、分页、错误码、权限常量、状态枚举已定义 |
+| 业务接口 | DTO 和 Service 接口已放在 `src/ECommerce.Application`，表示格式和方法名先定好了 |
+| API 入口 | `/api/v1/...` Controller 路由骨架已占位，表示地址先定好了 |
 | 页面入口 | 首页、登录页、注册页、后台布局、Vue Dashboard 示例页已占位 |
 | 数据库入口 | Oracle 连接配置和健康检查服务已占位 |
 | 测试入口 | `tests/ECommerce.Tests` 已能运行 |
@@ -160,8 +171,10 @@ docs/DEVELOPMENT_SPEC.md
 
 | 内容 | 位置 |
 | --- | --- |
-| DTO | `src/ECommerce.Application/DTOs` |
-| Service 接口 | `src/ECommerce.Application/Services` |
+| 请求/响应字段 DTO | `src/ECommerce.Application/DTOs` |
+| 业务方法名 Service 接口 | `src/ECommerce.Application/Services` |
+| Service 实现 | `src/ECommerce.Infrastructure/Services`，实现时创建 |
+| SQL 和表操作 Repository | `src/ECommerce.Infrastructure/Repositories`，实现时创建 |
 | API Controller 路由 | `src/ECommerce.Web/Controllers/Api` |
 | 权限常量、响应、分页、错误码 | `src/ECommerce.Shared` |
 | 状态枚举 | `src/ECommerce.Domain/Enums` |
@@ -169,9 +182,9 @@ docs/DEVELOPMENT_SPEC.md
 
 ## 7. 开发规矩
 
-- Controller 只调用 Application Service，不直接访问数据库。
-- 不直接改其他成员模块的 Repository 或表操作。
-- 跨模块调用只依赖已有 Service 接口和 DTO。
+- Controller 只接请求和返回结果，复杂业务交给 Service，不直接访问数据库。
+- Repository 只做 SQL 和表操作，不写完整业务流程。
+- 不直接改其他成员模块负责的表；需要别人模块数据时，优先调用已有 Service 接口和 DTO。
 - 要改公共接口、DTO、状态枚举、错误码，先沟通，再同时改源码和 `docs/DEVELOPMENT_SPEC.md`。
 - 后台写操作要记录操作日志。
 - 订单、库存、优惠券、支付相关逻辑必须注意事务，不能出现半成功状态。
