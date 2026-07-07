@@ -25,4 +25,7 @@ public interface ICartRepository
 
     /// <summary> 清空用户所有选中的购物车项（selected=1） </summary>
     Task ClearSelectedAsync(long userId, CancellationToken cancellationToken = default);
+
+    /// <summary> 清空用户所有购物车项 </summary>
+    Task ClearAllAsync(long userId, CancellationToken cancellationToken = default);
 }

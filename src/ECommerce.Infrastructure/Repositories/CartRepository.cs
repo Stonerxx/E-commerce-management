@@ -192,6 +192,16 @@ public class CartRepository : ICartRepository
         await cmd.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    public async Task ClearAllAsync(long userId, CancellationToken cancellationToken = default)
+    {
+        const string sql = "DELETE FROM cart WHERE user_id = :UserId";
+        await using var cmd = Connection.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Transaction = Transaction;
+        cmd.Parameters.Add(CreateParameter("UserId", userId));
+        await cmd.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     // ---------- 辅助方法 ----------
     private static Cart MapCart(DbDataReader reader)
     {
