@@ -74,7 +74,7 @@ git pull --ff-only
 每次开始编辑代码或文档前，都先拉取一次自己的分支：
 
 ```powershell
-git switch 你的分支名
+git switch 我们的成员分支名
 git pull --ff-only
 ```
 
@@ -172,14 +172,14 @@ src/ECommerce.Web/appsettings.json
 推荐用环境变量：
 
 ```powershell
-$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEV;Password=你的开发库密码;Data Source=数据库服务器IP:1521/服务名"
+$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEV;Password=我们的开发库密码;Data Source=数据库服务器IP:1521/服务名"
 dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj
 ```
 
 演示环境示例：
 
 ```powershell
-$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEMO;Password=你的演示库密码;Data Source=127.0.0.1:1521/服务名"
+$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEMO;Password=我们的演示库密码;Data Source=127.0.0.1:1521/服务名"
 ```
 
 检查 Oracle 是否连通：
