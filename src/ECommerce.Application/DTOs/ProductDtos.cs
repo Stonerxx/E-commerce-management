@@ -30,7 +30,7 @@ public sealed record ProductSpecRequest(
     int SortOrder);
 
 public sealed record ProductSaveRequest(
-    long CategoryId,
+    int CategoryId,
     string Name,
     string? Description,
     string MainImage,
@@ -50,7 +50,7 @@ public sealed record SkuSaveRequest(
 
 public sealed record ProductQuery : PageQuery
 {
-    public long? CategoryId { get; init; }
+    public int? CategoryId { get; init; }
 
     public string? Keyword { get; init; }
 
@@ -59,7 +59,7 @@ public sealed record ProductQuery : PageQuery
 
 public sealed record ProductListItemDto(
     long ProductId,
-    long CategoryId,
+    int CategoryId,
     string Name,
     string MainImage,
     decimal PriceMin,
@@ -92,7 +92,7 @@ public sealed record SkuDto(
 
 public sealed record ProductDetailDto(
     long ProductId,
-    long CategoryId,
+    int CategoryId,
     string Name,
     string? Description,
     string MainImage,
