@@ -41,6 +41,8 @@ public sealed record UserCouponDto(
     DateTime? UsedAt,
     long? OrderId);
 
+public sealed record CouponValidationRequest(decimal OrderAmount);
+
 public sealed record CouponValidationDto(
     bool Available,
     decimal DiscountAmount,
