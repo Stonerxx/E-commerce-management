@@ -74,7 +74,7 @@ git pull --ff-only
 每次开始编辑代码或文档前，都先拉取一次自己的分支：
 
 ```powershell
-git switch 你的分支名
+git switch 我们的成员分支名
 git pull --ff-only
 ```
 
@@ -127,7 +127,8 @@ http://localhost:5052/docs/development-spec
 | 业务接口 | DTO 和 Service 接口已放在 `src/ECommerce.Application`，表示格式和方法名先定好了 |
 | API 入口 | `/api/v1/...` Controller 路由骨架已占位，表示地址先定好了 |
 | 页面入口 | 首页、登录页、注册页、后台布局、Vue Dashboard 示例页已占位 |
-| 数据库入口 | Oracle 连接配置和健康检查服务已占位 |
+| 数据库入口 | Oracle 连接、数据库健康检查、UnitOfWork 事务基础已提供 |
+| 部署入口 | `deployment/` 已提供发布脚本、systemd 和 Nginx 样例 |
 | 测试入口 | `tests/ECommerce.Tests` 已能运行 |
 
 未完成：
@@ -139,7 +140,7 @@ http://localhost:5052/docs/development-spec
 | 购物车/订单 | API 路由已占位，未实现业务事务 | `feat-member4-cart-order-core` |
 | 支付/优惠券/物流/评价 | API 路由已占位，未实现状态流转 | `feat-member5-payment-coupon-logistics-review` |
 | 统计/导出/后台首页 | API 路由已占位，Vue Dashboard 示例页已提供，未实现统计和 Excel | `feat-member6-stats-export-ui-docs` |
-| 部署 | 还需要服务器配置、环境变量、部署截图 | `feat-member1-foundation-oracle-deploy` |
+| 部署 | 配置样例已提供，还需要真实服务器环境变量、访问验证和部署截图 | `feat-member1-foundation-oracle-deploy` |
 
 技术负责人验收骨架时，看这几项即可：
 
@@ -159,18 +160,74 @@ http://localhost:5052/docs/development-spec
 src/ECommerce.Web/appsettings.json
 ```
 
-不要提交真实数据库密码。推荐用环境变量：
+不要提交真实数据库密码，也不要把真实密码写进 `appsettings.json`。数据库用户按用途区分：
+
+| 用户 | 用途 |
+| --- | --- |
+| `ECOMMERCE_DEV` | 开发联调。组员在自己电脑上运行后端时连接这个用户。 |
+| `ECOMMERCE_DEMO` | 最终演示。部署演示环境时连接这个用户，避免演示数据被开发过程污染。 |
+
+后端代码不需要因为“本地数据库”或“远程数据库”而修改；区别只在连接字符串的 `Data Source`。开发时 `Data Source` 写服务器 IP 或域名，服务器部署时可以写 `127.0.0.1`、内网地址或服务器域名。
+
+推荐用环境变量：
 
 ```powershell
-$env:Oracle__ConnectionString = "User Id=你的账号;Password=你的密码;Data Source=localhost:1521/XEPDB1"
+$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEV;Password=我们的开发库密码;Data Source=数据库服务器IP:1521/服务名"
 dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj
 ```
+
+演示环境示例：
+
+```powershell
+$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEMO;Password=我们的演示库密码;Data Source=127.0.0.1:1521/服务名"
+```
+
+检查 Oracle 是否连通：
+
+```powershell
+Invoke-RestMethod http://localhost:5052/api/v1/system/db-check
+```
+
+如果没有配置真实连接串，接口会返回 `configured: false`，这是正常提示，不是程序崩溃。配置正确后，期望看到 `connected: true`。同时检查 `sessionUser` 和 `currentSchema`：开发时应该是 `ECOMMERCE_DEV`，演示时应该是 `ECOMMERCE_DEMO`。
 
 数据库初始化脚本：
 
 ```text
 migration/init_database.sql
 ```
+
+第 1 人做 Oracle 时按这个顺序验收：
+
+1. 本地 Oracle 建库或确认服务器 Oracle 可连。
+2. 执行 `migration/init_database.sql`。
+3. 设置 `Oracle__ConnectionString` 环境变量。
+4. 启动 Web 项目。
+5. 访问 `/api/v1/system/db-check`，截图保留 `connected: true`。
+
+## 5.1 部署怎么准备
+
+部署样例文件在：
+
+```text
+deployment/env.example
+deployment/publish.ps1
+deployment/linux/ecommerce.service.example
+deployment/linux/nginx-ecommerce.conf.example
+```
+
+发布包：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deployment/publish.ps1
+```
+
+服务器验收截图建议至少保留：
+
+1. `dotnet --info` 或 ASP.NET Core Runtime 安装截图。
+2. `systemctl status ecommerce` 运行截图。
+3. 浏览器访问公网地址 `/` 的截图。
+4. 浏览器或命令访问 `/health` 的截图。
+5. 配好数据库后 `/api/v1/system/db-check` 返回 `connected: true` 的截图。
 
 ## 6. 开发前先看规范
 
