@@ -42,25 +42,53 @@
 
 先记住一句话：浏览器请求先进 `Web`，业务规则看 `Application` 的接口，状态和枚举看 `Domain`，Oracle 落库放 `Infrastructure`，所有人共用的响应、分页、错误码放 `Shared`。
 
+注意：`ECommerce.Web`、`ECommerce.Application` 这些不是随便建的普通文件夹，而是已经在解决方案里的 `.csproj` 项目。写代码时先进入对应项目，再放到项目内部的子目录。
+
 ```text
 src/
-  ECommerce.Web/                 # 表现层：页面、Controller、静态资源
-  ECommerce.Application/         # 应用接口层：DTO、Service 接口
-  ECommerce.Domain/              # 领域层：业务枚举、领域对象、状态值
-  ECommerce.Infrastructure/      # 基础设施层：Oracle 连接、事务、Service 实现、Repository
-  ECommerce.Shared/              # 公共层：统一响应、分页、错误码、权限常量、公共异常
+  ECommerce.Web/                 # 表现层项目：页面、Controller、静态资源
+    Controllers/                 # 页面 Controller
+    Controllers/Api/             # JSON API Controller
+    Views/                       # Razor 页面
+    ViewModels/                  # 页面专用显示模型
+    Filters/                     # MVC 过滤器，例如统一异常或权限过滤
+    wwwroot/                     # CSS、JS、图片等静态资源
+
+  ECommerce.Application/         # 应用接口项目：DTO、Service 接口
+    DTOs/                        # 请求和响应对象
+    Services/                    # Service 接口，只定义方法名和参数
+    Validators/                  # 参数校验类，需要时使用
+
+  ECommerce.Domain/              # 领域项目：业务枚举、领域对象、状态值
+    Entities/                    # 和数据库表接近的 C# 对象
+    Enums/                       # 订单状态、支付状态等枚举
+
+  ECommerce.Infrastructure/      # 基础设施项目：Oracle 连接、事务、Service 实现、Repository
+    Data/                        # Oracle 连接、健康检查、UnitOfWork
+    Services/                    # Service 实现，写业务流程
+    Repositories/                # Repository，集中写 SQL 和表操作
+
+  ECommerce.Shared/              # 公共项目：统一响应、分页、错误码、权限常量、公共异常
+    Abstractions/                # 公共抽象，例如 IUnitOfWork
+    Constants/                   # 公共常量
+    Contracts/                   # 通用响应、分页、导出对象
+    Errors/                      # 错误码
+    Exceptions/                  # 公共异常
+
 tests/
-  ECommerce.Tests/               # 自动化测试
+  ECommerce.Tests/               # 自动化测试项目
 ```
+
+部分空目录里有 `.gitkeep`，它只是为了让 Git 记录空文件夹。以后目录里有真实代码文件时，可以保留也可以删除 `.gitkeep`。
 
 每层具体怎么用：
 
 | 项目 | 通俗解释 | 现在已有 | 后续新增文件放哪里 | 不要做什么 |
 | --- | --- | --- | --- | --- |
-| `ECommerce.Web` | 和浏览器打交道。负责接收 HTTP 请求，返回 Razor 页面或 JSON。 | `Controllers`、`Controllers/Api`、`Views`、`wwwroot`、`Program.cs` | 页面 Controller 放 `Controllers`；JSON API 放 `Controllers/Api`；页面放 `Views/{Controller}/{Action}.cshtml`；页面 JS 放 `wwwroot/js`。 | 不写 SQL，不直接打开 Oracle 连接，不把复杂业务流程写在 Controller。 |
-| `ECommerce.Application` | 定义“别人怎么调用这个模块”。这里放接口和传输对象。 | `DTOs`、`Services` 接口 | 新增接口放 `Services/IxxxService.cs`；请求/响应 DTO 放 `DTOs/XxxDtos.cs`。 | 不引用 `Infrastructure`，不写 Oracle SQL，不返回 MVC 的 `IActionResult`。 |
-| `ECommerce.Domain` | 放全项目认可的业务概念。比如订单状态、支付状态、库存变动类型。 | `Enums` | 新增业务枚举放 `Enums`；后续如有领域实体可放 `Entities`。 | 不写数据库访问代码，不写页面代码。 |
-| `ECommerce.Infrastructure` | 真正和外部资源打交道。Oracle、事务、数据查询、Service 实现都在这里。 | `Data`、`DependencyInjection.cs` | Service 实现建议放 `Services/XxxService.cs`；Repository 建议放 `Repositories/XxxRepository.cs`；Oracle 基础设施放 `Data`。 | 不返回页面，不处理 Razor，不定义新的公共 DTO 格式。 |
+| `ECommerce.Web` | 和浏览器打交道。负责接收 HTTP 请求，返回 Razor 页面或 JSON。 | `Controllers`、`Controllers/Api`、`Views`、`ViewModels`、`Filters`、`wwwroot`、`Program.cs` | 页面 Controller 放 `src/ECommerce.Web/Controllers`；JSON API 放 `src/ECommerce.Web/Controllers/Api`；页面放 `src/ECommerce.Web/Views/{Controller}/{Action}.cshtml`；页面 JS 放 `src/ECommerce.Web/wwwroot/js`。 | 不写 SQL，不直接打开 Oracle 连接，不把复杂业务流程写在 Controller。 |
+| `ECommerce.Application` | 定义“别人怎么调用这个模块”。这里放接口和传输对象。 | `DTOs`、`Services`、`Validators` | 新增接口放 `src/ECommerce.Application/Services/IxxxService.cs`；请求/响应 DTO 放 `src/ECommerce.Application/DTOs/XxxDtos.cs`；校验类放 `src/ECommerce.Application/Validators`。 | 不引用 `Infrastructure`，不写 Oracle SQL，不返回 MVC 的 `IActionResult`。 |
+| `ECommerce.Domain` | 放全项目认可的业务概念。比如订单状态、支付状态、库存变动类型。 | `Entities`、`Enums` | 新增业务枚举放 `src/ECommerce.Domain/Enums`；领域对象放 `src/ECommerce.Domain/Entities`。 | 不写数据库访问代码，不写页面代码。 |
+| `ECommerce.Infrastructure` | 真正和外部资源打交道。Oracle、事务、数据查询、Service 实现都在这里。 | `Data`、`Services`、`Repositories`、`DependencyInjection.cs` | Service 实现放 `src/ECommerce.Infrastructure/Services/XxxService.cs`；Repository 放 `src/ECommerce.Infrastructure/Repositories/XxxRepository.cs`；Oracle 基础设施放 `src/ECommerce.Infrastructure/Data`。 | 不返回页面，不处理 Razor，不定义新的公共 DTO 格式。 |
 | `ECommerce.Shared` | 所有人都会用的公共小工具和公共约定。 | `Contracts`、`Constants`、`Errors`、`Exceptions`、`Abstractions` | 只有确实跨模块共用时才放这里，例如统一响应、分页、错误码、权限常量。 | 不放具体业务流程，不放某个模块私有 DTO。 |
 | `ECommerce.Tests` | 验证接口、状态、事务基础和关键业务流程。 | `ContractTests`、基础设施测试 | 新增测试按模块命名，例如 `OrderTests.cs`、`InventoryTests.cs`。 | 不依赖真实数据库密码，不提交本地私有配置。 |
 
