@@ -17,26 +17,77 @@
 
 ## 2. 项目结构
 
+先记住一句话：浏览器请求先进 `Web`，业务规则看 `Application` 的接口，状态和枚举看 `Domain`，Oracle 落库放 `Infrastructure`，所有人共用的响应、分页、错误码放 `Shared`。
+
 ```text
 src/
-  ECommerce.Web/                 # MVC 表现层：Controllers, Views, ViewModels, Filters
-  ECommerce.Application/         # 应用层：DTOs, Services, Validators, Use cases
-  ECommerce.Domain/              # 领域层：Entities, Enums, Domain services
-  ECommerce.Infrastructure/      # 基础设施层：Oracle, Repositories, UnitOfWork
-  ECommerce.Shared/              # 公共层：ApiResponse, Pagination, Constants, Exceptions
+  ECommerce.Web/                 # 表现层：页面、Controller、静态资源
+  ECommerce.Application/         # 应用契约层：DTO、Service 接口
+  ECommerce.Domain/              # 领域层：业务枚举、领域对象、状态值
+  ECommerce.Infrastructure/      # 基础设施层：Oracle 连接、事务、Service 实现、Repository
+  ECommerce.Shared/              # 公共层：统一响应、分页、错误码、权限常量、公共异常
 tests/
-  ECommerce.Tests/
+  ECommerce.Tests/               # 自动化测试
 ```
 
-依赖方向：
+每层具体怎么用：
+
+| 项目 | 通俗解释 | 现在已有 | 后续新增文件放哪里 | 不要做什么 |
+| --- | --- | --- | --- | --- |
+| `ECommerce.Web` | 和浏览器打交道。负责接收 HTTP 请求，返回 Razor 页面或 JSON。 | `Controllers`、`Controllers/Api`、`Views`、`wwwroot`、`Program.cs` | 页面 Controller 放 `Controllers`；JSON API 放 `Controllers/Api`；页面放 `Views/{Controller}/{Action}.cshtml`；页面 JS 放 `wwwroot/js`。 | 不写 SQL，不直接打开 Oracle 连接，不把复杂业务流程写在 Controller。 |
+| `ECommerce.Application` | 定义“别人怎么调用这个模块”。这里放接口和传输对象。 | `DTOs`、`Services` 接口 | 新增接口放 `Services/IxxxService.cs`；请求/响应 DTO 放 `DTOs/XxxDtos.cs`。 | 不引用 `Infrastructure`，不写 Oracle SQL，不返回 MVC 的 `IActionResult`。 |
+| `ECommerce.Domain` | 放全项目认可的业务概念。比如订单状态、支付状态、库存变动类型。 | `Enums` | 新增业务枚举放 `Enums`；后续如有领域实体可放 `Entities`。 | 不写数据库访问代码，不写页面代码。 |
+| `ECommerce.Infrastructure` | 真正和外部资源打交道。Oracle、事务、数据查询、Service 实现都在这里。 | `Data`、`DependencyInjection.cs` | Service 实现建议放 `Services/XxxService.cs`；Repository 建议放 `Repositories/XxxRepository.cs`；Oracle 基础设施放 `Data`。 | 不返回页面，不处理 Razor，不定义新的公共 DTO 契约。 |
+| `ECommerce.Shared` | 所有人都会用的公共小工具和公共约定。 | `Contracts`、`Constants`、`Errors`、`Exceptions`、`Abstractions` | 只有确实跨模块共用时才放这里，例如统一响应、分页、错误码、权限常量。 | 不放具体业务流程，不放某个模块私有 DTO。 |
+| `ECommerce.Tests` | 验证接口、状态、事务基础和关键业务流程。 | `ContractTests`、基础设施测试 | 新增测试按模块命名，例如 `OrderTests.cs`、`InventoryTests.cs`。 | 不依赖真实数据库密码，不提交本地私有配置。 |
+
+`Repository` 是“数据访问类”，也可以理解为某张表或某组表的 SQL 操作集中放置处。比如 `ProductRepository` 负责查询/新增/修改 `PRODUCT`、`SKU` 等表，`OrderRepository` 负责写 `ORDER_MAIN`、`ORDER_ITEM`、`ORDER_LOG`。它只做数据读写，不决定完整业务流程；业务流程放在 `XxxService` 里。
+
+一次请求的推荐流转：
 
 ```text
-Web -> Application -> Domain
-Web -> Infrastructure -> Application + Domain + Shared
+浏览器
+  -> ECommerce.Web Controller
+  -> ECommerce.Application 里的 Service 接口
+  -> ECommerce.Infrastructure 里的 Service 实现
+  -> ECommerce.Infrastructure 里的 Repository
+  -> Oracle
+```
+
+返回时反过来：
+
+```text
+Oracle
+  -> Repository 查询结果
+  -> Service 组装 DTO
+  -> Controller 包成 ApiResponse 或返回 Razor View
+  -> 浏览器
+```
+
+新增一个功能时，按这个顺序找位置：
+
+| 要做的事 | 放哪里 | 例子 |
+| --- | --- | --- |
+| 定义请求/响应格式 | `src/ECommerce.Application/DTOs` | `CreateOrderRequest`、`OrderDetailDto` |
+| 定义模块能力 | `src/ECommerce.Application/Services` | `IOrderService.CreateAsync` |
+| 实现业务流程 | `src/ECommerce.Infrastructure/Services` | `OrderService` 调库存、优惠券、订单 Repository |
+| 写 SQL 或表操作 | `src/ECommerce.Infrastructure/Repositories` | `OrderRepository.InsertOrderAsync` |
+| 暴露 JSON API | `src/ECommerce.Web/Controllers/Api` | `OrdersApiController` |
+| 做 Razor 页面 | `src/ECommerce.Web/Views` | `Views/AdminOrders/Index.cshtml` |
+| 做页面交互 JS | `src/ECommerce.Web/wwwroot/js` | `admin-orders.js` |
+| 写测试 | `tests/ECommerce.Tests` | `OrderTests.cs` |
+
+依赖方向只能这样走：
+
+```text
+Web -> Application
+Web -> Infrastructure
 Application -> Domain + Shared
 Infrastructure -> Application + Domain + Shared
-Shared -> no project dependency
+Shared -> 不依赖其他项目
 ```
+
+意思是：`Application` 不能调用 `Infrastructure`，所以不能在 `Application` 里写 Oracle SQL；`Controller` 可以通过依赖注入拿到 `IOrderService` 这类接口，但不要直接 new Repository。
 
 ## 3. 接口与代码入口
 
@@ -52,8 +103,12 @@ Shared -> no project dependency
 | 库存变动类型 | `src/ECommerce.Domain/Enums/InventoryChangeType.cs` |
 | DTO | `src/ECommerce.Application/DTOs/*.cs` |
 | Service 接口 | `src/ECommerce.Application/Services/*.cs` |
+| Service 实现 | `src/ECommerce.Infrastructure/Services/*.cs`，实现时创建 |
+| Repository 数据访问 | `src/ECommerce.Infrastructure/Repositories/*.cs`，实现时创建 |
 | API 路由骨架 | `src/ECommerce.Web/Controllers/Api/*.cs` |
 | 页面 Controller | `src/ECommerce.Web/Controllers/*.cs` |
+| Razor 页面 | `src/ECommerce.Web/Views/**/*.cshtml` |
+| 页面 JS/CSS | `src/ECommerce.Web/wwwroot/js/*.js`, `src/ECommerce.Web/wwwroot/css/*.css` |
 | Oracle 连接 | `src/ECommerce.Infrastructure/Data/*.cs` |
 | DI 注册 | `src/ECommerce.Infrastructure/DependencyInjection.cs`, `src/ECommerce.Web/Program.cs` |
 | 数据库脚本 | `migration/init_database.sql` |
@@ -95,7 +150,7 @@ $env:Oracle__ConnectionString = "User Id=...;Password=...;Data Source=localhost:
 
 ### 5.1 数据表归属
 
-数据表以 `migration/init_database.sql` 为准。主责人负责对应表的 Repository、写入规则、状态流转和后台维护页面；其他人需要写这些表时，必须通过主责人的 Service 接口协作，不要跨模块直接改表。
+数据表以 `migration/init_database.sql` 为准。主责人负责对应表的 Repository（数据访问类）、写入规则、状态流转和后台维护页面；其他人需要写这些表时，必须通过主责人的 Service 接口协作，不要跨模块直接改表。
 
 | 人员 | 主责表 | 依赖表 | 边界说明 |
 | --- | --- | --- | --- |
