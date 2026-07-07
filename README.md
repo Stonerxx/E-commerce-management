@@ -54,7 +54,44 @@ http://localhost:5052/admin/dashboard
 - 未完成：真实登录注册、商品维护、购物车、订单、支付、优惠券、物流、评价、统计导出等业务实现。
 - 现阶段目标：所有组员在各自分支基于已定义接口补实现，不再重新发明接口。
 
-Oracle 连接配置位于 `src/ECommerce.Web/appsettings.json` 的 `Oracle:ConnectionString`，本地开发时按自己的数据库账号修改，不要提交真实密码。
+Oracle 连接默认是占位配置，不要提交真实密码。本项目现在约定两个服务器数据库用户：
+
+- `ECOMMERCE_DEV`：开发联调用，组员在自己电脑上跑后端时连接这个用户。
+- `ECOMMERCE_DEMO`：最终演示用，部署演示环境时连接这个用户。
+
+后端代码不用区分本地库或远程库，只看 `Oracle__ConnectionString`。开发时把 `Data Source` 写成数据库服务器地址；以后后端部署到服务器上时，可以按实际网络环境写 `127.0.0.1`、内网地址或服务器域名。
+
+```powershell
+$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEV;Password=我们的开发库密码;Data Source=数据库服务器IP:1521/服务名"
+dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj
+```
+
+演示环境示例：
+
+```powershell
+$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEMO;Password=我们的演示库密码;Data Source=127.0.0.1:1521/服务名"
+```
+
+启动后可以验证：
+
+```powershell
+Invoke-RestMethod http://localhost:5052/api/v1/system/db-check
+```
+
+返回结果里重点看 `connected`、`sessionUser`、`currentSchema`。如果 `sessionUser` 是 `ECOMMERCE_DEV`，说明连到开发库；如果是 `ECOMMERCE_DEMO`，说明连到演示库。
+
+第 1 人基础设施当前交付：
+
+- `IUnitOfWork` 已提供 Oracle 连接复用、事务开启、提交、回滚和释放。
+- `/api/v1/system/db-check` 已能检查 Oracle 配置和连接耗时。
+- `deployment/` 下已提供发布脚本、环境变量样例、systemd 服务样例和 Nginx 反向代理样例。
+- 服务器最终验收还需要填真实 `Oracle__ConnectionString`，运行初始化脚本，截图证明服务器公网地址能访问。
+
+发布包生成：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deployment/publish.ps1
+```
 
 ### 项目功能点
 1. 用户注册/登录/权限控制

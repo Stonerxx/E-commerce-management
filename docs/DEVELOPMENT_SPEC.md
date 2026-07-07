@@ -194,14 +194,26 @@ GET /account/login
 Oracle 连接使用 `Oracle:ConnectionString`，推荐通过环境变量覆盖，不要提交真实密码：
 
 ```powershell
-$env:Oracle__ConnectionString = "User Id=...;Password=...;Data Source=localhost:1521/XEPDB1"
+$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEV;Password=...;Data Source=数据库服务器IP:1521/服务名"
 ```
+
+开发联调用 `ECOMMERCE_DEV`，最终演示用 `ECOMMERCE_DEMO`。后端代码不区分本地库或远程库，连接到哪里只由 `Data Source` 决定。
+
+数据库连通性检查：
+
+```text
+GET /api/v1/system/db-check
+```
+
+该接口会返回 `connected`、`sessionUser`、`currentSchema` 和 `serviceName`，用于确认当前后端实际连到哪个 Oracle 用户和服务。
+
+当前登录模块还未完成，基础阶段该接口允许匿名访问，便于第 1 人验证 Oracle 和服务器部署。登录权限完成后，可按验收要求改为 `AdminOnly`。
 
 ## 5. 分支职责
 
 | 分支 | 主责 | 直接负责接口 |
 | --- | --- | --- |
-| `feat-member1-foundation-oracle-deploy` | 项目骨架、Oracle、部署 | `IUnitOfWork`、Oracle 连接、认证/授权、DI、README |
+| `feat-member1-foundation-oracle-deploy` | 项目骨架、Oracle、部署 | `IUnitOfWork`、Oracle 连接、数据库健康检查、认证/授权、DI、README、部署样例 |
 | `feat-member2-user-permission-address-log` | 用户、权限、地址、日志 | `IAuthService`、`IUserService`、`IAddressService`、`IOperationLogService` |
 | `feat-member3-product-category-sku-inventory` | 商品、分类、SKU、库存 | `ICategoryService`、`IProductService`、`ISkuService`、`IInventoryService` |
 | `feat-member4-cart-order-core` | 购物车、订单核心流程 | `ICartService`、`IOrderService` |
@@ -317,7 +329,7 @@ JSON API 权限要和页面入口匹配：
 
 - `GET /health`
 - `GET /api/v1/system/version`
-- `GET /api/v1/system/db-check`
+- `GET /api/v1/system/db-check`：返回 Oracle 是否配置、是否连通、服务器时间和耗时。
 
 用户、权限、地址、日志：
 
@@ -464,16 +476,16 @@ JSON API 权限要和页面入口匹配：
 
 `IUnitOfWork` 在 `src/ECommerce.Shared/Abstractions/IUnitOfWork.cs`。业务 Service 里需要多表写入时，应该通过 `IUnitOfWork` 开启事务，并让相关 Repository 使用同一个连接和事务。
 
-`IUnitOfWork` 必须提供这些能力：
+当前事务基础由 `src/ECommerce.Infrastructure/Data/UnitOfWork.cs` 实现：
 
-- `GetOpenConnectionAsync`：拿到当前请求内共用的 Oracle 连接。
-- `CurrentConnection`：Repository 执行 SQL 时复用这条连接。
-- `CurrentTransaction`：Repository 执行 SQL 时复用当前事务。
-- `BeginTransactionAsync`：Service 在多表写入前开启事务。
-- `CommitAsync`：所有步骤成功后提交事务。
-- `RollbackAsync`：任一步失败时回滚事务。
+- `GetOpenConnectionAsync`：按请求作用域复用 Oracle 连接。
+- `BeginTransactionAsync`：在当前连接上开启事务。
+- `CurrentConnection`、`CurrentTransaction`：供后续 Repository 执行 SQL 时复用。
+- `CommitAsync`：提交并释放当前事务。
+- `RollbackAsync`：回滚并释放当前事务。
+- `DisposeAsync`：请求结束时释放事务和连接。
 
-Repository 写 SQL 时，如果 `CurrentTransaction` 不为空，必须把命令绑定到这个事务上，不能自己重新打开一条连接。
+Repository 需要执行多表写入时，应复用同一个 `IUnitOfWork`，不要自己临时 new Oracle 连接。
 
 ## 11. 数据库命名
 
@@ -575,3 +587,30 @@ dotnet test ECommerce.sln
 - `bin/`、`obj/`。
 - Office 临时文件 `~$xxx.docx`。
 - 与任务无关的格式化。
+
+## 15. 部署约定
+
+部署相关样例文件放在 `deployment/`：
+
+```text
+deployment/env.example
+deployment/publish.ps1
+deployment/linux/ecommerce.service.example
+deployment/linux/nginx-ecommerce.conf.example
+```
+
+生产环境通过环境变量配置，不提交真实密码：
+
+```text
+ASPNETCORE_ENVIRONMENT=Production
+ASPNETCORE_URLS=http://127.0.0.1:5052
+Oracle__ConnectionString=User Id=...;Password=...;Data Source=...:1521/XEPDB1
+```
+
+云服务器部署验收至少包括：
+
+- 发布包能由 `dotnet ECommerce.Web.dll` 启动。
+- Nginx 或服务器公网地址能访问 `/`。
+- `/health` 返回 `success: true`。
+- 配置真实 Oracle 后，`/api/v1/system/db-check` 返回 `connected: true`。
+- 截图放入课程文档或 PPT，不提交真实密码截图。
