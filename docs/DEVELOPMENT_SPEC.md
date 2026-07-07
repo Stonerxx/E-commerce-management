@@ -231,7 +231,7 @@ $env:Oracle__ConnectionString = "User Id=...;Password=...;Data Source=localhost:
 | 地址与日志 | `ADDRESS.user_id -> "USER".id`；`OPERATION_LOG.operator_id -> "USER".id`。 |
 | 商品与库存 | `PRODUCT.category_id -> "CATEGORY".id`；`PRODUCT_IMAGE.product_id -> PRODUCT.id`；`PRODUCT_SPEC.product_id -> PRODUCT.id`；`SKU.product_id -> PRODUCT.id`；`INVENTORY_LOG.sku_id -> SKU.id`；`INVENTORY_LOG.operator_id -> "USER".id`。 |
 | 购物车 | `CART.user_id -> "USER".id`；`CART.sku_id -> SKU.id`。 |
-| 订单 | `ORDER_MAIN.user_id -> "USER".id`；`ORDER_MAIN.address_id -> ADDRESS.id`；`ORDER_MAIN.user_coupon_id -> USER_COUPON.id`；`ORDER_ITEM.order_id -> ORDER_MAIN.id`；`ORDER_ITEM.sku_id -> SKU.id`；`ORDER_LOG.order_id -> ORDER_MAIN.id`；`ORDER_LOG.operator_id -> "USER".id`。 |
+| 订单 | `ORDER_MAIN.user_id -> "USER".id`；`ORDER_MAIN.address_id -> ADDRESS.id`；`ORDER_MAIN.user_coupon_id -> USER_COUPON.id`；`ORDER_ITEM.order_id -> ORDER_MAIN.id`；`ORDER_ITEM.sku_id -> SKU.id`；`ORDER_LOG.order_id -> ORDER_MAIN.id`；`ORDER_LOG.operator_id -> "USER".id`；`ORDER_LOG.operator_name` 是操作人用户名快照，不做外键。 |
 | 优惠券 | `USER_COUPON.user_id -> "USER".id`；`USER_COUPON.coupon_template_id -> COUPON_TEMPLATE.id`；`USER_COUPON.order_id` 业务上关联订单。 |
 | 支付物流评价 | `PAYMENT.order_id -> ORDER_MAIN.id`；`LOGISTICS.order_id -> ORDER_MAIN.id`；`LOGISTICS_TRACK.logistics_id -> LOGISTICS.id`；`REVIEW.order_id -> ORDER_MAIN.id`；`REVIEW.product_id -> PRODUCT.id`；`REVIEW.user_id -> "USER".id`。 |
 | 统计 | `ORDER_STAT_SNAPSHOT` 没有外键，数据来源是订单、支付、商品、库存、用户等表的汇总快照。 |
@@ -240,6 +240,8 @@ $env:Oracle__ConnectionString = "User Id=...;Password=...;Data Source=localhost:
 
 - 只能直接写自己主责表；其他表的写入必须调用对应 Service。
 - 可以只读依赖表做展示和校验，但不要绕过主责模块修改状态。
+- 订单状态日志需要区分订单所属用户和实际操作者；`IOrderService.CancelAsync` 中 `userId` 表示订单所属用户，`operatorId` 和 `operatorName` 表示本次操作人。
+- `operatorName` 必须由后端 Controller 从登录态、Claims 或用户上下文取得，不要相信请求体里手写的用户名。
 - 购物车和订单根据 `SkuId` 做前置校验时，调用 `ISkuService.GetByIdAsync` 查询 `SkuDto`；可用库存统一按 `Stock - LockedStock` 计算。
 - 查询 SKU 只用于校验，创建订单真正锁定库存仍必须调用 `IInventoryService.LockForOrderAsync`，不能直接修改 `SKU`。
 - 订单创建必须通过 `IInventoryService.LockForOrderAsync` 锁库存，通过 `ICouponService.ValidateAsync` 校验优惠券。
@@ -420,7 +422,7 @@ JSON API 权限要和页面入口匹配：
 | 登录 | 用户模块 | 登录 Cookie 和权限 Policy |
 | 加入购物车 | 购物车模块 | `ISkuService.GetByIdAsync` 查询 SKU 基本信息，校验 SKU 在售和 `Stock - LockedStock` 可用库存；需要商品上架状态时再通过商品查询接口校验 |
 | 创建订单 | 订单模块 | 地址校验、`ISkuService.GetByIdAsync` 前置校验 SKU、`IInventoryService.LockForOrderAsync` 锁库存、优惠券校验 |
-| 取消订单 | 订单模块 | 释放锁定库存、写订单日志 |
+| 取消订单 | 订单模块 | 调用 `IOrderService.CancelAsync` 时传入订单所属用户和实际操作者，释放锁定库存、写订单日志 |
 | 支付成功 | 支付模块 | 订单支付上下文、扣减库存、核销优惠券、标记订单已支付 |
 | 发货 | 物流模块 | 创建物流、标记订单已发货、写订单日志 |
 | 确认收货 | 订单模块 | 可选校验物流，标记订单完成 |
@@ -438,7 +440,8 @@ JSON API 权限要和页面入口匹配：
 - `IOrderService.GetPaymentContextAsync`
 - `IOrderService.GetSkuQuantitiesAsync`
 - `IOrderService.MarkPaidAsync`
-- `IOrderService.MarkShippedAsync`
+- `IOrderService.CancelAsync(userId, orderId, operatorId, operatorName, reason)`
+- `IOrderService.MarkShippedAsync(orderId, logisticsId, operatorId, operatorName)`
 - `ICouponService.ValidateAsync`
 - `ICouponService.UseForOrderAsync`
 

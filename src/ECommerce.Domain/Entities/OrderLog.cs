@@ -12,6 +12,8 @@ public class OrderLog
 
     public long? OperatorId { get; set; }
 
+    public string? OperatorName { get; set; }
+
     public string? Remark { get; set; }
 
     public DateTime CreatedAt { get; set; }

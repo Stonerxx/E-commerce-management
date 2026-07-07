@@ -98,9 +98,9 @@ public class OrderRepository : IOrderRepository
     {
         const string sql = @"
             INSERT INTO order_log 
-                (order_id, from_status, to_status, operator_id, remark, created_at)
+                (order_id, from_status, to_status, operator_id, operator_name, remark, created_at)
             VALUES 
-                (:OrderId, :FromStatus, :ToStatus, :OperatorId, :Remark, :CreatedAt)";
+                (:OrderId, :FromStatus, :ToStatus, :OperatorId, :OperatorName, :Remark, :CreatedAt)";
 
         await using var cmd = Connection.CreateCommand();
         cmd.CommandText = sql;
@@ -109,6 +109,7 @@ public class OrderRepository : IOrderRepository
         cmd.Parameters.Add(CreateParameter("FromStatus", log.FromStatus));
         cmd.Parameters.Add(CreateParameter("ToStatus", log.ToStatus));
         cmd.Parameters.Add(CreateParameter("OperatorId", log.OperatorId));
+        cmd.Parameters.Add(CreateParameter("OperatorName", log.OperatorName));
         cmd.Parameters.Add(CreateParameter("Remark", log.Remark));
         cmd.Parameters.Add(CreateParameter("CreatedAt", log.CreatedAt));
         await cmd.ExecuteNonQueryAsync(cancellationToken);
@@ -463,6 +464,7 @@ public class OrderRepository : IOrderRepository
             FromStatus = reader.IsDBNull(reader.GetOrdinal("from_status")) ? null : reader.GetInt32(reader.GetOrdinal("from_status")),
             ToStatus = reader.GetInt32(reader.GetOrdinal("to_status")),
             OperatorId = reader.IsDBNull(reader.GetOrdinal("operator_id")) ? null : reader.GetInt64(reader.GetOrdinal("operator_id")),
+            OperatorName = reader.IsDBNull(reader.GetOrdinal("operator_name")) ? null : reader.GetString(reader.GetOrdinal("operator_name")),
             Remark = reader.IsDBNull(reader.GetOrdinal("remark")) ? null : reader.GetString(reader.GetOrdinal("remark")),
             CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at"))
         };

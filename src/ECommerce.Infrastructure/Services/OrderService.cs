@@ -267,7 +267,7 @@ public class OrderService : IOrderService
         return await _orderRepository.GetOrderSkuQuantitiesAsync(orderId, cancellationToken);
     }
 
-    public async Task CancelAsync(long userId, long orderId, string? reason, CancellationToken cancellationToken = default)
+    public async Task CancelAsync(long userId, long orderId, long operatorId, string operatorName, string? reason, CancellationToken cancellationToken = default)
     {
         var order = await _orderRepository.GetOrderByIdAsync(orderId, cancellationToken);
         if (order == null)
@@ -289,7 +289,8 @@ public class OrderService : IOrderService
                 OrderId = orderId,
                 FromStatus = 0,
                 ToStatus = 4,
-                OperatorId = null,
+                OperatorId = operatorId,
+                OperatorName = operatorName,
                 Remark = reason ?? "用户主动取消",
                 CreatedAt = DateTime.Now
             }, cancellationToken);
@@ -383,7 +384,7 @@ public class OrderService : IOrderService
         }
     }
 
-    public async Task MarkShippedAsync(long orderId, long logisticsId, long operatorId, CancellationToken cancellationToken = default)
+    public async Task MarkShippedAsync(long orderId, long logisticsId, long operatorId, string operatorName, CancellationToken cancellationToken = default)
     {
         var order = await _orderRepository.GetOrderByIdAsync(orderId, cancellationToken);
         if (order == null)
@@ -403,13 +404,14 @@ public class OrderService : IOrderService
                 FromStatus = 1,
                 ToStatus = 2,
                 OperatorId = operatorId,
+                OperatorName = operatorName,
                 Remark = $"已发货，物流ID：{logisticsId}",
                 CreatedAt = DateTime.Now
             }, cancellationToken);
 
             await _operationLogService.WriteAsync(new OperationLogRequest(
                 operatorId,
-                "SYSTEM",
+                operatorName,
                 "订单管理",
                 "发货",
                 $"订单 {order.OrderNo} 已发货，物流ID：{logisticsId}",
@@ -485,6 +487,7 @@ public class OrderService : IOrderService
             x.FromStatus,
             x.ToStatus,
             x.OperatorId,
+            x.OperatorName,
             x.Remark,
             x.CreatedAt
         )).ToList();
