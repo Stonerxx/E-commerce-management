@@ -240,6 +240,8 @@ $env:Oracle__ConnectionString = "User Id=...;Password=...;Data Source=localhost:
 
 - 只能直接写自己主责表；其他表的写入必须调用对应 Service。
 - 可以只读依赖表做展示和校验，但不要绕过主责模块修改状态。
+- 购物车和订单根据 `SkuId` 做前置校验时，调用 `ISkuService.GetByIdAsync` 查询 `SkuDto`；可用库存统一按 `Stock - LockedStock` 计算。
+- 查询 SKU 只用于校验，创建订单真正锁定库存仍必须调用 `IInventoryService.LockForOrderAsync`，不能直接修改 `SKU`。
 - 订单创建必须通过 `IInventoryService.LockForOrderAsync` 锁库存，通过 `ICouponService.ValidateAsync` 校验优惠券。
 - 订单取消必须通过 `IInventoryService.ReleaseForCancelledOrderAsync` 释放锁定库存。
 - 支付成功必须通过 `IOrderService.MarkPaidAsync`、`IInventoryService.DeductForPaidOrderAsync`、`ICouponService.UseForOrderAsync` 串起状态流转。
@@ -416,8 +418,8 @@ JSON API 权限要和页面入口匹配：
 | 场景 | 发起模块 | 必须依赖 |
 | --- | --- | --- |
 | 登录 | 用户模块 | 登录 Cookie 和权限 Policy |
-| 加入购物车 | 购物车模块 | 商品/SKU 查询，校验商品上架、SKU 在售 |
-| 创建订单 | 订单模块 | 地址、SKU 库存锁定、优惠券校验 |
+| 加入购物车 | 购物车模块 | `ISkuService.GetByIdAsync` 查询 SKU 基本信息，校验 SKU 在售和 `Stock - LockedStock` 可用库存；需要商品上架状态时再通过商品查询接口校验 |
+| 创建订单 | 订单模块 | 地址校验、`ISkuService.GetByIdAsync` 前置校验 SKU、`IInventoryService.LockForOrderAsync` 锁库存、优惠券校验 |
 | 取消订单 | 订单模块 | 释放锁定库存、写订单日志 |
 | 支付成功 | 支付模块 | 订单支付上下文、扣减库存、核销优惠券、标记订单已支付 |
 | 发货 | 物流模块 | 创建物流、标记订单已发货、写订单日志 |
@@ -429,6 +431,7 @@ JSON API 权限要和页面入口匹配：
 
 这些方法名是跨模块协作时优先调用的 Service 方法，不是页面地址。
 
+- `ISkuService.GetByIdAsync`
 - `IInventoryService.LockForOrderAsync`
 - `IInventoryService.ReleaseForCancelledOrderAsync`
 - `IInventoryService.DeductForPaidOrderAsync`
