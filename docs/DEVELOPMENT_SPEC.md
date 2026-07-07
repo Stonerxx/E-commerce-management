@@ -194,14 +194,18 @@ GET /account/login
 Oracle 连接使用 `Oracle:ConnectionString`，推荐通过环境变量覆盖，不要提交真实密码：
 
 ```powershell
-$env:Oracle__ConnectionString = "User Id=...;Password=...;Data Source=localhost:1521/XEPDB1"
+$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEV;Password=...;Data Source=数据库服务器IP:1521/服务名"
 ```
+
+开发联调用 `ECOMMERCE_DEV`，最终演示用 `ECOMMERCE_DEMO`。后端代码不区分本地库或远程库，连接到哪里只由 `Data Source` 决定。
 
 数据库连通性检查：
 
 ```text
 GET /api/v1/system/db-check
 ```
+
+该接口会返回 `connected`、`sessionUser`、`currentSchema` 和 `serviceName`，用于确认当前后端实际连到哪个 Oracle 用户和服务。
 
 当前登录模块还未完成，基础阶段该接口允许匿名访问，便于第 1 人验证 Oracle 和服务器部署。登录权限完成后，可按验收要求改为 `AdminOnly`。
 

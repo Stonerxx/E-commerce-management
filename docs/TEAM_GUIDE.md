@@ -160,11 +160,26 @@ http://localhost:5052/docs/development-spec
 src/ECommerce.Web/appsettings.json
 ```
 
-不要提交真实数据库密码，也不要把真实密码写进 `appsettings.json`。推荐用环境变量：
+不要提交真实数据库密码，也不要把真实密码写进 `appsettings.json`。数据库用户按用途区分：
+
+| 用户 | 用途 |
+| --- | --- |
+| `ECOMMERCE_DEV` | 开发联调。组员在自己电脑上运行后端时连接这个用户。 |
+| `ECOMMERCE_DEMO` | 最终演示。部署演示环境时连接这个用户，避免演示数据被开发过程污染。 |
+
+后端代码不需要因为“本地数据库”或“远程数据库”而修改；区别只在连接字符串的 `Data Source`。开发时 `Data Source` 写服务器 IP 或域名，服务器部署时可以写 `127.0.0.1`、内网地址或服务器域名。
+
+推荐用环境变量：
 
 ```powershell
-$env:Oracle__ConnectionString = "User Id=你的账号;Password=你的密码;Data Source=localhost:1521/XEPDB1"
+$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEV;Password=你的开发库密码;Data Source=数据库服务器IP:1521/服务名"
 dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj
+```
+
+演示环境示例：
+
+```powershell
+$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEMO;Password=你的演示库密码;Data Source=127.0.0.1:1521/服务名"
 ```
 
 检查 Oracle 是否连通：
@@ -173,7 +188,7 @@ dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj
 Invoke-RestMethod http://localhost:5052/api/v1/system/db-check
 ```
 
-如果没有配置真实连接串，接口会返回 `configured: false`，这是正常提示，不是程序崩溃。配置正确后，期望看到 `connected: true`。
+如果没有配置真实连接串，接口会返回 `configured: false`，这是正常提示，不是程序崩溃。配置正确后，期望看到 `connected: true`。同时检查 `sessionUser` 和 `currentSchema`：开发时应该是 `ECOMMERCE_DEV`，演示时应该是 `ECOMMERCE_DEMO`。
 
 数据库初始化脚本：
 
