@@ -199,6 +199,7 @@ docs/DEVELOPMENT_SPEC.md
 - Repository 只做 SQL 和表操作，不写完整业务流程。
 - 不直接改其他成员模块负责的表；需要别人模块数据时，优先调用已有 Service 接口和 DTO。
 - 要改公共接口、DTO、状态枚举、错误码，先沟通，再同时改源码和 `docs/DEVELOPMENT_SPEC.md`。
+- 实现 API 时同时核对权限、请求体/查询参数和 ID 类型；例如后台首页摘要是 `ServiceOrAdmin`，统计导出是 `AdminOnly`，商品接口里的 `CategoryId` 用 `int`。
 - 后台写操作要记录操作日志。
 - 订单、库存、优惠券、支付相关逻辑必须注意事务，不能出现半成功状态。
 

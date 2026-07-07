@@ -1,4 +1,5 @@
 using ECommerce.Application.DTOs;
+using ECommerce.Shared.Constants;
 using ECommerce.Shared.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ECommerce.Web.Controllers.Api;
 
 [Route("api/v1/auth")]
+[Authorize(Policy = AuthConstants.Policies.CustomerOnly)]
 public sealed class AuthApiController : ApiControllerBase
 {
     [HttpPost("register")]
