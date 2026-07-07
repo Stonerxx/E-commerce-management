@@ -449,6 +449,7 @@ CREATE TABLE ORDER_LOG (
     from_status   NUMBER(1),
     to_status     NUMBER(1) NOT NULL,
     operator_id   NUMBER(19),
+    operator_name VARCHAR2(50),
     remark        VARCHAR2(200),
     created_at    DATE DEFAULT SYSDATE NOT NULL,
     CONSTRAINT fk_olog_order FOREIGN KEY (order_id) REFERENCES ORDER_MAIN(id),
@@ -460,6 +461,7 @@ COMMENT ON COLUMN ORDER_LOG.order_id IS '订单ID，外键→order_main.id';
 COMMENT ON COLUMN ORDER_LOG.from_status IS '变更前状态';
 COMMENT ON COLUMN ORDER_LOG.to_status IS '变更后状态';
 COMMENT ON COLUMN ORDER_LOG.operator_id IS '操作人ID，外键→user.id，系统操作时为NULL';
+COMMENT ON COLUMN ORDER_LOG.operator_name IS '操作人用户名快照，系统操作时为NULL';
 COMMENT ON COLUMN ORDER_LOG.remark IS '备注';
 COMMENT ON COLUMN ORDER_LOG.created_at IS '变更时间';
 
