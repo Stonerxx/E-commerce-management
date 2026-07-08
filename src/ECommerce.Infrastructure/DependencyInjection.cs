@@ -1,4 +1,7 @@
 using ECommerce.Infrastructure.Data;
+using ECommerce.Infrastructure.Repositories;
+using ECommerce.Infrastructure.Services;
+using ECommerce.Application.Services;
 using ECommerce.Shared.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +18,15 @@ public static class DependencyInjection
         services.AddScoped<IOracleConnectionFactory, OracleConnectionFactory>();
         services.AddScoped<IDatabaseHealthCheck, DatabaseHealthCheck>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IAddressRepository, AddressRepository>();
+        services.AddScoped<IOperationLogRepository, OperationLogRepository>();
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IAddressService, AddressService>();
+        services.AddScoped<IOperationLogService, OperationLogService>();
+        services.AddScoped<IPermissionService, PermissionService>();
 
         return services;
     }

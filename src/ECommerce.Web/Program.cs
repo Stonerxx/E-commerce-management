@@ -1,10 +1,16 @@
 using ECommerce.Infrastructure;
 using ECommerce.Shared.Constants;
+using ECommerce.Web.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add<ApiExceptionFilter>();
+    options.Filters.AddService<RbacPermissionFilter>();
+});
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddScoped<RbacPermissionFilter>();
 
 builder.Services
     .AddAuthentication(AuthConstants.AuthenticationScheme)
