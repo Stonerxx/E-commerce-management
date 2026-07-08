@@ -69,3 +69,4 @@ public enum OperationResult
     Failed = 0,
     Success = 1
 }
+

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using ECommerce.Shared.Contracts;
 using ECommerce.Shared.Errors;
 using Microsoft.AspNetCore.Mvc;
@@ -15,5 +16,20 @@ public abstract class ApiControllerBase : ControllerBase
             HttpContext.TraceIdentifier);
 
         return StatusCode(StatusCodes.Status501NotImplemented, response);
+    }
+
+    protected long GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out var userId))
+        {
+            throw new InvalidOperationException("用户未登录或用户ID无效");
+        }
+        return userId;
+    }
+
+    protected string GetCurrentUserName()
+    {
+        return User.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
     }
 }

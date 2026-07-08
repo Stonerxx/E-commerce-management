@@ -1,4 +1,5 @@
 using ECommerce.Application.DTOs;
+using ECommerce.Application.Services;
 using ECommerce.Shared.Constants;
 using ECommerce.Shared.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -10,52 +11,83 @@ namespace ECommerce.Web.Controllers.Api;
 [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
 public sealed class AdminCatalogApiController : ApiControllerBase
 {
-    [HttpGet("categories")]
-    public ActionResult<ApiResponse<IReadOnlyList<CategoryTreeDto>>> Categories()
+    private readonly ICategoryService _categoryService;
+    private readonly IProductService _productService;
+    private readonly ISkuService _skuService;
+    private readonly IInventoryService _inventoryService;
+
+    public AdminCatalogApiController(
+        ICategoryService categoryService,
+        IProductService productService,
+        ISkuService skuService,
+        IInventoryService inventoryService)
     {
-        return NotReady<IReadOnlyList<CategoryTreeDto>>("Admin category list endpoint is defined and awaiting implementation.");
+        _categoryService = categoryService;
+        _productService = productService;
+        _skuService = skuService;
+        _inventoryService = inventoryService;
+    }
+
+    [HttpGet("categories")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<CategoryTreeDto>>>> Categories(CancellationToken cancellationToken)
+    {
+        var categories = await _categoryService.GetTreeAsync(true, cancellationToken);
+        return Ok(ApiResponse<IReadOnlyList<CategoryTreeDto>>.Ok(categories));
     }
 
     [HttpPost("categories")]
-    public ActionResult<ApiResponse<int>> CreateCategory([FromBody] CategoryRequest request)
+    public async Task<ActionResult<ApiResponse<int>>> CreateCategory([FromBody] CategoryRequest request, CancellationToken cancellationToken)
     {
-        return NotReady<int>("Admin category create endpoint is defined and awaiting implementation.");
+        var userId = GetCurrentUserId();
+        var categoryId = await _categoryService.CreateAsync(request, userId, cancellationToken);
+        return Ok(ApiResponse<int>.Ok(categoryId));
     }
 
     [HttpPut("categories/{categoryId:int}")]
-    public ActionResult<ApiResponse<object?>> UpdateCategory(int categoryId, [FromBody] CategoryRequest request)
+    public async Task<ActionResult<ApiResponse<object?>>> UpdateCategory(int categoryId, [FromBody] CategoryRequest request, CancellationToken cancellationToken)
     {
-        return NotReady<object?>("Admin category update endpoint is defined and awaiting implementation.");
+        var userId = GetCurrentUserId();
+        await _categoryService.UpdateAsync(categoryId, request, userId, cancellationToken);
+        return Ok(ApiResponse<object?>.Ok(null));
     }
 
     [HttpDelete("categories/{categoryId:int}")]
-    public ActionResult<ApiResponse<object?>> DeleteCategory(int categoryId)
+    public async Task<ActionResult<ApiResponse<object?>>> DeleteCategory(int categoryId, CancellationToken cancellationToken)
     {
-        return NotReady<object?>("Admin category delete endpoint is defined and awaiting implementation.");
+        var userId = GetCurrentUserId();
+        await _categoryService.DeleteOrDisableAsync(categoryId, userId, cancellationToken);
+        return Ok(ApiResponse<object?>.Ok(null));
     }
 
     [HttpGet("products")]
-    public ActionResult<ApiResponse<PagedResult<ProductListItemDto>>> Products([FromQuery] ProductQuery query)
+    public async Task<ActionResult<ApiResponse<PagedResult<ProductListItemDto>>>> Products([FromQuery] ProductQuery query, CancellationToken cancellationToken)
     {
-        return NotReady<PagedResult<ProductListItemDto>>("Admin product search endpoint is defined and awaiting implementation.");
+        var result = await _productService.SearchAsync(query, cancellationToken);
+        return Ok(ApiResponse<PagedResult<ProductListItemDto>>.Ok(result));
     }
 
     [HttpPost("products")]
-    public ActionResult<ApiResponse<long>> CreateProduct([FromBody] ProductSaveRequest request)
+    public async Task<ActionResult<ApiResponse<long>>> CreateProduct([FromBody] ProductSaveRequest request, CancellationToken cancellationToken)
     {
-        return NotReady<long>("Admin product create endpoint is defined and awaiting implementation.");
+        var userId = GetCurrentUserId();
+        var productId = await _productService.CreateAsync(request, userId, cancellationToken);
+        return Ok(ApiResponse<long>.Ok(productId));
     }
 
     [HttpPut("products/{productId:long}")]
-    public ActionResult<ApiResponse<object?>> UpdateProduct(long productId, [FromBody] ProductSaveRequest request)
+    public async Task<ActionResult<ApiResponse<object?>>> UpdateProduct(long productId, [FromBody] ProductSaveRequest request, CancellationToken cancellationToken)
     {
-        return NotReady<object?>("Admin product update endpoint is defined and awaiting implementation.");
+        var userId = GetCurrentUserId();
+        await _productService.UpdateAsync(productId, request, userId, cancellationToken);
+        return Ok(ApiResponse<object?>.Ok(null));
     }
 
     [HttpPut("products/{productId:long}/status")]
-    public ActionResult<ApiResponse<object?>> SetProductStatus(long productId, [FromBody] StatusUpdateRequest request)
+    public async Task<ActionResult<ApiResponse<object?>>> SetProductStatus(long productId, [FromBody] StatusUpdateRequest request, CancellationToken cancellationToken)
     {
-        return NotReady<object?>("Admin product status endpoint is defined and awaiting implementation.");
+        var userId = GetCurrentUserId();
+        await _productService.SetStatusAsync(productId, request.Status, userId, cancellationToken);
+        return Ok(ApiResponse<object?>.Ok(null));
     }
 
     [HttpPost("products/{productId:long}/images")]
@@ -71,44 +103,55 @@ public sealed class AdminCatalogApiController : ApiControllerBase
     }
 
     [HttpGet("products/{productId:long}/skus")]
-    public ActionResult<ApiResponse<IReadOnlyList<SkuDto>>> Skus(long productId)
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<SkuDto>>>> Skus(long productId, CancellationToken cancellationToken)
     {
-        return NotReady<IReadOnlyList<SkuDto>>("Admin SKU list endpoint is defined and awaiting implementation.");
+        var skus = await _skuService.GetByProductAsync(productId, cancellationToken);
+        return Ok(ApiResponse<IReadOnlyList<SkuDto>>.Ok(skus));
     }
 
     [HttpPost("products/{productId:long}/skus")]
-    public ActionResult<ApiResponse<long>> CreateSku(long productId, [FromBody] SkuSaveRequest request)
+    public async Task<ActionResult<ApiResponse<long>>> CreateSku(long productId, [FromBody] SkuSaveRequest request, CancellationToken cancellationToken)
     {
-        return NotReady<long>("Admin SKU create endpoint is defined and awaiting implementation.");
+        var userId = GetCurrentUserId();
+        var skuId = await _skuService.CreateAsync(productId, request, userId, cancellationToken);
+        return Ok(ApiResponse<long>.Ok(skuId));
     }
 
     [HttpPut("skus/{skuId:long}")]
-    public ActionResult<ApiResponse<object?>> UpdateSku(long skuId, [FromBody] SkuSaveRequest request)
+    public async Task<ActionResult<ApiResponse<object?>>> UpdateSku(long skuId, [FromBody] SkuSaveRequest request, CancellationToken cancellationToken)
     {
-        return NotReady<object?>("Admin SKU update endpoint is defined and awaiting implementation.");
+        var userId = GetCurrentUserId();
+        await _skuService.UpdateAsync(skuId, request, userId, cancellationToken);
+        return Ok(ApiResponse<object?>.Ok(null));
     }
 
     [HttpPut("skus/{skuId:long}/status")]
-    public ActionResult<ApiResponse<object?>> SetSkuStatus(long skuId, [FromBody] StatusUpdateRequest request)
+    public async Task<ActionResult<ApiResponse<object?>>> SetSkuStatus(long skuId, [FromBody] StatusUpdateRequest request, CancellationToken cancellationToken)
     {
-        return NotReady<object?>("Admin SKU status endpoint is defined and awaiting implementation.");
+        var userId = GetCurrentUserId();
+        await _skuService.SetStatusAsync(skuId, request.Status, userId, cancellationToken);
+        return Ok(ApiResponse<object?>.Ok(null));
     }
 
     [HttpPost("skus/{skuId:long}/inventory-adjustments")]
-    public ActionResult<ApiResponse<object?>> AdjustInventory(long skuId, [FromBody] InventoryAdjustRequest request)
+    public async Task<ActionResult<ApiResponse<object?>>> AdjustInventory(long skuId, [FromBody] InventoryAdjustRequest request, CancellationToken cancellationToken)
     {
-        return NotReady<object?>("Inventory adjustment endpoint is defined and awaiting implementation.");
+        var userId = GetCurrentUserId();
+        await _inventoryService.AdjustAsync(skuId, request, userId, cancellationToken);
+        return Ok(ApiResponse<object?>.Ok(null));
     }
 
     [HttpGet("inventory/warnings")]
-    public ActionResult<ApiResponse<PagedResult<InventoryWarningDto>>> InventoryWarnings([FromQuery] PageQuery query)
+    public async Task<ActionResult<ApiResponse<PagedResult<InventoryWarningDto>>>> InventoryWarnings([FromQuery] PageQuery query, CancellationToken cancellationToken)
     {
-        return NotReady<PagedResult<InventoryWarningDto>>("Inventory warning endpoint is defined and awaiting implementation.");
+        var result = await _inventoryService.SearchWarningsAsync(query, cancellationToken);
+        return Ok(ApiResponse<PagedResult<InventoryWarningDto>>.Ok(result));
     }
 
     [HttpGet("inventory/logs")]
-    public ActionResult<ApiResponse<PagedResult<InventoryLogDto>>> InventoryLogs([FromQuery] InventoryLogQuery query)
+    public async Task<ActionResult<ApiResponse<PagedResult<InventoryLogDto>>>> InventoryLogs([FromQuery] InventoryLogQuery query, CancellationToken cancellationToken)
     {
-        return NotReady<PagedResult<InventoryLogDto>>("Inventory log endpoint is defined and awaiting implementation.");
+        var result = await _inventoryService.SearchLogsAsync(query, cancellationToken);
+        return Ok(ApiResponse<PagedResult<InventoryLogDto>>.Ok(result));
     }
 }
