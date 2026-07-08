@@ -252,8 +252,9 @@ GET /api/v1/system/db-check
 
 - 只能直接写自己主责表；其他表的写入必须调用对应 Service。
 - 可以只读依赖表做展示和校验，但不要绕过主责模块修改状态。
-- 订单状态日志需要区分订单所属用户和实际操作者；`IOrderService.CancelAsync` 中 `userId` 表示订单所属用户，`operatorId` 和 `operatorName` 表示本次操作人。
-- `operatorName` 必须由后端 Controller 从登录态、Claims 或用户上下文取得，不要相信请求体里手写的用户名。
+- 订单状态日志需要区分订单所属用户和实际操作者；`IOrderService.CancelAsync` 中 `userId` 表示订单所属用户，`operatorId`、`operatorName` 和 `ipAddress` 表示本次操作人上下文。
+- `operatorName` 和 `ipAddress` 必须由后端 Controller 从登录态、Claims、用户上下文和 `HttpContext` 取得，不要相信请求体里手写的用户名或 IP。
+- Service 层不要直接读取 `HttpContext`。需要记录 IP 时，由 Controller 调用 `ApiControllerBase.GetClientIpAddress()` 后传给 Service。
 - 购物车和订单根据 `SkuId` 做前置校验时，调用 `ISkuService.GetByIdAsync` 查询 `SkuDto`；可用库存统一按 `Stock - LockedStock` 计算。
 - 查询 SKU 只用于校验，创建订单真正锁定库存仍必须调用 `IInventoryService.LockForOrderAsync`，不能直接修改 `SKU`。
 - 订单创建必须通过 `IInventoryService.LockForOrderAsync` 锁库存，通过 `ICouponService.ValidateAsync` 校验优惠券。
@@ -452,8 +453,8 @@ JSON API 权限要和页面入口匹配：
 - `IOrderService.GetPaymentContextAsync`
 - `IOrderService.GetSkuQuantitiesAsync`
 - `IOrderService.MarkPaidAsync`
-- `IOrderService.CancelAsync(userId, orderId, operatorId, operatorName, reason)`
-- `IOrderService.MarkShippedAsync(orderId, logisticsId, operatorId, operatorName)`
+- `IOrderService.CancelAsync(userId, orderId, operatorId, operatorName, ipAddress, reason)`
+- `IOrderService.MarkShippedAsync(orderId, logisticsId, operatorId, operatorName, ipAddress)`
 - `ICouponService.ValidateAsync`
 - `ICouponService.UseForOrderAsync`
 
@@ -603,7 +604,7 @@ deployment/linux/nginx-ecommerce.conf.example
 
 ```text
 ASPNETCORE_ENVIRONMENT=Production
-ASPNETCORE_URLS=http://127.0.0.1:5052
+ASPNETCORE_URLS=http://127.0.0.1:5000
 Oracle__ConnectionString=User Id=...;Password=...;Data Source=...:1521/XEPDB1
 ```
 

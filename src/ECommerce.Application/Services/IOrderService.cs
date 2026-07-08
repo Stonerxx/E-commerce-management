@@ -21,11 +21,11 @@ public interface IOrderService
 
     Task<IReadOnlyList<OrderSkuQuantity>> GetSkuQuantitiesAsync(long orderId, CancellationToken cancellationToken = default);
 
-    Task CancelAsync(long userId, long orderId, long operatorId, string operatorName, string? reason, CancellationToken cancellationToken = default);
+    Task CancelAsync(long userId, long orderId, long operatorId, string operatorName, string ipAddress, string? reason, CancellationToken cancellationToken = default);
 
     Task ConfirmAsync(long userId, long orderId, CancellationToken cancellationToken = default);
 
     Task MarkPaidAsync(long orderId, long paymentId, CancellationToken cancellationToken = default);
 
-    Task MarkShippedAsync(long orderId, long logisticsId, long operatorId, string operatorName, CancellationToken cancellationToken = default);
+    Task MarkShippedAsync(long orderId, long logisticsId, long operatorId, string operatorName, string ipAddress, CancellationToken cancellationToken = default);
 }
