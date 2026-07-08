@@ -102,13 +102,13 @@ VALUES (9006, 9003, 9003, SYSDATE - 30);
 PROMPT Insert addresses...
 
 INSERT INTO ADDRESS (id, user_id, receiver_name, receiver_phone, province, city, district, detail_address, is_default, created_at)
-VALUES (9001, 9003, '张一诺', '13800009003', '上海市', '上海市', '浦东新区', '张江高科演示路 100 号', 1, SYSDATE - 15);
+VALUES (9001, 9003, '演示收货人A', '13800009003', '上海市', '上海市', '浦东新区', '张江高科演示路 100 号', 1, SYSDATE - 15);
 
 INSERT INTO ADDRESS (id, user_id, receiver_name, receiver_phone, province, city, district, detail_address, is_default, created_at)
-VALUES (9002, 9003, '张一诺', '13800009003', '浙江省', '杭州市', '西湖区', '文三路测试小区 8 幢 302', 0, SYSDATE - 10);
+VALUES (9002, 9003, '演示收货人A', '13800009003', '浙江省', '杭州市', '西湖区', '文三路测试小区 8 幢 302', 0, SYSDATE - 10);
 
 INSERT INTO ADDRESS (id, user_id, receiver_name, receiver_phone, province, city, district, detail_address, is_default, created_at)
-VALUES (9003, 9004, '李同学', '13800009004', '广东省', '深圳市', '南山区', '科技园演示街 66 号', 1, SYSDATE - 8);
+VALUES (9003, 9004, '演示收货人B', '13800009004', '广东省', '深圳市', '南山区', '科技园演示街 66 号', 1, SYSDATE - 8);
 
 PROMPT Insert categories, products, images, specs and skus...
 
@@ -204,19 +204,19 @@ VALUES (9003, 9004, 9002, 0, SYSDATE - 4, NULL, NULL);
 PROMPT Insert orders, payments, logistics and reviews...
 
 INSERT INTO ORDER_MAIN (id, order_no, user_id, address_id, user_coupon_id, status, total_amount, discount_amount, pay_amount, pay_expire_time, receiver_snapshot, remark, created_at, updated_at)
-VALUES (9001, 'DEMO202607080001', 9003, 9001, NULL, 0, 3299.00, 0.00, 3299.00, SYSDATE + 1, '{"receiverName":"张一诺","receiverPhone":"13800009003","province":"上海市","city":"上海市","district":"浦东新区","detailAddress":"张江高科演示路 100 号"}', '待支付演示订单', SYSDATE - 1, SYSDATE - 1);
+VALUES (9001, 'DEMO202607080001', 9003, 9001, NULL, 0, 3299.00, 0.00, 3299.00, SYSDATE + 1, '{"receiverName":"演示收货人A","receiverPhone":"13800009003","province":"上海市","city":"上海市","district":"浦东新区","detailAddress":"张江高科演示路 100 号"}', '待支付演示订单', SYSDATE - 1, SYSDATE - 1);
 
 INSERT INTO ORDER_MAIN (id, order_no, user_id, address_id, user_coupon_id, status, total_amount, discount_amount, pay_amount, pay_expire_time, receiver_snapshot, remark, created_at, updated_at)
-VALUES (9002, 'DEMO202607080002', 9003, 9001, 9002, 1, 798.00, 50.00, 748.00, SYSDATE - 7, '{"receiverName":"张一诺","receiverPhone":"13800009003","province":"上海市","city":"上海市","district":"浦东新区","detailAddress":"张江高科演示路 100 号"}', '已支付待发货演示订单', SYSDATE - 8, SYSDATE - 8);
+VALUES (9002, 'DEMO202607080002', 9003, 9001, 9002, 1, 798.00, 50.00, 748.00, SYSDATE - 7, '{"receiverName":"演示收货人A","receiverPhone":"13800009003","province":"上海市","city":"上海市","district":"浦东新区","detailAddress":"张江高科演示路 100 号"}', '已支付待发货演示订单', SYSDATE - 8, SYSDATE - 8);
 
 INSERT INTO ORDER_MAIN (id, order_no, user_id, address_id, user_coupon_id, status, total_amount, discount_amount, pay_amount, pay_expire_time, receiver_snapshot, remark, created_at, updated_at)
-VALUES (9003, 'DEMO202607080003', 9003, 9002, NULL, 2, 3999.00, 0.00, 3999.00, SYSDATE - 5, '{"receiverName":"张一诺","receiverPhone":"13800009003","province":"浙江省","city":"杭州市","district":"西湖区","detailAddress":"文三路测试小区 8 幢 302"}', '已发货演示订单', SYSDATE - 6, SYSDATE - 5);
+VALUES (9003, 'DEMO202607080003', 9003, 9002, NULL, 2, 3999.00, 0.00, 3999.00, SYSDATE - 5, '{"receiverName":"演示收货人A","receiverPhone":"13800009003","province":"浙江省","city":"杭州市","district":"西湖区","detailAddress":"文三路测试小区 8 幢 302"}', '已发货演示订单', SYSDATE - 6, SYSDATE - 5);
 
 INSERT INTO ORDER_MAIN (id, order_no, user_id, address_id, user_coupon_id, status, total_amount, discount_amount, pay_amount, pay_expire_time, receiver_snapshot, remark, created_at, updated_at)
-VALUES (9004, 'DEMO202607080004', 9004, 9003, NULL, 3, 129.00, 0.00, 129.00, SYSDATE - 12, '{"receiverName":"李同学","receiverPhone":"13800009004","province":"广东省","city":"深圳市","district":"南山区","detailAddress":"科技园演示街 66 号"}', '已完成演示订单', SYSDATE - 13, SYSDATE - 10);
+VALUES (9004, 'DEMO202607080004', 9004, 9003, NULL, 3, 129.00, 0.00, 129.00, SYSDATE - 12, '{"receiverName":"演示收货人B","receiverPhone":"13800009004","province":"广东省","city":"深圳市","district":"南山区","detailAddress":"科技园演示街 66 号"}', '已完成演示订单', SYSDATE - 13, SYSDATE - 10);
 
 INSERT INTO ORDER_MAIN (id, order_no, user_id, address_id, user_coupon_id, status, total_amount, discount_amount, pay_amount, pay_expire_time, receiver_snapshot, remark, created_at, updated_at)
-VALUES (9005, 'DEMO202607080005', 9004, 9003, NULL, 4, 3299.00, 0.00, 3299.00, SYSDATE - 15, '{"receiverName":"李同学","receiverPhone":"13800009004","province":"广东省","city":"深圳市","district":"南山区","detailAddress":"科技园演示街 66 号"}', '已取消演示订单', SYSDATE - 16, SYSDATE - 15);
+VALUES (9005, 'DEMO202607080005', 9004, 9003, NULL, 4, 3299.00, 0.00, 3299.00, SYSDATE - 15, '{"receiverName":"演示收货人B","receiverPhone":"13800009004","province":"广东省","city":"深圳市","district":"南山区","detailAddress":"科技园演示街 66 号"}', '已取消演示订单', SYSDATE - 16, SYSDATE - 15);
 
 UPDATE USER_COUPON SET order_id = 9002 WHERE id = 9002;
 
