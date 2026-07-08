@@ -32,7 +32,7 @@ public sealed class CouponsApiController : ApiControllerBase
 
     [HttpPost("coupons/{userCouponId:long}/validate")]
     [Authorize(Policy = AuthConstants.Policies.CustomerOnly)]
-    public ActionResult<ApiResponse<CouponValidationDto>> Validate(long userCouponId, [FromQuery] decimal orderAmount)
+    public ActionResult<ApiResponse<CouponValidationDto>> Validate(long userCouponId, [FromBody] CouponValidationRequest request)
     {
         return NotReady<CouponValidationDto>("Coupon validation endpoint is defined and awaiting implementation.");
     }

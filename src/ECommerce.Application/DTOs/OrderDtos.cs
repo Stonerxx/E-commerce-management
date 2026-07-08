@@ -55,6 +55,7 @@ public sealed record OrderLogDto(
     int? FromStatus,
     int ToStatus,
     long? OperatorId,
+    string? OperatorName,
     string? Remark,
     DateTime CreatedAt);
 
