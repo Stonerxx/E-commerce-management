@@ -134,7 +134,41 @@ migration/seed_demo_data.sql
 
 注意：`seed_demo_data.sql` 使用 9000-9999 号段的显式 ID，可重复执行；其中 `password_hash` 是占位值，member2 完成真实认证后需要替换为登录算法对应的哈希。
 
-## 7. 权限和路由检查
+## 7. 临时 Demo 登录标记
+
+当前为了让购物车、订单和后台页面可以提前联调，`AccountController` 里保留了临时登录逻辑：
+
+```text
+TEMP_DEMO_AUTH
+```
+
+配置位置：
+
+```json
+"DemoAuth": {
+  "Enabled": true,
+  "Password": "demo123"
+}
+```
+
+临时账号：
+
+```text
+demo_admin    ADMIN
+demo_service  SERVICE
+demo_user     USER
+demo_buyer    USER
+```
+
+member2 合入真实注册登录后必须处理：
+
+- 删除 `AccountController` 中的 `TEMP_DEMO_AUTH` 分支逻辑。
+- 登录改为调用真实 `IAuthService`。
+- `seed_demo_data.sql` 中的 `DEMO_HASH_REPLACE_AFTER_AUTH` 替换为真实密码哈希。
+- 确认登录后写入 `NameIdentifier`、`Name`、`Role` claims。
+- 如不再需要，删除或关闭 `DemoAuth` 配置。
+
+## 8. 权限和路由检查
 
 前台页面：
 
@@ -172,7 +206,7 @@ GET /api/v1/system/version
 - 后台订单和后台首页使用 `ServiceOrAdmin`。
 - 管理员专属统计、导出、用户管理使用 `AdminOnly`。
 
-## 8. 页面和 API 联调检查
+## 9. 页面和 API 联调检查
 
 合并后至少手动打开：
 
@@ -195,7 +229,7 @@ GET /api/v1/system/version
 - 页面 JS 请求路径是否和 API Controller 路由一致。
 - API 返回是否仍符合 `ApiResponse<T>`。
 
-## 9. 部署前检查
+## 10. 部署前检查
 
 ```powershell
 dotnet restore ECommerce.sln
@@ -209,7 +243,7 @@ dotnet test ECommerce.sln -c Release --no-build --no-restore
 - `.github/workflows/deploy.yml` 只在允许的分支或手动触发时部署。
 - 数据库密码不进入 GitHub Secrets，仍由服务器环境变量决定。
 
-## 10. 服务器发布后检查
+## 11. 服务器发布后检查
 
 服务器上执行：
 
@@ -236,7 +270,7 @@ http://服务器IP/admin/orders
 - `journalctl -u ecommerce`。
 - `/etc/ecommerce/ecommerce.env` 或 `ecommerce.service` 中的运行时环境变量。
 
-## 11. 最终演示数据
+## 12. 最终演示数据
 
 答辩前至少准备：
 
