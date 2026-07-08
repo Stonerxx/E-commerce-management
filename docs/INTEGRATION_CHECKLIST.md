@@ -68,7 +68,7 @@ member4 为了先跑通购物车和订单流程，当前存在 Mock 服务。最
 
 | Mock 类 | 真实模块来源 | 检查点 | 状态 |
 | --- | --- | --- | --- |
-| `MockAddressService` | member2 | 创建订单读取用户地址，默认地址逻辑正确 | 待替换 |
+| `MockAddressService` | member2 | 创建订单读取用户地址，默认地址逻辑正确；临时演示地址 ID 必须和 `seed_demo_data.sql` 中 9001/9002/9003 保持一致 | 待替换 |
 | `MockOperationLogService` | member2 | 订单取消、发货、支付等操作写入日志 | 待替换 |
 | `MockSkuService` | member3 | 购物车和订单能读取真实 SKU、价格、商品名 | 待替换 |
 | `MockInventoryService` | member3 | 创建订单锁库存，取消订单释放库存 | 待替换 |
@@ -205,6 +205,7 @@ GET /api/v1/system/version
 - 购物车、我的订单、创建订单使用 `CustomerOnly`。
 - 后台订单和后台首页使用 `ServiceOrAdmin`。
 - 管理员专属统计、导出、用户管理使用 `AdminOnly`。
+- 导航和首页只展示当前角色可用入口：`USER` 显示购物车和我的订单，`SERVICE`/`ADMIN` 显示后台入口，未登录显示登录和注册入口。
 
 ## 9. 页面和 API 联调检查
 

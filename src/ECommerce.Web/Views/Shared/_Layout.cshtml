@@ -1,4 +1,12 @@
 ﻿<!DOCTYPE html>
+@{
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var isCustomer = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.User);
+    var canUseAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Service)
+        || User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
+    var currentUserName = User.Identity?.Name ?? "已登录用户";
+    var currentRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "UNKNOWN";
+}
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -22,31 +30,37 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">首页</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" href="/cart">购物车</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" href="/orders">我的订单</a>
-                        </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-dark" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                后台
-                            </a>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="/admin">后台首页</a></li>
-                                <li><a class="dropdown-item" href="/admin/orders">订单管理</a></li>
-                            </ul>
-                        </li>
+                        @if (isCustomer)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" href="/cart">购物车</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" href="/orders">我的订单</a>
+                            </li>
+                        }
+                        @if (canUseAdmin)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    后台
+                                </a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="/admin">后台首页</a></li>
+                                    <li><a class="dropdown-item" href="/admin/orders">订单管理</a></li>
+                                </ul>
+                            </li>
+                        }
                         <li class="nav-item">
                             <a class="nav-link text-dark" href="/health">健康检查</a>
                         </li>
                     </ul>
                     <ul class="navbar-nav">
-                        @if (User.Identity?.IsAuthenticated == true)
+                        @if (isAuthenticated)
                         {
                             <li class="nav-item">
                                 <span class="nav-link text-dark">
-                                    @User.Identity.Name (@User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value)
+                                    @currentUserName (@currentRole)
                                 </span>
                             </li>
                             <li class="nav-item">

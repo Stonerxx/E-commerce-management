@@ -30,14 +30,11 @@
             async initPage() {
                 this.loading = true;
                 try {
-                    // 并行加载地址、优惠券和预览数据
                     await Promise.all([
                         this.loadAddresses(),
-                        this.loadCoupons(),
-                        this.loadPreview()
+                        this.loadCoupons()
                     ]);
 
-                    // 自动选择默认地址
                     const defaultAddr = this.addresses.find(a => a.isDefault);
                     if (defaultAddr) {
                         this.selectedAddressId = defaultAddr.addressId;
@@ -45,8 +42,9 @@
                         this.selectedAddressId = this.addresses[0].addressId;
                     }
 
-                    // 重新计算预览（如果有优惠券或地址变化，预览会变化）
-                    // 但预览在 loadPreview 中已用当前优惠券计算，无需重复
+                    if (this.selectedAddressId) {
+                        await this.loadPreview();
+                    }
                 } catch (error) {
                     console.error('初始化页面失败:', error);
                 } finally {
@@ -88,9 +86,14 @@
             },
 
             async loadPreview() {
+                if (!this.selectedAddressId) {
+                    this.previewData = null;
+                    return;
+                }
+
                 try {
                     const requestBody = {
-                        addressId: this.selectedAddressId || 0,
+                        addressId: this.selectedAddressId,
                         userCouponId: this.selectedCouponId || null,
                         cartItemIds: idList,
                         remark: this.remark

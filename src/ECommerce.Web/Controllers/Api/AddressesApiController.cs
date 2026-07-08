@@ -1,4 +1,5 @@
 using ECommerce.Application.DTOs;
+using ECommerce.Application.Services;
 using ECommerce.Shared.Constants;
 using ECommerce.Shared.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -10,10 +11,19 @@ namespace ECommerce.Web.Controllers.Api;
 [Authorize(Policy = AuthConstants.Policies.CustomerOnly)]
 public sealed class AddressesApiController : ApiControllerBase
 {
-    [HttpGet]
-    public ActionResult<ApiResponse<IReadOnlyList<AddressDto>>> GetMine()
+    private readonly IAddressService _addressService;
+
+    public AddressesApiController(IAddressService addressService)
     {
-        return NotReady<IReadOnlyList<AddressDto>>("Address list endpoint is defined and awaiting implementation.");
+        _addressService = addressService;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<AddressDto>>>> GetMine(CancellationToken cancellationToken = default)
+    {
+        var userId = GetCurrentUserId();
+        var addresses = await _addressService.GetMyAddressesAsync(userId, cancellationToken);
+        return Ok(ApiResponse<IReadOnlyList<AddressDto>>.Ok(addresses));
     }
 
     [HttpPost]
