@@ -119,6 +119,21 @@ SELECT COUNT(*) FROM USER_TABLES;
 
 DEV 和 DEMO 用户都应完成同一套结构初始化或迁移。
 
+演示/联调用测试数据单独放在：
+
+```text
+migration/seed_demo_data.sql
+```
+
+执行顺序：
+
+```sql
+@migration/init_database.sql
+@migration/seed_demo_data.sql
+```
+
+注意：`seed_demo_data.sql` 使用 9000-9999 号段的显式 ID，可重复执行；其中 `password_hash` 是占位值，member2 完成真实认证后需要替换为登录算法对应的哈希。
+
 ## 7. 权限和路由检查
 
 前台页面：
@@ -234,3 +249,5 @@ http://服务器IP/admin/orders
 - 待支付、已支付、已发货、已完成、已取消订单。
 - 支付记录、物流记录、评价。
 - 后台统计和导出样例数据。
+
+当前基础演示数据脚本已覆盖上述核心对象，后续成员合并真实功能后按实际字段继续维护 `migration/seed_demo_data.sql`。
