@@ -4,30 +4,48 @@ using ECommerce.Shared.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using ECommerce.Application.Services;
+using System.Threading.Tasks;
+
 namespace ECommerce.Web.Controllers.Api;
 
 [Route("api/v1/admin")]
 public sealed class AdminStatisticsApiController : ApiControllerBase
 {
+
+    private readonly IStatisticsService _statisticsService;
+
+    public AdminStatisticsApiController(IStatisticsService statisticsService)
+    {
+        _statisticsService = statisticsService;
+    }
+
+
     [HttpGet("dashboard/summary")]
     [Authorize(Policy = AuthConstants.Policies.ServiceOrAdmin)]
-    public ActionResult<ApiResponse<DashboardSummaryDto>> DashboardSummary()
+    // [AllowAnonymous] // ≤‚ ‘”√
+    public async Task<ActionResult<ApiResponse<DashboardSummaryDto>>> DashboardSummaryAsync()
     {
-        return NotReady<DashboardSummaryDto>("Dashboard summary endpoint is defined and awaiting implementation.");
+        var result = await _statisticsService.GetDashboardSummaryAsync();
+        return ApiResponse<DashboardSummaryDto>.Ok(result);
     }
 
     [HttpGet("statistics/orders")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
-    public ActionResult<ApiResponse<OrderStatisticsDto>> OrderStatistics([FromQuery] StatisticsQuery query)
+    // [AllowAnonymous] // ≤‚ ‘”√
+    public async Task<ActionResult<ApiResponse<OrderStatisticsDto>>> OrderStatisticsAsync([FromQuery] StatisticsQuery query)
     {
-        return NotReady<OrderStatisticsDto>("Order statistics endpoint is defined and awaiting implementation.");
+        var result = await _statisticsService.GetOrderStatisticsAsync(query);
+        return ApiResponse<OrderStatisticsDto>.Ok(result);
     }
 
     [HttpGet("statistics/top-products")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
-    public ActionResult<ApiResponse<IReadOnlyList<TopProductDto>>> TopProducts([FromQuery] StatisticsQuery query)
+    // [AllowAnonymous] // ≤‚ ‘”√
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<TopProductDto>>>> TopProductsAsync([FromQuery] StatisticsQuery query)
     {
-        return NotReady<IReadOnlyList<TopProductDto>>("Top product statistics endpoint is defined and awaiting implementation.");
+        var result = await _statisticsService.GetTopProductsAsync(query);
+        return ApiResponse<IReadOnlyList<TopProductDto>>.Ok(result);
     }
 
     [HttpGet("exports/orders")]
