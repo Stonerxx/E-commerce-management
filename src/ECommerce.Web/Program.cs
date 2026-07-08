@@ -1,10 +1,14 @@
 using ECommerce.Infrastructure;
 using ECommerce.Shared.Constants;
+using DotNetEnv;
+Env.Load("../../deployment/.env");
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 builder.Services
     .AddAuthentication(AuthConstants.AuthenticationScheme)
@@ -36,6 +40,14 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
     app.UseHttpsRedirection();
 }
+
+// ========== 新增：只在开发环境启用 Swagger ==========
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+// =================================================
 
 app.UseStaticFiles();
 
