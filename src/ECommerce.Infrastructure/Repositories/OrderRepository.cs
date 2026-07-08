@@ -24,6 +24,7 @@ public class OrderRepository : IOrderRepository
     // 写入
     public async Task<long> InsertOrderMainAsync(OrderMain order, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = @"
             INSERT INTO order_main 
                 (order_no, user_id, address_id, user_coupon_id, status, 
@@ -66,6 +67,7 @@ public class OrderRepository : IOrderRepository
 
     public async Task InsertOrderItemsAsync(IEnumerable<OrderItem> items, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = @"
             INSERT INTO order_item 
                 (order_id, sku_id, product_name_snap, spec_snap, main_image_snap, 
@@ -96,6 +98,7 @@ public class OrderRepository : IOrderRepository
 
     public async Task InsertOrderLogAsync(OrderLog log, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = @"
             INSERT INTO order_log 
                 (order_id, from_status, to_status, operator_id, operator_name, remark, created_at)
@@ -118,6 +121,7 @@ public class OrderRepository : IOrderRepository
     // 更新
     public async Task UpdateOrderStatusAsync(long orderId, int status, DateTime updatedAt, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = "UPDATE order_main SET status = :Status, updated_at = :UpdatedAt WHERE id = :Id";
         await using var cmd = Connection.CreateCommand();
         cmd.CommandText = sql;
@@ -131,6 +135,7 @@ public class OrderRepository : IOrderRepository
     // 查询单条
     public async Task<OrderMain?> GetOrderByIdAsync(long orderId, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = "SELECT * FROM order_main WHERE id = :Id";
         await using var cmd = Connection.CreateCommand();
         cmd.CommandText = sql;
@@ -147,6 +152,7 @@ public class OrderRepository : IOrderRepository
 
     public async Task<OrderMain?> GetFullOrderAsync(long orderId, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var order = await GetOrderByIdAsync(orderId, cancellationToken);
         if (order == null) return null;
 
@@ -186,6 +192,7 @@ public class OrderRepository : IOrderRepository
     // 辅助查询
     public async Task<IReadOnlyList<OrderSkuQuantity>> GetOrderSkuQuantitiesAsync(long orderId, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = "SELECT sku_id AS SkuId, quantity FROM order_item WHERE order_id = :OrderId";
         await using var cmd = Connection.CreateCommand();
         cmd.CommandText = sql;
@@ -206,6 +213,7 @@ public class OrderRepository : IOrderRepository
 
     public async Task<OrderPaymentContextDto?> GetPaymentContextAsync(long orderId, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = @"
             SELECT 
                 id AS OrderId,
@@ -242,6 +250,7 @@ public class OrderRepository : IOrderRepository
     // 定时任务
     public async Task<IReadOnlyList<long>> GetExpiredOrderIdsAsync(DateTime cutoffTime, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = "SELECT id FROM order_main WHERE status = 0 AND pay_expire_time < :CutoffTime";
         await using var cmd = Connection.CreateCommand();
         cmd.CommandText = sql;
@@ -260,6 +269,7 @@ public class OrderRepository : IOrderRepository
     // 分页查询
     public async Task<PagedResult<OrderListItemDto>> SearchUserOrdersAsync(long userId, OrderQuery query, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var where = new StringBuilder("WHERE user_id = :UserId");
         var parameters = new List<DbParameter>();
         parameters.Add(CreateParameter("UserId", userId));
@@ -336,6 +346,7 @@ public class OrderRepository : IOrderRepository
 
     public async Task<PagedResult<OrderListItemDto>> SearchAdminOrdersAsync(AdminOrderQuery query, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var where = new StringBuilder("WHERE 1=1");
         var parameters = new List<DbParameter>();
 

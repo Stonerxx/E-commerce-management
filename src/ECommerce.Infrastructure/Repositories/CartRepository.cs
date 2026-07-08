@@ -22,6 +22,7 @@ public class CartRepository : ICartRepository
 
     public async Task<IReadOnlyList<CartItemWithDetails>> GetUserCartWithDetailsAsync(long userId, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = @"
             SELECT 
                 c.id AS CartItemId,
@@ -72,6 +73,7 @@ public class CartRepository : ICartRepository
 
     public async Task<Cart?> GetByUserAndSkuAsync(long userId, long skuId, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = "SELECT * FROM cart WHERE user_id = :UserId AND sku_id = :SkuId";
         await using var cmd = Connection.CreateCommand();
         cmd.CommandText = sql;
@@ -97,6 +99,7 @@ public class CartRepository : ICartRepository
 
     public async Task<IReadOnlyList<Cart>> GetByIdsAsync(IReadOnlyList<long> cartItemIds, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         if (cartItemIds == null || cartItemIds.Count == 0)
             return Array.Empty<Cart>();
 
@@ -127,6 +130,7 @@ public class CartRepository : ICartRepository
 
     public async Task AddAsync(Cart cart, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = @"
             INSERT INTO cart (user_id, sku_id, quantity, selected, created_at, updated_at)
             VALUES (:UserId, :SkuId, :Quantity, :Selected, :CreatedAt, :UpdatedAt)
@@ -155,6 +159,7 @@ public class CartRepository : ICartRepository
 
     public async Task UpdateAsync(Cart cart, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = @"
             UPDATE cart 
             SET quantity = :Quantity, selected = :Selected, updated_at = :UpdatedAt
@@ -174,6 +179,7 @@ public class CartRepository : ICartRepository
 
     public async Task RemoveAsync(long cartItemId, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = "DELETE FROM cart WHERE id = :Id";
         await using var cmd = Connection.CreateCommand();
         cmd.CommandText = sql;
@@ -184,6 +190,7 @@ public class CartRepository : ICartRepository
 
     public async Task ClearSelectedAsync(long userId, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = "DELETE FROM cart WHERE user_id = :UserId AND selected = 1";
         await using var cmd = Connection.CreateCommand();
         cmd.CommandText = sql;
@@ -194,6 +201,7 @@ public class CartRepository : ICartRepository
 
     public async Task ClearAllAsync(long userId, CancellationToken cancellationToken = default)
     {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = "DELETE FROM cart WHERE user_id = :UserId";
         await using var cmd = Connection.CreateCommand();
         cmd.CommandText = sql;
