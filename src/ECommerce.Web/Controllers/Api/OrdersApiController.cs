@@ -85,12 +85,14 @@ public sealed class OrdersApiController : ApiControllerBase
     {
         var userId = GetCurrentUserId();
         var userName = GetCurrentUserName();
+        var ipAddress = GetClientIpAddress();
 
         await _orderService.CancelAsync(
             userId,      // 订单归属者
             orderId,
             userId,      // 操作人（用户自己）
             userName,    // 操作人姓名
+            ipAddress,
             request?.Reason,
             cancellationToken);
 

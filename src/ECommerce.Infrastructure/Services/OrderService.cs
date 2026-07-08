@@ -274,7 +274,7 @@ public class OrderService : IOrderService
         return await _orderRepository.GetOrderSkuQuantitiesAsync(orderId, cancellationToken);
     }
 
-    public async Task CancelAsync(long userId, long orderId, long operatorId, string operatorName, string? reason, CancellationToken cancellationToken = default)
+    public async Task CancelAsync(long userId, long orderId, long operatorId, string operatorName, string ipAddress, string? reason, CancellationToken cancellationToken = default)
     {
         // 1. 查询订单
         var order = await _orderRepository.GetOrderByIdAsync(orderId, cancellationToken);
@@ -323,7 +323,7 @@ public class OrderService : IOrderService
                     Module: "订单管理",
                     Action: "后台取消订单",
                     Description: $"管理员 {operatorName} 取消订单 {order.OrderNo}，原因：{reason ?? "无"}",
-                    IpAddress: "",  // TODO: 由 Controller 传入真实 IP
+                    IpAddress: ipAddress,
                     RequestParams: null,
                     Result: (int)OperationResult.Success
                 ), cancellationToken);
@@ -433,7 +433,7 @@ public class OrderService : IOrderService
         }
     }
 
-    public async Task MarkShippedAsync(long orderId, long logisticsId, long operatorId, string operatorName, CancellationToken cancellationToken = default)
+    public async Task MarkShippedAsync(long orderId, long logisticsId, long operatorId, string operatorName, string ipAddress, CancellationToken cancellationToken = default)
     {
         var order = await _orderRepository.GetOrderByIdAsync(orderId, cancellationToken);
         if (order == null)
@@ -466,7 +466,7 @@ public class OrderService : IOrderService
                 "订单管理",
                 "发货",
                 $"订单 {order.OrderNo} 已发货，物流ID：{logisticsId}",
-                "",  // IP 由 Controller 传入
+                ipAddress,
                 null,
                 (int)OperationResult.Success
             ), cancellationToken);
