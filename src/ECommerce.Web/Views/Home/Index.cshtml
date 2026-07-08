@@ -1,66 +1,85 @@
 @{
-    ViewData["Title"] = "项目状态";
+    ViewData["Title"] = "首页";
 }
 
-<div class="container py-4">
-    <div class="mb-4">
-        <h1 class="h2">电商购物平台 - 项目状态</h1>
-        <p class="text-muted mb-0">
-            当前版本是 ASP.NET Core MVC 项目骨架，已定义五层目录、接口 DTO、Service 接口、API 路由骨架、登录页、健康检查和 Vue Dashboard 示例页。
-            业务功能还没有正式实现，各成员需要在自己的分支补齐对应 Service、Repository、Controller 和页面。
-        </p>
-    </div>
+<div class="home-page py-4">
+    <section class="border rounded bg-light p-4 p-lg-5 mb-4">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-8">
+                <p class="text-uppercase text-muted small fw-semibold mb-2">ECommerce Management</p>
+                <h1 class="display-6 fw-semibold mb-3">电商购物平台</h1>
+                <p class="lead text-muted mb-0">
+                    服务器部署成功后可以从这里进入前台购物流程、后台订单管理、登录注册和系统检查页面。
+                    购物车、订单等页面需要登录后访问；未登录时会自动跳转到登录页。
+                </p>
+            </div>
+            <div class="col-lg-4">
+                <div class="d-grid gap-2">
+                    <a class="btn btn-primary btn-lg" href="/cart">进入购物车</a>
+                    <a class="btn btn-outline-primary btn-lg" href="/orders">查看我的订单</a>
+                    <a class="btn btn-outline-secondary btn-lg" href="/admin/orders">后台订单管理</a>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <div class="border rounded p-3 h-100">
-                <h2 class="h5">可以直接打开</h2>
-                <ul class="mb-0">
-                    <li><a href="/health">/health</a>：应用健康检查</li>
-                    <li><a href="/account/login">/account/login</a>：登录页占位</li>
-                    <li><a href="/account/register">/account/register</a>：注册页占位</li>
-                    <li><a href="/admin/dashboard">/admin/dashboard</a>：Vue Dashboard 示例页</li>
-                </ul>
+        <div class="col-md-6 col-xl-3">
+            <div class="border rounded p-3 h-100 bg-white">
+                <h2 class="h5">前台用户</h2>
+                <p class="text-muted small">面向普通用户的购物、结算和订单页面。</p>
+                <div class="d-grid gap-2">
+                    <a class="btn btn-outline-primary" href="/cart">购物车</a>
+                    <a class="btn btn-outline-primary" href="/orders">我的订单</a>
+                    <a class="btn btn-outline-primary" href="/orders/create">创建订单</a>
+                </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="border rounded p-3 h-100">
-                <h2 class="h5">接口当前状态</h2>
-                <p class="mb-2"><code>/api/v1/...</code> 路由已占位。</p>
-                <p class="mb-0">大多数业务接口当前会返回 <code>501 NOT_IMPLEMENTED</code>，表示接口已定义但实现等待对应成员完成。</p>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="border rounded p-3 h-100 bg-white">
+                <h2 class="h5">后台管理</h2>
+                <p class="text-muted small">面向客服和管理员的后台入口。</p>
+                <div class="d-grid gap-2">
+                    <a class="btn btn-outline-secondary" href="/admin">后台首页</a>
+                    <a class="btn btn-outline-secondary" href="/admin/orders">订单管理</a>
+                </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="border rounded p-3 h-100">
-                <h2 class="h5">开发前先看</h2>
-                <ul class="mb-0">
-                    <li><a href="/docs/team-guide">组员开工指南</a></li>
-                    <li><a href="/docs/development-spec">开发规范</a></li>
-                    <li><a href="https://github.com/Stonerxx/E-commerce-management/pull/1">当前 PR</a></li>
-                </ul>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="border rounded p-3 h-100 bg-white">
+                <h2 class="h5">账号入口</h2>
+                <p class="text-muted small">登录和注册页面仍保留统一入口。</p>
+                <div class="d-grid gap-2">
+                    <a class="btn btn-outline-success" href="/account/login">登录</a>
+                    <a class="btn btn-outline-success" href="/account/register">注册</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="border rounded p-3 h-100 bg-white">
+                <h2 class="h5">系统检查</h2>
+                <p class="text-muted small">部署后优先确认服务和数据库连接。</p>
+                <div class="d-grid gap-2">
+                    <a class="btn btn-outline-dark" href="/health">健康检查</a>
+                    <a class="btn btn-outline-dark" href="/api/v1/system/db-check">数据库检查</a>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="border rounded p-3 mb-4">
-        <h2 class="h5">启动后怎么用</h2>
-        <ol class="mb-0">
-            <li>在终端运行 <code>dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj</code>。</li>
-            <li>不要关闭该终端；看到 <code>Now listening on: http://localhost:5052</code> 表示服务正在运行。</li>
-            <li>浏览器打开 <code>http://localhost:5052/</code>。</li>
-            <li>如果终端回到 PowerShell 提示符，说明服务已经停止，需要重新运行命令。</li>
-        </ol>
-    </div>
-
-    <div class="border rounded p-3">
-        <h2 class="h5">下一步开发顺序</h2>
-        <ol class="mb-0">
-            <li>第 1 人配置真实 Oracle，执行数据库初始化，完成服务器部署和截图。</li>
-            <li>第 2 人实现登录注册、角色权限、地址、操作日志。</li>
-            <li>第 3 人实现分类、商品、SKU、库存。</li>
-            <li>第 4 人实现购物车、创建订单、取消订单、确认收货。</li>
-            <li>第 5 人实现优惠券、支付、物流、评价。</li>
-            <li>第 6 人实现后台首页、统计、导出、UI 统一、测试和文档。</li>
-        </ol>
-    </div>
+    <section class="border rounded p-3 mb-4">
+        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+            <div>
+                <h2 class="h5 mb-1">开发文档</h2>
+                <p class="text-muted mb-0">需要确认分支、接口、权限和页面路由时，可以直接打开这些文档。</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2 align-items-start">
+                <a class="btn btn-sm btn-outline-secondary" href="/docs/team-guide">组员开工指南</a>
+                <a class="btn btn-sm btn-outline-secondary" href="/docs/development-spec">开发规范</a>
+            </div>
+        </div>
+    </section>
 </div>

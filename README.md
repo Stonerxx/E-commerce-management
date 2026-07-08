@@ -87,7 +87,15 @@ Invoke-RestMethod http://localhost:5052/api/v1/system/db-check
 - `deployment/` 下已提供发布脚本、环境变量样例、systemd 服务样例和 Nginx 反向代理样例。
 - 服务器最终验收还需要填真实 `Oracle__ConnectionString`，运行初始化脚本，截图证明服务器公网地址能访问。
 
-发布包生成：
+发布推荐走 GitHub Actions：
+
+```text
+push main 或 feat-member1-foundation-oracle-deploy
+-> GitHub Actions 编译并上传产物
+-> 服务器只解压、替换目录、重启 ecommerce
+```
+
+详细步骤见 [发布说明](docs/PUBLISH.md)。本地发布包仍可手动生成：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File deployment/publish.ps1

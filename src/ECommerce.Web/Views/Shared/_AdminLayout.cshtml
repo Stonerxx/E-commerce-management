@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - ECommerce Admin</title>
+    <title>@ViewData["Title"] - 电商后台</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
@@ -11,12 +11,20 @@
     <header class="border-bottom">
         <nav class="navbar navbar-expand-sm navbar-light bg-white">
             <div class="container-fluid">
-                <a class="navbar-brand" href="/admin">ECommerce Admin</a>
-                <div class="navbar-nav">
-                    <a class="nav-link" href="/admin/products">Products</a>
-                    <a class="nav-link" href="/admin/orders">Orders</a>
-                    <a class="nav-link" href="/admin/statistics">Statistics</a>
-                    <a class="nav-link" href="/admin/operation-logs">Logs</a>
+                <a class="navbar-brand" href="/admin">电商后台</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar" aria-controls="adminNavbar"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div id="adminNavbar" class="navbar-collapse collapse">
+                    <div class="navbar-nav me-auto">
+                        <a class="nav-link" href="/admin">后台首页</a>
+                        <a class="nav-link" href="/admin/orders">订单管理</a>
+                    </div>
+                    <div class="navbar-nav">
+                        <a class="nav-link" href="/">返回前台</a>
+                        <a class="nav-link" href="/health">健康检查</a>
+                    </div>
                 </div>
             </div>
         </nav>
