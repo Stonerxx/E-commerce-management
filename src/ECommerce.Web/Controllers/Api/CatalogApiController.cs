@@ -29,7 +29,8 @@ public sealed class CatalogApiController : ApiControllerBase
     [HttpGet("products")]
     public async Task<ActionResult<ApiResponse<PagedResult<ProductListItemDto>>>> Products([FromQuery] ProductQuery query, CancellationToken cancellationToken)
     {
-        var result = await _productService.SearchAsync(query, cancellationToken);
+        var effectiveQuery = query.Status.HasValue ? query : query with { Status = 1 };
+        var result = await _productService.SearchAsync(effectiveQuery, cancellationToken);
         return Ok(ApiResponse<PagedResult<ProductListItemDto>>.Ok(result));
     }
 
@@ -37,6 +38,10 @@ public sealed class CatalogApiController : ApiControllerBase
     public async Task<ActionResult<ApiResponse<ProductDetailDto>>> ProductDetail(long productId, CancellationToken cancellationToken)
     {
         var product = await _productService.GetDetailAsync(productId, cancellationToken);
+        if (product.Status != 1 && product.Status != 2)
+        {
+            return NotFound(ApiResponse<ProductDetailDto>.Fail("PRODUCT_NOT_FOUND", "商品不存在"));
+        }
         return Ok(ApiResponse<ProductDetailDto>.Ok(product));
     }
 }

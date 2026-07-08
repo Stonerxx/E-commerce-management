@@ -172,9 +172,9 @@ public sealed class ProductService : IProductService
 
     public async Task SetStatusAsync(long productId, int status, long operatorId, CancellationToken cancellationToken = default)
     {
-        if (status != 0 && status != 1)
+        if (status != 0 && status != 1 && status != 2)
         {
-            throw new BusinessException("PRODUCT_STATUS_INVALID", "商品状态只能是0（下架）或1（上架）");
+            throw new BusinessException("PRODUCT_STATUS_INVALID", "商品状态只能是0（下架）、1（上架）或2（预售）");
         }
 
         var product = await _productRepository.GetByIdAsync(productId, cancellationToken);
@@ -192,17 +192,17 @@ public sealed class ProductService : IProductService
         {
             throw new BusinessException("PRODUCT_NAME_EMPTY", "商品名称不能为空");
         }
-        if (request.Name.Length > 500)
+        if (request.Name.Length > 200)
         {
-            throw new BusinessException("PRODUCT_NAME_TOO_LONG", "商品名称不能超过500个字符");
+            throw new BusinessException("PRODUCT_NAME_TOO_LONG", "商品名称不能超过200个字符");
         }
         if (string.IsNullOrWhiteSpace(request.MainImage))
         {
             throw new BusinessException("PRODUCT_MAIN_IMAGE_EMPTY", "商品主图不能为空");
         }
-        if (request.Status != 0 && request.Status != 1)
+        if (request.Status != 0 && request.Status != 1 && request.Status != 2)
         {
-            throw new BusinessException("PRODUCT_STATUS_INVALID", "商品状态只能是0（下架）或1（上架）");
+            throw new BusinessException("PRODUCT_STATUS_INVALID", "商品状态只能是0（下架）、1（上架）或2（预售）");
         }
     }
 

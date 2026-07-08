@@ -25,7 +25,7 @@ public sealed class ProductSpecRepository : IProductSpecRepository
     public async Task<IReadOnlyList<ProductSpec>> GetByProductAsync(long productId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "SELECT id, spec_name, spec_value, sort_order FROM PRODUCT_SPEC WHERE product_id = :productId ORDER BY sort_order";
+        const string sql = "SELECT id, product_id, spec_name, spec_value, sort_order, created_at FROM PRODUCT_SPEC WHERE product_id = :productId ORDER BY sort_order";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)

@@ -30,6 +30,9 @@ public static class DependencyInjection
         services.AddScoped<ISkuRepository, SkuRepository>();
         services.AddScoped<ISkuService, SkuService>();
 
+        services.AddScoped<IInventoryLogRepository, InventoryLogRepository>();
+        services.AddScoped<IInventoryService, InventoryService>();
+
         return services;
     }
 }

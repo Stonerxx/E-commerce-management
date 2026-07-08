@@ -173,6 +173,7 @@ CREATE TABLE "CATEGORY" (
     sort_order   NUMBER(10) DEFAULT 0,
     status       NUMBER(1) DEFAULT 1 NOT NULL,
     icon_url     VARCHAR2(500),
+    created_at   DATE DEFAULT SYSDATE NOT NULL,
     CONSTRAINT fk_cat_parent FOREIGN KEY (parent_id) REFERENCES "CATEGORY"(id),
     CONSTRAINT ch_cat_level CHECK (tree_level BETWEEN 1 AND 5),
     CONSTRAINT ch_cat_status CHECK (status IN (0,1))
@@ -185,6 +186,7 @@ COMMENT ON COLUMN "CATEGORY".tree_level IS '层级：1=一级，2=二级';
 COMMENT ON COLUMN "CATEGORY".sort_order IS '排序序号，数值越小越靠前';
 COMMENT ON COLUMN "CATEGORY".status IS '状态：0=禁用，1=启用';
 COMMENT ON COLUMN "CATEGORY".icon_url IS '分类图标URL';
+COMMENT ON COLUMN "CATEGORY".created_at IS '创建时间';
 
 -- 8. product 表（商品主表）
 CREATE TABLE PRODUCT (
@@ -240,6 +242,7 @@ CREATE TABLE PRODUCT_SPEC (
     spec_name    VARCHAR2(100) NOT NULL,
     spec_value   VARCHAR2(200) NOT NULL,
     sort_order   NUMBER(10) DEFAULT 0,
+    created_at   DATE DEFAULT SYSDATE NOT NULL,
     CONSTRAINT fk_ps_product FOREIGN KEY (product_id) REFERENCES PRODUCT(id)
 );
 COMMENT ON TABLE PRODUCT_SPEC IS '商品规格表';
@@ -248,6 +251,7 @@ COMMENT ON COLUMN PRODUCT_SPEC.product_id IS '商品ID，外键→product.id';
 COMMENT ON COLUMN PRODUCT_SPEC.spec_name IS '规格名称，如颜色、尺码';
 COMMENT ON COLUMN PRODUCT_SPEC.spec_value IS '规格值，如红色、M码';
 COMMENT ON COLUMN PRODUCT_SPEC.sort_order IS '排序序号，同一规格名下的选项排序';
+COMMENT ON COLUMN PRODUCT_SPEC.created_at IS '创建时间';
 
 -- 11. sku 表（商品SKU表）
 CREATE TABLE SKU (
@@ -261,6 +265,8 @@ CREATE TABLE SKU (
     warning_stock    NUMBER(10) DEFAULT 0 NOT NULL,
     sku_image        VARCHAR2(500),
     status           NUMBER(1) DEFAULT 1 NOT NULL,
+    created_at       DATE DEFAULT SYSDATE NOT NULL,
+    updated_at       DATE DEFAULT SYSDATE NOT NULL,
     CONSTRAINT fk_sku_product FOREIGN KEY (product_id) REFERENCES PRODUCT(id),
     CONSTRAINT ch_sku_spec_desc_json CHECK (spec_desc IS JSON),
     CONSTRAINT ch_sku_status CHECK (status IN (0,1))
@@ -276,6 +282,8 @@ COMMENT ON COLUMN SKU.locked_stock IS '锁定库存（已下单未支付）';
 COMMENT ON COLUMN SKU.warning_stock IS '预警库存阈值';
 COMMENT ON COLUMN SKU.sku_image IS 'SKU图片URL';
 COMMENT ON COLUMN SKU.status IS '状态：0=停售，1=在售';
+COMMENT ON COLUMN SKU.created_at IS '创建时间';
+COMMENT ON COLUMN SKU.updated_at IS '更新时间';
 
 -- 12. inventory_log 表（库存变动日志表）
 CREATE TABLE INVENTORY_LOG (
@@ -291,12 +299,12 @@ CREATE TABLE INVENTORY_LOG (
     created_at     DATE DEFAULT SYSDATE NOT NULL,
     CONSTRAINT fk_ilog_sku FOREIGN KEY (sku_id) REFERENCES SKU(id),
     CONSTRAINT fk_ilog_operator FOREIGN KEY (operator_id) REFERENCES "USER"(id),
-    CONSTRAINT ch_ilog_type CHECK (change_type IN ('SALE','CANCEL','RESTOCK','ADJUST'))
+    CONSTRAINT ch_ilog_type CHECK (change_type IN ('SALE','CANCEL','RESTOCK','ADJUST','ORDER_LOCK','ORDER_RELEASE','ORDER_DEDUCT'))
 );
 COMMENT ON TABLE INVENTORY_LOG IS '库存变动日志表';
 COMMENT ON COLUMN INVENTORY_LOG.id IS '日志ID，自增主键';
 COMMENT ON COLUMN INVENTORY_LOG.sku_id IS 'SKU ID，外键→sku.id';
-COMMENT ON COLUMN INVENTORY_LOG.change_type IS '变动类型：SALE/CANCEL/RESTOCK/ADJUST';
+COMMENT ON COLUMN INVENTORY_LOG.change_type IS '变动类型：SALE/CANCEL/RESTOCK/ADJUST/ORDER_LOCK/ORDER_RELEASE/ORDER_DEDUCT';
 COMMENT ON COLUMN INVENTORY_LOG.change_qty IS '变动数量，正数入库，负数出库';
 COMMENT ON COLUMN INVENTORY_LOG.before_stock IS '变动前库存';
 COMMENT ON COLUMN INVENTORY_LOG.after_stock IS '变动后库存';
