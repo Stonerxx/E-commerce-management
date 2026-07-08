@@ -3,16 +3,16 @@ Description=ECommerce ASP.NET Core MVC application
 After=network.target
 
 [Service]
-WorkingDirectory=/opt/ecommerce
-ExecStart=/usr/bin/dotnet /opt/ecommerce/ECommerce.Web.dll
+WorkingDirectory=/var/www/ecommerce
+ExecStart=/usr/bin/dotnet /var/www/ecommerce/ECommerce.Web.dll
 Restart=always
 RestartSec=10
 KillSignal=SIGINT
 SyslogIdentifier=ecommerce
 User=www-data
 Environment="ASPNETCORE_ENVIRONMENT=Production"
-Environment="ASPNETCORE_URLS=http://127.0.0.1:5052"
-Environment="Oracle__ConnectionString=User Id=ECOMMERCE;Password=change_me;Data Source=127.0.0.1:1521/XEPDB1"
+Environment="ASPNETCORE_URLS=http://127.0.0.1:5000"
+Environment="Oracle__ConnectionString=User Id=ECOMMERCE_DEMO;Password=change_me;Data Source=127.0.0.1:1521/XEPDB1"
 
 [Install]
 WantedBy=multi-user.target
