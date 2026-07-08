@@ -28,6 +28,33 @@ public abstract class ApiControllerBase : ControllerBase
     }
 
     /// <summary>
+    /// 获取客户端 IP 地址
+    /// </summary>
+    protected string GetClientIpAddress()
+    {
+        if (Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
+        {
+            var firstForwardedIp = forwardedFor
+                .ToString()
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .FirstOrDefault();
+
+            if (!string.IsNullOrWhiteSpace(firstForwardedIp))
+            {
+                return firstForwardedIp;
+            }
+        }
+
+        if (Request.Headers.TryGetValue("X-Real-IP", out var realIp)
+            && !string.IsNullOrWhiteSpace(realIp.ToString()))
+        {
+            return realIp.ToString();
+        }
+
+        return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    }
+
+    /// <summary>
     /// 返回 501 未实现（用于骨架占位）
     /// </summary>
     protected ActionResult<ApiResponse<T>> NotReady<T>(string message)

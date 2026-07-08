@@ -56,6 +56,7 @@ public sealed class AdminOrdersApiController : ApiControllerBase
     {
         var operatorId = GetCurrentUserId();
         var operatorName = GetCurrentUserName();
+        var ipAddress = GetClientIpAddress();
 
         // 获取订单归属者 ID
         var context = await _orderService.GetPaymentContextAsync(0, orderId, cancellationToken);
@@ -67,6 +68,7 @@ public sealed class AdminOrdersApiController : ApiControllerBase
             orderId,
             operatorId,      // 管理员自己
             operatorName,    // 管理员姓名
+            ipAddress,
             request?.Reason ?? "后台强制取消",
             cancellationToken);
 
