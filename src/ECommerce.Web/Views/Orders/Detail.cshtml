@@ -1,0 +1,130 @@
+﻿@{
+    Layout = "_Layout";
+    ViewData["Title"] = "订单详情";
+    var orderId = ViewData["OrderId"] as long? ?? 0;
+}
+
+<div id="orderDetailApp" v-cloak>
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3">订单详情</h1>
+            <a href="/orders" class="btn btn-outline-secondary">返回列表</a>
+        </div>
+
+        <div v-if="loading" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+        </div>
+
+        <div v-else-if="order" class="vstack gap-3">
+            <!-- 订单状态 -->
+            <div class="border rounded p-3 bg-white">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div>
+                        <span class="text-muted small">订单号：</span>
+                        <strong>{{ order.orderNo }}</strong>
+                    </div>
+                    <div>
+                        <span class="badge" v-bind:class="getStatusBadge(order.status)">
+                            {{ getStatusText(order.status) }}
+                        </span>
+                        <span class="text-muted small ms-2">¥{{ order.payAmount.toFixed(2) }}</span>
+                    </div>
+                </div>
+                <div class="text-muted small mt-2">
+                    创建时间：{{ formatDate(order.createdAt) }}
+                </div>
+                <div v-if="order.remark" class="mt-1">
+                    <span class="text-muted small">备注：</span>
+                    <span>{{ order.remark }}</span>
+                </div>
+            </div>
+
+            <!-- 收货信息 -->
+            <div class="border rounded p-3 bg-white">
+                <h2 class="h6 mb-2">收货信息</h2>
+                <div v-if="order.receiverSnapshotJson">
+                    <p class="mb-1">{{ parseReceiver(receiverSnapshotJson) }}</p>
+                </div>
+            </div>
+
+            <!-- 商品明细 -->
+            <div class="border rounded p-3 bg-white">
+                <h2 class="h6 mb-2">商品明细</h2>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>商品</th>
+                                <th class="text-center">单价</th>
+                                <th class="text-center">数量</th>
+                                <th class="text-end">小计</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="item in order.items" v-bind:key="item.orderItemId">
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <img v-bind:src="item.mainImage || '/images/default-product.jpg'" alt="商品图片" class="img-thumbnail" style="width:40px;height:40px;object-fit:cover;" />
+                                        <div>
+                                            <div>{{ item.productName }}</div>
+                                            <div class="text-muted small">{{ item.specSnap }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center">¥{{ item.unitPrice.toFixed(2) }}</td>
+                                <td class="text-center">{{ item.quantity }}</td>
+                                <td class="text-end">¥{{ item.subtotal.toFixed(2) }}</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3" class="text-end"><strong>商品总额：</strong></td>
+                                <td class="text-end">¥{{ order.totalAmount.toFixed(2) }}</td>
+                            </tr>
+                            <tr v-if="order.discountAmount > 0">
+                                <td colspan="3" class="text-end"><strong>优惠金额：</strong></td>
+                                <td class="text-end text-danger">-¥{{ order.discountAmount.toFixed(2) }}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="3" class="text-end"><strong>实付金额：</strong></td>
+                                <td class="text-end"><strong class="text-danger">¥{{ order.payAmount.toFixed(2) }}</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="d-flex gap-2">
+                <button v-if="order.status === 0" class="btn btn-primary" v-on:click="goPay(order.orderId)">去支付</button>
+                <button v-if="order.status === 0" class="btn btn-outline-danger" v-on:click="cancelOrder(order.orderId)">取消订单</button>
+                <button v-if="order.status === 2" class="btn btn-outline-success" v-on:click="confirmOrder(order.orderId)">确认收货</button>
+            </div>
+
+            <!-- 订单日志 -->
+            <div class="border rounded p-3 bg-white" v-if="order.logs && order.logs.length > 0">
+                <h2 class="h6 mb-2">订单追踪</h2>
+                <div class="timeline">
+                    <div v-for="log in order.logs" v-bind:key="log.logId" class="d-flex gap-3 mb-2">
+                        <span class="text-muted small" style="min-width:120px;">{{ formatDate(log.createdAt) }}</span>
+                        <span>{{ getLogDescription(log) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-else class="text-center py-5">
+            <p class="text-muted">订单不存在</p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script>
+        window.__ORDER_ID = @orderId;
+    </script>
+    <script src="~/js/order-detail.js" asp-append-version="true"></script>
+}
