@@ -38,4 +38,15 @@ public sealed class OrdersController : Controller
         ViewData["OrderId"] = orderId;
         return View();
     }
+
+    /// <summary>
+    /// 订单确认/结算页
+    /// </summary>
+    [HttpGet("/orders/create")]
+    public IActionResult Create([FromQuery] string cartItemIds)
+    {
+        // 将选中的购物车项 ID 传给前端，用于预览和提交
+        ViewData["CartItemIds"] = cartItemIds;
+        return View();
+    }
 }
