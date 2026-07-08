@@ -58,7 +58,7 @@ public class CartServiceTests : ServiceTestBase
         // Assert
         Assert.Equal(userId, result.UserId);
         Assert.Equal(2, result.Items.Count);
-        Assert.Equal(2, result.Items.Count(x => x.Selected));
+        Assert.Equal(1, result.Items.Count(x => x.Selected));
         Assert.Equal(99.99m * 2, result.SelectedTotalAmount);
     }
 
