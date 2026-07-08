@@ -1,9 +1,9 @@
-﻿namespace ECommerce.Domain.Entities;
+namespace ECommerce.Domain.Entities;
 
 public class Product
 {
     public long Id { get; set; }
-    public long CategoryId { get; set; }
+    public int CategoryId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string MainImage { get; set; } = string.Empty;
