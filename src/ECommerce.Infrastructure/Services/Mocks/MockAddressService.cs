@@ -5,6 +5,7 @@ namespace ECommerce.Infrastructure.Services.Mocks;
 
 /// <summary>
 /// 临时 Mock 实现，用于解决 IAddressService 依赖注入问题。
+/// TEMP_DEMO_ADDRESS: 只用于 member2 地址模块合入前的演示下单。
 /// 待 Member2 完成 AddressService 后删除此文件。
 /// </summary>
 public class MockAddressService : IAddressService
@@ -61,7 +62,7 @@ public class MockAddressService : IAddressService
 
     public Task<long> CreateAsync(long userId, AddressRequest request, CancellationToken cancellationToken = default)
     {
-        // 临时 Mock 只服务演示读取，避免返回数据库中不存在的地址 ID。
+        // TEMP_DEMO_ADDRESS: 临时 Mock 只服务演示读取，避免返回数据库中不存在的地址 ID。
         return Task.FromResult(0L);
     }
 

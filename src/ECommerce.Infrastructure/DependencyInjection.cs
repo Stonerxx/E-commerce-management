@@ -29,7 +29,7 @@ public static class DependencyInjection
         // Member4
         services.AddScoped<ICartService, CartService>();
         services.AddScoped<IOrderService, OrderService>();
-        // Mock
+        // TEMP_DEMO_* mocks keep the current demo flow runnable until member2/3/5 real services are merged.
         services.AddScoped<ISkuService, MockSkuService>();
         services.AddScoped<IAddressService, MockAddressService>();
         services.AddScoped<IInventoryService, MockInventoryService>();

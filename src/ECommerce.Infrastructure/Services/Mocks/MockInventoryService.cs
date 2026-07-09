@@ -6,6 +6,7 @@ namespace ECommerce.Infrastructure.Services.Mocks;
 
 /// <summary>
 /// 临时 Mock 实现，用于解决 IInventoryService 依赖注入问题。
+/// TEMP_DEMO_INVENTORY: 只用于 member3 库存模块合入前的演示下单和支付。
 /// 待 Member3 完成 InventoryService 后删除此文件。
 /// </summary>
 public class MockInventoryService : IInventoryService
@@ -18,19 +19,19 @@ public class MockInventoryService : IInventoryService
 
     public Task LockForOrderAsync(long orderId, IReadOnlyList<OrderSkuQuantity> items, CancellationToken cancellationToken = default)
     {
-        // Mock 锁定库存，静默成功（订单模块可继续执行）
+        // TEMP_DEMO_INVENTORY: Mock 锁定库存，静默成功（订单模块可继续执行）。
         return Task.CompletedTask;
     }
 
     public Task ReleaseForCancelledOrderAsync(long orderId, IReadOnlyList<OrderSkuQuantity> items, CancellationToken cancellationToken = default)
     {
-        // Mock 释放锁定库存，静默成功
+        // TEMP_DEMO_INVENTORY: Mock 释放锁定库存，静默成功。
         return Task.CompletedTask;
     }
 
     public Task DeductForPaidOrderAsync(long orderId, IReadOnlyList<OrderSkuQuantity> items, CancellationToken cancellationToken = default)
     {
-        // Mock 扣减库存，静默成功
+        // TEMP_DEMO_INVENTORY: Mock 扣减库存，静默成功。
         return Task.CompletedTask;
     }
 

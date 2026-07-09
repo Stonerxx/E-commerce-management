@@ -5,13 +5,14 @@ namespace ECommerce.Infrastructure.Services.Mocks;
 
 /// <summary>
 /// 临时 Mock 实现，用于解决 ISkuService 依赖注入问题。
+/// TEMP_DEMO_SKU: 只用于 member3 SKU 模块合入前的演示下单。
 /// 待 Member3 完成 SkuService 后删除此文件。
 /// </summary>
 public class MockSkuService : ISkuService
 {
     public Task<SkuDto?> GetByIdAsync(long skuId, CancellationToken cancellationToken = default)
     {
-        // 返回一个模拟的 SKU 数据，满足基本校验需要
+        // TEMP_DEMO_SKU: 返回一个模拟的 SKU 数据，满足基本校验需要。
         var mockSku = new SkuDto(
             SkuId: skuId,
             ProductId: 1,
@@ -53,6 +54,12 @@ public class MockSkuService : ISkuService
     public Task SetStatusAsync(long skuId, int status, long operatorId, CancellationToken cancellationToken = default)
     {
         // Mock 更新状态
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteByProductAsync(long productId, CancellationToken cancellationToken = default)
+    {
+        // TEMP_DEMO_SKU: 预先兼容 member3 新增的 ISkuService.DeleteByProductAsync。
         return Task.CompletedTask;
     }
 }

@@ -135,6 +135,7 @@
             },
 
             goPay(orderId) {
+                // TEMP_DEMO_PAYMENT: member5 合入前先跳转到临时模拟支付页。
                 window.location.href = `/payment/${orderId}`;
             }
         }

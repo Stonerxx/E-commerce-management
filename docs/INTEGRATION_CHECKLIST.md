@@ -101,6 +101,31 @@ migration/init_database.sql
 - Service 实现方法签名。
 - 测试里的构造参数和断言。
 
+### 5.1 member2/member3 预审记录
+
+预审时间：2026-07-09。只读审查命令：
+
+```powershell
+git fetch origin --prune
+git diff --name-status HEAD..origin/feat-member2-user-permission-address-log -- src/ECommerce.Application/DTOs src/ECommerce.Application/Services src/ECommerce.Shared/Constants/AuthConstants.cs migration/init_database.sql
+git diff --name-status HEAD..origin/feat-member3-product-category-sku-inventory -- src/ECommerce.Application/DTOs src/ECommerce.Application/Services src/ECommerce.Shared/Constants/AuthConstants.cs migration/init_database.sql
+```
+
+member2 当前公共文件差异：
+
+- 新增 `src/ECommerce.Application/DTOs/PermissionDtos.cs`。
+- 新增 `src/ECommerce.Application/Services/IPermissionService.cs`。
+- 未改 `AuthConstants.cs` 和 `migration/init_database.sql`。
+- 初判低风险；合并时重点确认角色 ID 类型使用 `int` 是否和数据库表、真实 Repository 一致。
+
+member3 当前公共文件差异：
+
+- 修改 `src/ECommerce.Application/Services/ISkuService.cs`，新增 `DeleteByProductAsync(long productId, CancellationToken cancellationToken = default)`。
+- 修改 `migration/init_database.sql`：`CATEGORY`、`PRODUCT_SPEC`、`SKU` 增加创建/更新时间字段；`INVENTORY_LOG.change_type` 扩展 `ORDER_LOCK`、`ORDER_RELEASE`、`ORDER_DEDUCT`。
+- 已在当前临时 `MockSkuService` 中预先补同名方法，避免合入 member3 后接口变更导致编译失败。
+- 已在 `InventoryChangeType` 中预先补 `OrderLock`、`OrderRelease`、`OrderDeduct` 常量。
+- 合并时重点确认 `seed_demo_data.sql` 的 `SKU`、`PRODUCT_SPEC`、`CATEGORY` 插入语句是否依赖默认时间字段；当前字段有默认值，理论上无需补列。
+
 ## 6. 数据库统合检查
 
 每合一个成员分支后检查：
@@ -134,13 +159,18 @@ migration/seed_demo_data.sql
 
 注意：`seed_demo_data.sql` 使用 9000-9999 号段的显式 ID，可重复执行；其中 `password_hash` 是占位值，member2 完成真实认证后需要替换为登录算法对应的哈希。
 
-## 7. 临时 Demo 登录标记
+## 7. 临时演示逻辑标记
 
-当前为了让购物车、订单和后台页面可以提前联调，`AccountController` 里保留了临时登录逻辑：
+当前为了让购物车、订单、支付和后台页面可以提前联调，代码里保留了以下临时逻辑：
 
-```text
-TEMP_DEMO_AUTH
-```
+| 标记 | 文件 | 替换来源 | 处理要求 |
+| --- | --- | --- | --- |
+| `TEMP_DEMO_AUTH` | `src/ECommerce.Web/Controllers/AccountController.cs` | member2 真实认证 | 替换为真实 `IAuthService` 登录 |
+| `TEMP_DEMO_ADDRESS` | `src/ECommerce.Infrastructure/Services/Mocks/MockAddressService.cs` | member2 地址服务 | 替换为真实地址查询和维护 |
+| `TEMP_DEMO_SKU` | `src/ECommerce.Infrastructure/Services/Mocks/MockSkuService.cs` | member3 SKU 服务 | 替换为真实 SKU 查询和维护 |
+| `TEMP_DEMO_INVENTORY` | `src/ECommerce.Infrastructure/Services/Mocks/MockInventoryService.cs` | member3 库存服务 | 替换为真实锁库存、释放库存和扣减库存 |
+| `TEMP_DEMO_COUPON` | `src/ECommerce.Infrastructure/Services/Mocks/MockCouponService.cs` | member5 优惠券服务 | 替换为真实优惠券查询、校验和核销 |
+| `TEMP_DEMO_PAYMENT` | `src/ECommerce.Web/Controllers/PaymentController.cs` | member5 支付服务 | 替换为真实支付页面、支付记录和回调 |
 
 配置位置：
 
@@ -168,6 +198,14 @@ member2 合入真实注册登录后必须处理：
 - 确认登录后写入 `NameIdentifier`、`Name`、`Role` claims。
 - 如不再需要，删除或关闭 `DemoAuth` 配置。
 
+最终统合前必须运行：
+
+```powershell
+rg -n "TEMP_DEMO_" src docs README.md
+```
+
+逐项确认临时代码是否已经替换或是否仍需要保留。
+
 ## 8. 权限和路由检查
 
 前台页面：
@@ -180,6 +218,7 @@ GET /cart
 GET /orders
 GET /orders/{orderId}
 GET /orders/create
+GET /payment/{orderId}
 ```
 
 后台页面：
@@ -197,6 +236,7 @@ GET /admin/orders/{orderId}
 GET /health
 GET /api/v1/system/db-check
 GET /api/v1/system/version
+GET /docs/demo-flow
 ```
 
 权限要求：

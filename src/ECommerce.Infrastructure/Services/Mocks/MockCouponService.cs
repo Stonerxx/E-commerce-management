@@ -6,6 +6,7 @@ namespace ECommerce.Infrastructure.Services.Mocks;
 
 /// <summary>
 /// 临时 Mock 实现，用于解决 ICouponService 依赖注入问题。
+/// TEMP_DEMO_COUPON: 只用于 member5 优惠券模块合入前的演示下单。
 /// 待 Member5 完成 CouponService 后删除此文件。
 /// </summary>
 public class MockCouponService : ICouponService
@@ -42,14 +43,14 @@ public class MockCouponService : ICouponService
 
     public Task<IReadOnlyList<UserCouponDto>> GetMineAsync(long userId, CancellationToken cancellationToken = default)
     {
-        // 返回空列表（没有可用优惠券）
+        // TEMP_DEMO_COUPON: 返回空列表（没有可用优惠券）。
         return Task.FromResult<IReadOnlyList<UserCouponDto>>(Array.Empty<UserCouponDto>());
     }
 
     public Task<CouponValidationDto> ValidateAsync(long userId, long userCouponId, decimal orderAmount, CancellationToken cancellationToken = default)
     {
-        // 返回一个"可用"的验证结果，但优惠金额为 0（相当于没有优惠）
-        // 这样订单模块可以正常走完流程，只是没有优惠
+        // TEMP_DEMO_COUPON: 返回一个可用的验证结果，但优惠金额为 0。
+        // 这样订单模块可以正常走完流程，只是没有优惠。
         return Task.FromResult(new CouponValidationDto(
             Available: true,
             DiscountAmount: 0m,
