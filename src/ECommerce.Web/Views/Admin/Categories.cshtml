@@ -4,111 +4,51 @@
 }
 
 <div id="categoriesApp" v-cloak>
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-1">分类管理</h1>
-            <p class="text-muted mb-0">管理商品分类，支持树形结构、多级分类</p>
-        </div>
-        <button class="btn btn-primary" type="button" v-on:click="openCreateModal(null)">
-            新增根分类
-        </button>
-    </div>
-
-    <div class="row g-3">
-        <div class="col-12 col-lg-8">
-            <div class="border rounded bg-white p-3">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h2 class="h5 mb-0">分类列表</h2>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="showDisabled" v-model="showDisabled" v-on:change="loadCategories">
-                        <label class="form-check-label" for="showDisabled">显示已禁用</label>
-                    </div>
-                </div>
-
-                <div v-if="loading" class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">加载中...</span>
-                    </div>
-                </div>
-
-                <div v-else-if="treeData.length === 0" class="text-center py-4 text-muted">
-                    暂无分类数据，点击"新增根分类"开始创建
-                </div>
-
-                <div v-else class="list-group list-group-flush">
-                    <template v-for="node in treeData" v-bind:key="node.categoryId">
-                        <category-node v-bind:node="node"
-                                       v-on:create-child="openCreateModal"
-                                       v-on:edit="openEditModal"
-                                       v-on:delete="deleteCategory">
-                        </category-node>
-                    </template>
-                </div>
+    <h1>分类管理</h1>
+    <button class="btn btn-primary" type="button" v-on:click="openCreateModal(null)">新增根分类</button>
+    
+    <div v-if="treeData.length > 0">
+        <div v-for="item in treeData" :key="item.categoryId">
+            <div style="padding-left: (item.treeLevel - 1) * 24px;">
+                <span>{{ item.name }}</span>
+                <button data-action="create-child" :data-id="item.categoryId" v-on:click="handleButtonClick">新增子分类</button>
+                <button data-action="edit" :data-id="item.categoryId" v-on:click="handleButtonClick">编辑</button>
+                <button data-action="delete" :data-id="item.categoryId" v-on:click="handleButtonClick">删除</button>
             </div>
-        </div>
-
-        <div class="col-12 col-lg-4">
-            <div class="border rounded bg-white p-3">
-                <h2 class="h5 mb-3">操作说明</h2>
-                <ul class="mb-0 small text-muted">
-                    <li>最多支持5级分类</li>
-                    <li>删除分类前需确保没有子分类和关联商品</li>
-                    <li>禁用的分类前台不会显示</li>
-                    <li>点击 ▶/▼ 可展开/收起子分类</li>
-                </ul>
+            <div v-if="item.children && item.children.length > 0">
+                <div v-for="subItem in item.children" :key="subItem.categoryId">
+                    <div style="padding-left: (subItem.treeLevel - 1) * 24px;">
+                        <span>{{ subItem.name }}</span>
+                        <button data-action="create-child" :data-id="subItem.categoryId" v-on:click="handleButtonClick">新增子分类</button>
+                        <button data-action="edit" :data-id="subItem.categoryId" v-on:click="handleButtonClick">编辑</button>
+                        <button data-action="delete" :data-id="subItem.categoryId" v-on:click="handleButtonClick">删除</button>
+                    </div>
+                    <div v-if="subItem.children && subItem.children.length > 0">
+                        <div v-for="thirdItem in subItem.children" :key="thirdItem.categoryId">
+                            <div style="padding-left: (thirdItem.treeLevel - 1) * 24px;">
+                                <span>{{ thirdItem.name }}</span>
+                                <button data-action="create-child" :data-id="thirdItem.categoryId" v-on:click="handleButtonClick">新增子分类</button>
+                                <button data-action="edit" :data-id="thirdItem.categoryId" v-on:click="handleButtonClick">编辑</button>
+                                <button data-action="delete" :data-id="thirdItem.categoryId" v-on:click="handleButtonClick">删除</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true">
+    <div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="categoryModalLabel">{{ isEdit ? '编辑分类' : '新增分类' }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title">{{ isEdit ? '编辑分类' : '新增分类' }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form v-on:submit.prevent="saveCategory">
-                        <div class="mb-3">
-                            <label for="categoryName" class="form-label">分类名称 <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="categoryName" v-model="form.name" required maxlength="100">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">父分类</label>
-                            <select class="form-select" v-model="form.parentId">
-                                <option v-bind:value="null">无（根分类）</option>
-                                <option v-for="cat in parentOptions" v-bind:key="cat.categoryId" v-bind:value="cat.categoryId">
-                                    {{ indentText(cat.treeLevel) }}{{ cat.name }}
-                                </option>
-                            </select>
-                            <div class="form-text">选择父分类后，新分类将作为其子分类</div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="categorySort" class="form-label">排序序号</label>
-                            <input type="number" class="form-control" id="categorySort" v-model.number="form.sortOrder" min="0">
-                            <div class="form-text">数值越小越靠前</div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="categoryIcon" class="form-label">图标URL</label>
-                            <input type="text" class="form-control" id="categoryIcon" v-model="form.iconUrl">
-                        </div>
-                        <div v-if="isEdit" class="mb-3">
-                            <label class="form-label">状态</label>
-                            <select class="form-select" v-model.number="form.status">
-                                <option v-bind:value="1">启用</option>
-                                <option v-bind:value="0">禁用</option>
-                            </select>
-                        </div>
-                        <div v-if="errorMsg" class="alert alert-danger mb-3" role="alert">
-                            {{ errorMsg }}
-                        </div>
-                        <div class="d-flex justify-content-end gap-2">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                            <button type="submit" class="btn btn-primary" v-bind:disabled="submitting">
-                                <span v-if="submitting" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                                {{ isEdit ? '保存' : '创建' }}
-                            </button>
-                        </div>
+                        <input type="text" v-model="form.name" required>
+                        <button type="submit">{{ isEdit ? '保存' : '创建' }}</button>
                     </form>
                 </div>
             </div>

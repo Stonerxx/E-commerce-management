@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ECommerce.Application.DTOs;
 using ECommerce.Application.Services;
 using ECommerce.Domain.Entities;
@@ -9,10 +10,12 @@ namespace ECommerce.Infrastructure.Services;
 public sealed class SkuService : ISkuService
 {
     private readonly ISkuRepository _skuRepository;
+    private readonly IProductSpecRepository _productSpecRepository;
 
-    public SkuService(ISkuRepository skuRepository)
+    public SkuService(ISkuRepository skuRepository, IProductSpecRepository productSpecRepository)
     {
         _skuRepository = skuRepository;
+        _productSpecRepository = productSpecRepository;
     }
 
     public async Task<SkuDto?> GetByIdAsync(long skuId, CancellationToken cancellationToken = default)
@@ -35,11 +38,14 @@ public sealed class SkuService : ISkuService
     {
         ValidateRequest(request);
 
+        // 校验规格选择必须对应商品已定义的 ProductSpec 记录
+        var specDesc = await ValidateAndBuildSpecDescAsync(productId, request.SpecSelections, cancellationToken);
+
         var now = DateTime.Now;
         var sku = new Sku
         {
             ProductId = productId,
-            SpecDesc = request.SpecDescJson,
+            SpecDesc = specDesc,
             Price = request.Price,
             OriginalPrice = request.OriginalPrice,
             Stock = request.Stock,
@@ -64,8 +70,11 @@ public sealed class SkuService : ISkuService
             throw new BusinessException("SKU_NOT_FOUND", "SKU不存在");
         }
 
+        // 校验规格选择必须对应商品已定义的 ProductSpec 记录
+        var specDesc = await ValidateAndBuildSpecDescAsync(sku.ProductId, request.SpecSelections, cancellationToken);
+
         var now = DateTime.Now;
-        sku.SpecDesc = request.SpecDescJson;
+        sku.SpecDesc = specDesc;
         sku.Price = request.Price;
         sku.OriginalPrice = request.OriginalPrice;
         sku.Stock = request.Stock;
@@ -98,12 +107,68 @@ public sealed class SkuService : ISkuService
         await _skuRepository.DeleteByProductAsync(productId, cancellationToken);
     }
 
+    /// <summary>
+    /// 校验用户提交的规格选择是否全部存在于该商品的 ProductSpec 定义中，
+    /// 并将校验通过的选择按 SpecName 排序后序列化为 JSON 存入 SKU.spec_desc。
+    /// </summary>
+    private async Task<string> ValidateAndBuildSpecDescAsync(
+        long productId,
+        IReadOnlyList<SkuSpecSelection> selections,
+        CancellationToken cancellationToken)
+    {
+        if (selections == null || selections.Count == 0)
+        {
+            throw new BusinessException("SKU_SPEC_EMPTY", "SKU必须至少选择一项规格");
+        }
+
+        // 检查规格名不重复
+        var specNames = selections.Select(s => s.SpecName).ToList();
+        if (specNames.Count != specNames.Distinct().Count())
+        {
+            throw new BusinessException("SKU_SPEC_DUPLICATE", "SKU规格不能有重复的规格名");
+        }
+
+        // 获取商品已定义的全部规格选项
+        var productSpecs = await _productSpecRepository.GetByProductAsync(productId, cancellationToken);
+        if (productSpecs.Count == 0)
+        {
+            throw new BusinessException("PRODUCT_SPEC_NOT_DEFINED", "该商品尚未定义任何规格，无法创建SKU");
+        }
+
+        // 构建 (specName, specValue) 集合用于快速查找
+        var definedSpecs = productSpecs
+            .Select(s => (s.SpecName, s.SpecValue))
+            .ToHashSet();
+
+        // 校验每个选择项都存在于定义中
+        foreach (var selection in selections)
+        {
+            if (string.IsNullOrWhiteSpace(selection.SpecName))
+            {
+                throw new BusinessException("SKU_SPEC_NAME_EMPTY", "规格名不能为空");
+            }
+            if (string.IsNullOrWhiteSpace(selection.SpecValue))
+            {
+                throw new BusinessException("SKU_SPEC_VALUE_EMPTY", "规格值不能为空");
+            }
+            if (!definedSpecs.Contains((selection.SpecName, selection.SpecValue)))
+            {
+                throw new BusinessException(
+                    "SKU_SPEC_NOT_FOUND",
+                    $"规格 \"{selection.SpecName}: {selection.SpecValue}\" 不在该商品的规格定义中");
+            }
+        }
+
+        // 按 SpecName 排序后构建字典，确保同一组规格生成的 JSON 一致
+        var specDict = selections
+            .OrderBy(s => s.SpecName)
+            .ToDictionary(s => s.SpecName, s => s.SpecValue);
+
+        return JsonSerializer.Serialize(specDict);
+    }
+
     private static void ValidateRequest(SkuSaveRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.SpecDescJson))
-        {
-            throw new BusinessException("SKU_SPEC_DESC_EMPTY", "SKU规格描述不能为空");
-        }
         if (request.Price < 0)
         {
             throw new BusinessException("SKU_PRICE_INVALID", "SKU价格不能为负数");

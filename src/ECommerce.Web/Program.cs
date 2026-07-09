@@ -1,5 +1,6 @@
 using ECommerce.Infrastructure;
 using ECommerce.Shared.Constants;
+using ECommerce.Web.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +39,8 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles();
+
+app.UseMiddleware<BusinessExceptionMiddleware>();
 
 app.UseRouting();
 

@@ -36,7 +36,7 @@
 
                         <div class="mb-3">
                             <label class="form-label">商品描述</label>
-                            <textarea class="form-control" v-model="form.description" rows="5" placeholder="请输入商品描述"></textarea>
+                            <textarea class="form-control" v-model="form.description" rows="3" placeholder="请输入商品描述"></textarea>
                         </div>
 
                         <div class="mb-3">
@@ -55,6 +55,46 @@
                                 <option :value="2">预售</option>
                             </select>
                         </div>
+
+                        <!-- 规格定义区域 -->
+                        <div class="card mb-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">商品规格定义 <span class="text-danger">*</span></h5>
+                                <small class="text-muted">先定义规格，再创建SKU</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-4">
+                                        <input type="text" class="form-control form-control-sm" v-model="specForm.specName" placeholder="规格名（如：颜色）">
+                                    </div>
+                                    <div class="col-4">
+                                        <input type="text" class="form-control form-control-sm" v-model="specForm.specValue" placeholder="规格值（如：红色）">
+                                    </div>
+                                    <div class="col-2">
+                                        <input type="number" class="form-control form-control-sm" v-model.number="specForm.sortOrder" placeholder="排序" min="0">
+                                    </div>
+                                    <div class="col-2">
+                                        <button type="button" class="btn btn-sm btn-outline-primary w-100" v-on:click="addSpec">添加</button>
+                                    </div>
+                                </div>
+                                <div v-if="specs.length === 0" class="text-center py-3 text-muted small">
+                                    尚未定义规格，请添加规格名和规格值（如：颜色-红、颜色-蓝、存储-128G）
+                                </div>
+                                <div v-else>
+                                    <table class="table table-sm table-borderless mb-0">
+                                        <tbody>
+                                            <tr v-for="(spec, index) in specs" :key="index">
+                                                <td><span class="badge text-bg-light">{{ spec.specName }}</span></td>
+                                                <td><span class="badge text-bg-info">{{ spec.specValue }}</span></td>
+                                                <td class="text-end">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" v-on:click="removeSpec(index)">×</button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="col-12 col-lg-4">
@@ -69,7 +109,7 @@
                                 <div v-else class="space-y-2">
                                     <div v-for="(sku, index) in skus" :key="index" class="p-3 border rounded">
                                         <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <span class="fw-medium">{{ sku.specDesc }}</span>
+                                            <span class="fw-medium small">{{ sku.specDescText }}</span>
                                             <button type="button" class="btn btn-sm btn-outline-danger" v-on:click="removeSku(index)">删除</button>
                                         </div>
                                         <div class="row g-2">
@@ -111,6 +151,7 @@
         </div>
     </div>
 
+    <!-- SKU 添加弹窗：从已定义规格中选择 -->
     <div class="modal fade" id="skuModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -119,10 +160,20 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">规格描述</label>
-                        <input type="text" class="form-control" v-model="skuForm.specDesc" placeholder="如：颜色:红色,尺码:L">
+                    <div v-if="specGroups.length === 0" class="alert alert-warning">
+                        请先添加商品规格定义，再创建SKU
                     </div>
+                    <div v-else>
+                        <h6 class="mb-3">选择规格组合</h6>
+                        <div v-for="group in specGroups" :key="group.specName" class="mb-3">
+                            <label class="form-label">{{ group.specName }}</label>
+                            <select class="form-select" v-model="skuForm.selections[group.specName]">
+                                <option value="">请选择 {{ group.specName }}</option>
+                                <option v-for="val in group.values" :key="val" :value="val">{{ val }}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <hr>
                     <div class="mb-3">
                         <label class="form-label">价格 <span class="text-danger">*</span></label>
                         <input type="number" class="form-control" v-model.number="skuForm.price" step="0.01" placeholder="价格">

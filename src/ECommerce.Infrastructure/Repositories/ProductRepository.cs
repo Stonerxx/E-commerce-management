@@ -171,8 +171,8 @@ public sealed class ProductRepository : IProductRepository
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = """
-            UPDATE "PRODUCT" 
-            SET "CATEGORY_ID" = :categoryId, "NAME" = :name, "DESCRIPTION" = :description, "MAIN_IMAGE" = :mainImage, 
+            UPDATE "PRODUCT"
+            SET "CATEGORY_ID" = :categoryId, "NAME" = :name, "DESCRIPTION" = :description, "MAIN_IMAGE" = :mainImage,
                 "STATUS" = :status, "PRICE_MIN" = :priceMin, "UPDATED_AT" = :updatedAt
             WHERE "ID" = :productId
             """;
@@ -183,7 +183,8 @@ public sealed class ProductRepository : IProductRepository
             command.Transaction = _unitOfWork.CurrentTransaction;
         }
         command.CommandText = sql;
-        AddProductParameters(command, product);
+
+        AddUpdateParameters(command, product);
 
         var idParam = command.CreateParameter();
         idParam.ParameterName = ":productId";
@@ -343,6 +344,44 @@ public sealed class ProductRepository : IProductRepository
             param.Value = query.Status.Value;
             command.Parameters.Add(param);
         }
+    }
+
+    private static void AddUpdateParameters(DbCommand command, Product product)
+    {
+        var categoryIdParam = command.CreateParameter();
+        categoryIdParam.ParameterName = ":categoryId";
+        categoryIdParam.Value = product.CategoryId;
+        command.Parameters.Add(categoryIdParam);
+
+        var nameParam = command.CreateParameter();
+        nameParam.ParameterName = ":name";
+        nameParam.Value = product.Name;
+        command.Parameters.Add(nameParam);
+
+        var descriptionParam = command.CreateParameter();
+        descriptionParam.ParameterName = ":description";
+        descriptionParam.Value = string.IsNullOrEmpty(product.Description) ? DBNull.Value : (object)product.Description;
+        command.Parameters.Add(descriptionParam);
+
+        var mainImageParam = command.CreateParameter();
+        mainImageParam.ParameterName = ":mainImage";
+        mainImageParam.Value = product.MainImage;
+        command.Parameters.Add(mainImageParam);
+
+        var statusParam = command.CreateParameter();
+        statusParam.ParameterName = ":status";
+        statusParam.Value = product.Status;
+        command.Parameters.Add(statusParam);
+
+        var priceMinParam = command.CreateParameter();
+        priceMinParam.ParameterName = ":priceMin";
+        priceMinParam.Value = product.PriceMin;
+        command.Parameters.Add(priceMinParam);
+
+        var updatedAtParam = command.CreateParameter();
+        updatedAtParam.ParameterName = ":updatedAt";
+        updatedAtParam.Value = product.UpdatedAt;
+        command.Parameters.Add(updatedAtParam);
     }
 
     private static void AddProductParameters(DbCommand command, Product product)

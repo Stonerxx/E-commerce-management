@@ -13,17 +13,20 @@ public sealed class AdminCatalogApiController : ApiControllerBase
 {
     private readonly ICategoryService _categoryService;
     private readonly IProductService _productService;
+    private readonly IProductImageService _productImageService;
     private readonly ISkuService _skuService;
     private readonly IInventoryService _inventoryService;
 
     public AdminCatalogApiController(
         ICategoryService categoryService,
         IProductService productService,
+        IProductImageService productImageService,
         ISkuService skuService,
         IInventoryService inventoryService)
     {
         _categoryService = categoryService;
         _productService = productService;
+        _productImageService = productImageService;
         _skuService = skuService;
         _inventoryService = inventoryService;
     }
@@ -102,15 +105,19 @@ public sealed class AdminCatalogApiController : ApiControllerBase
     }
 
     [HttpPost("products/{productId:long}/images")]
-    public ActionResult<ApiResponse<long>> AddProductImage(long productId, [FromBody] ProductImageRequest request)
+    public async Task<ActionResult<ApiResponse<long>>> AddProductImage(long productId, [FromBody] ProductImageRequest request, CancellationToken cancellationToken)
     {
-        return NotReady<long>("Admin product image endpoint is defined and awaiting implementation.");
+        var userId = GetCurrentUserId();
+        var imageId = await _productImageService.AddAsync(productId, request, userId, cancellationToken);
+        return Ok(ApiResponse<long>.Ok(imageId));
     }
 
     [HttpDelete("product-images/{imageId:long}")]
-    public ActionResult<ApiResponse<object?>> DeleteProductImage(long imageId)
+    public async Task<ActionResult<ApiResponse<object?>>> DeleteProductImage(long imageId, CancellationToken cancellationToken)
     {
-        return NotReady<object?>("Admin product image delete endpoint is defined and awaiting implementation.");
+        var userId = GetCurrentUserId();
+        await _productImageService.DeleteAsync(imageId, userId, cancellationToken);
+        return Ok(ApiResponse<object?>.Ok(null));
     }
 
     [HttpGet("products/{productId:long}/skus")]

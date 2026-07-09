@@ -120,7 +120,9 @@ public sealed class SkuRepository : ISkuRepository
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = """
             UPDATE "SKU"
-            SET "STOCK" = :stock, "LOCKED_STOCK" = :lockedStock, "WARNING_STOCK" = :warningStock, "UPDATED_AT" = :updatedAt
+            SET "SPEC_DESC" = :specDesc, "PRICE" = :price, "ORIGINAL_PRICE" = :originalPrice,
+                "STOCK" = :stock, "LOCKED_STOCK" = :lockedStock, "WARNING_STOCK" = :warningStock,
+                "SKU_IMAGE" = :skuImage, "STATUS" = :status, "UPDATED_AT" = :updatedAt
             WHERE "ID" = :skuId
             """;
 
@@ -130,6 +132,21 @@ public sealed class SkuRepository : ISkuRepository
             command.Transaction = _unitOfWork.CurrentTransaction;
         }
         command.CommandText = sql;
+
+        var specDescParam = command.CreateParameter();
+        specDescParam.ParameterName = ":specDesc";
+        specDescParam.Value = sku.SpecDesc;
+        command.Parameters.Add(specDescParam);
+
+        var priceParam = command.CreateParameter();
+        priceParam.ParameterName = ":price";
+        priceParam.Value = sku.Price;
+        command.Parameters.Add(priceParam);
+
+        var originalPriceParam = command.CreateParameter();
+        originalPriceParam.ParameterName = ":originalPrice";
+        originalPriceParam.Value = sku.OriginalPrice.HasValue ? (object)sku.OriginalPrice.Value : DBNull.Value;
+        command.Parameters.Add(originalPriceParam);
 
         var stockParam = command.CreateParameter();
         stockParam.ParameterName = ":stock";
@@ -145,6 +162,16 @@ public sealed class SkuRepository : ISkuRepository
         warningStockParam.ParameterName = ":warningStock";
         warningStockParam.Value = sku.WarningStock;
         command.Parameters.Add(warningStockParam);
+
+        var skuImageParam = command.CreateParameter();
+        skuImageParam.ParameterName = ":skuImage";
+        skuImageParam.Value = string.IsNullOrEmpty(sku.SkuImage) ? DBNull.Value : (object)sku.SkuImage;
+        command.Parameters.Add(skuImageParam);
+
+        var statusParam = command.CreateParameter();
+        statusParam.ParameterName = ":status";
+        statusParam.Value = sku.Status;
+        command.Parameters.Add(statusParam);
 
         var updatedAtParam = command.CreateParameter();
         updatedAtParam.ParameterName = ":updatedAt";
@@ -191,22 +218,57 @@ public sealed class SkuRepository : ISkuRepository
 
     public async Task<int> DeleteByProductAsync(long productId, CancellationToken cancellationToken = default)
     {
+        // 安全删除：先禁用该商品下所有 SKU，对没有库存日志的 SKU 再硬删除
+        // 这样保留了有业务历史（INVENTORY_LOG 等子记录）的 SKU 记录
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "DELETE FROM \"SKU\" WHERE \"PRODUCT_ID\" = :productId";
+        var now = DateTime.Now;
 
-        using var command = connection.CreateCommand();
+        const string disableSql = """
+            UPDATE "SKU"
+            SET "STATUS" = 0, "UPDATED_AT" = :now
+            WHERE "PRODUCT_ID" = :productId
+            """;
+
+        using (var disableCmd = connection.CreateCommand())
+        {
+            if (_unitOfWork.CurrentTransaction != null)
+            {
+                disableCmd.Transaction = _unitOfWork.CurrentTransaction;
+            }
+            disableCmd.CommandText = disableSql;
+
+            var nowParam = disableCmd.CreateParameter();
+            nowParam.ParameterName = ":now";
+            nowParam.Value = now;
+            disableCmd.Parameters.Add(nowParam);
+
+            var productIdParam = disableCmd.CreateParameter();
+            productIdParam.ParameterName = ":productId";
+            productIdParam.Value = productId;
+            disableCmd.Parameters.Add(productIdParam);
+
+            await disableCmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        const string deleteSql = """
+            DELETE FROM "SKU"
+            WHERE "PRODUCT_ID" = :productId
+              AND NOT EXISTS (SELECT 1 FROM "INVENTORY_LOG" WHERE "SKU_ID" = "SKU"."ID")
+            """;
+
+        using var deleteCmd = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
         {
-            command.Transaction = _unitOfWork.CurrentTransaction;
+            deleteCmd.Transaction = _unitOfWork.CurrentTransaction;
         }
-        command.CommandText = sql;
+        deleteCmd.CommandText = deleteSql;
 
-        var parameter = command.CreateParameter();
-        parameter.ParameterName = ":productId";
-        parameter.Value = productId;
-        command.Parameters.Add(parameter);
+        var productIdParam2 = deleteCmd.CreateParameter();
+        productIdParam2.ParameterName = ":productId";
+        productIdParam2.Value = productId;
+        deleteCmd.Parameters.Add(productIdParam2);
 
-        return await command.ExecuteNonQueryAsync(cancellationToken);
+        return await deleteCmd.ExecuteNonQueryAsync(cancellationToken);
     }
 
     public async Task<int> LockStockAsync(long skuId, int quantity, string orderNo, CancellationToken cancellationToken = default)

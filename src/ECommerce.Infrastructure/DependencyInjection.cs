@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<IProductImageRepository, ProductImageRepository>();
         services.AddScoped<IProductSpecRepository, ProductSpecRepository>();
         services.AddScoped<IProductService, ProductService>();
+        services.AddScoped<IProductImageService, ProductImageService>();
 
         services.AddScoped<ISkuRepository, SkuRepository>();
         services.AddScoped<ISkuService, SkuService>();

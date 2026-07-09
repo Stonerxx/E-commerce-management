@@ -1,82 +1,7 @@
 (function () {
-    const { createApp, ref, computed, onMounted, defineComponent, h } = Vue;
-
-    const CategoryNode = defineComponent({
-        name: 'CategoryNode',
-        props: {
-            node: {
-                type: Object,
-                required: true
-            }
-        },
-        emits: ['create-child', 'edit', 'delete'],
-        setup(props, { emit }) {
-            const hasChildren = computed(() => {
-                return props.node.children && props.node.children.length > 0;
-            });
-
-            function toggleExpand() {
-                props.node.expanded = !props.node.expanded;
-            }
-
-            function onCreateChild() {
-                emit('create-child', props.node);
-            }
-
-            function onEdit() {
-                emit('edit', props.node);
-            }
-
-            function onDelete() {
-                emit('delete', props.node);
-            }
-
-            return {
-                hasChildren,
-                toggleExpand,
-                onCreateChild,
-                onEdit,
-                onDelete
-            };
-        },
-        template: `
-            <div>
-                <div class="list-group-item px-0 border-0 d-flex align-items-center gap-2"
-                     :style="{ paddingLeft: (node.treeLevel - 1) * 24 + 'px' }">
-                    <span class="text-muted" style="width: 20px;">
-                        <span v-if="hasChildren"
-                              @click="toggleExpand"
-                              class="text-primary"
-                              style="cursor: pointer; user-select: none;">
-                            {{ node.expanded ? '▼' : '▶' }}
-                        </span>
-                    </span>
-                    <span class="fw-medium flex-grow-1">{{ node.name }}</span>
-                    <span class="badge" :class="node.status === 1 ? 'text-bg-success' : 'text-bg-secondary'">
-                        {{ node.status === 1 ? '启用' : '禁用' }}
-                    </span>
-                    <span class="text-muted small">第{{ node.treeLevel }}级</span>
-                    <button class="btn btn-sm btn-outline-primary" @click="onCreateChild">新增子分类</button>
-                    <button class="btn btn-sm btn-outline-secondary" @click="onEdit">编辑</button>
-                    <button class="btn btn-sm btn-outline-danger" @click="onDelete">删除</button>
-                </div>
-                <div v-if="hasChildren && node.expanded">
-                    <category-node v-for="child in node.children"
-                                   :key="child.categoryId"
-                                   :node="child"
-                                   @create-child="(n) => emit('create-child', n)"
-                                   @edit="(n) => emit('edit', n)"
-                                   @delete="(n) => emit('delete', n)">
-                    </category-node>
-                </div>
-            </div>
-        `
-    });
+    const { createApp, ref, computed, onMounted } = Vue;
 
     createApp({
-        components: {
-            CategoryNode
-        },
         setup() {
             const loading = ref(false);
             const showDisabled = ref(false);
@@ -89,6 +14,7 @@
             const form = ref({
                 name: '',
                 parentId: null,
+                treeLevel: 1,
                 sortOrder: 0,
                 iconUrl: '',
                 status: 1
@@ -103,6 +29,17 @@
                         flattenTree(node.children, result);
                     }
                 }
+            }
+
+            function findNodeById(nodes, id) {
+                for (const node of nodes) {
+                    if (node.categoryId === id) return node;
+                    if (node.children && node.children.length > 0) {
+                        const found = findNodeById(node.children, id);
+                        if (found) return found;
+                    }
+                }
+                return null;
             }
 
             function filterTree(nodes, includeDisabled) {
@@ -126,91 +63,28 @@
                 return options;
             });
 
+            function findParentLevel(parentId) {
+                if (!parentId) return 0;
+                for (const node of parentOptions.value) {
+                    if (node.categoryId === parentId) {
+                        return node.treeLevel;
+                    }
+                }
+                return 0;
+            }
+
+            function updateTreeLevel() {
+                if (form.value.parentId !== null) {
+                    const parentLevel = findParentLevel(form.value.parentId);
+                    form.value.treeLevel = parentLevel + 1;
+                } else {
+                    form.value.treeLevel = 1;
+                }
+            }
+
             function indentText(level) {
                 return '　'.repeat(Math.max(0, level - 1));
             }
-
-            const mockCategories = [
-                {
-                    categoryId: 1,
-                    parentId: null,
-                    name: '电子产品',
-                    treeLevel: 1,
-                    sortOrder: 0,
-                    status: 1,
-                    iconUrl: null,
-                    expanded: true,
-                    children: [
-                        {
-                            categoryId: 2,
-                            parentId: 1,
-                            name: '手机',
-                            treeLevel: 2,
-                            sortOrder: 0,
-                            status: 1,
-                            iconUrl: null,
-                            expanded: true,
-                            children: [
-                                {
-                                    categoryId: 3,
-                                    parentId: 2,
-                                    name: '智能手机',
-                                    treeLevel: 3,
-                                    sortOrder: 0,
-                                    status: 1,
-                                    iconUrl: null,
-                                    expanded: false,
-                                    children: []
-                                },
-                                {
-                                    categoryId: 4,
-                                    parentId: 2,
-                                    name: '功能机',
-                                    treeLevel: 3,
-                                    sortOrder: 1,
-                                    status: 0,
-                                    iconUrl: null,
-                                    expanded: false,
-                                    children: []
-                                }
-                            ]
-                        },
-                        {
-                            categoryId: 5,
-                            parentId: 1,
-                            name: '电脑',
-                            treeLevel: 2,
-                            sortOrder: 1,
-                            status: 1,
-                            iconUrl: null,
-                            expanded: false,
-                            children: []
-                        }
-                    ]
-                },
-                {
-                    categoryId: 6,
-                    parentId: null,
-                    name: '服装',
-                    treeLevel: 1,
-                    sortOrder: 1,
-                    status: 1,
-                    iconUrl: null,
-                    expanded: false,
-                    children: []
-                },
-                {
-                    categoryId: 7,
-                    parentId: null,
-                    name: '食品',
-                    treeLevel: 1,
-                    sortOrder: 2,
-                    status: 0,
-                    iconUrl: null,
-                    expanded: false,
-                    children: []
-                }
-            ];
 
             async function loadCategories() {
                 loading.value = true;
@@ -222,13 +96,9 @@
 
                     if (payload.success && payload.data) {
                         treeData.value = filterTree(payload.data, showDisabled.value);
-                    } else {
-                        console.warn('API返回失败，使用mock数据');
-                        treeData.value = filterTree(mockCategories, showDisabled.value);
                     }
                 } catch (error) {
-                    console.warn('API请求失败，使用mock数据:', error.message);
-                    treeData.value = filterTree(mockCategories, showDisabled.value);
+                    console.warn('API请求失败:', error.message);
                 } finally {
                     loading.value = false;
                 }
@@ -238,6 +108,7 @@
                 form.value = {
                     name: '',
                     parentId: null,
+                    treeLevel: 1,
                     sortOrder: 0,
                     iconUrl: '',
                     status: 1
@@ -248,9 +119,11 @@
             }
 
             function openCreateModal(parentNode) {
+                console.log('openCreateModal called with:', parentNode);
                 resetForm();
                 if (parentNode) {
                     form.value.parentId = parentNode.categoryId;
+                    form.value.treeLevel = (parentNode.treeLevel || 1) + 1;
                 }
                 showModal();
             }
@@ -261,6 +134,7 @@
                 editingId.value = node.categoryId;
                 form.value.name = node.name;
                 form.value.parentId = node.parentId;
+                form.value.treeLevel = node.treeLevel || 1;
                 form.value.sortOrder = node.sortOrder || 0;
                 form.value.iconUrl = node.iconUrl || '';
                 form.value.status = node.status;
@@ -305,6 +179,7 @@
                         body: JSON.stringify({
                             name: form.value.name.trim(),
                             parentId: form.value.parentId,
+                            treeLevel: form.value.treeLevel,
                             sortOrder: form.value.sortOrder || 0,
                             iconUrl: form.value.iconUrl || null,
                             status: form.value.status
@@ -349,6 +224,48 @@
                 }
             }
 
+            function toggleExpand(node) {
+                node.expanded = !node.expanded;
+            }
+
+            function handleButtonClick(event) {
+                const target = event.currentTarget;
+                const action = target.getAttribute('data-action');
+                const categoryId = parseInt(target.getAttribute('data-id'));
+                
+                console.log('handleButtonClick:', action, categoryId);
+                
+                if (!isNaN(categoryId)) {
+                    const node = findNodeById(treeData.value, categoryId);
+                    console.log('Found node:', node);
+                    if (node) {
+                        switch (action) {
+                            case 'create-child':
+                                openCreateModal(node);
+                                break;
+                            case 'edit':
+                                openEditModal(node);
+                                break;
+                            case 'delete':
+                                deleteCategory(node);
+                                break;
+                        }
+                    }
+                }
+            }
+
+            function handleCreateChild(parentNode) {
+                openCreateModal(parentNode);
+            }
+
+            function handleEdit(node) {
+                openEditModal(node);
+            }
+
+            function handleDelete(node) {
+                deleteCategory(node);
+            }
+
             onMounted(() => {
                 loadCategories();
             });
@@ -363,11 +280,14 @@
                 errorMsg,
                 form,
                 indentText,
+                updateTreeLevel,
                 loadCategories,
                 openCreateModal,
                 openEditModal,
                 saveCategory,
-                deleteCategory
+                deleteCategory,
+                toggleExpand,
+                handleButtonClick
             };
         }
     }).mount('#categoriesApp');
