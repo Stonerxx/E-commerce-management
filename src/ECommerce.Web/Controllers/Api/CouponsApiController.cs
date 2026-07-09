@@ -1,4 +1,5 @@
 using ECommerce.Application.DTOs;
+using ECommerce.Application.Services;
 using ECommerce.Shared.Constants;
 using ECommerce.Shared.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -9,6 +10,21 @@ namespace ECommerce.Web.Controllers.Api;
 [Route("api/v1")]
 public sealed class CouponsApiController : ApiControllerBase
 {
+    private readonly ICouponService _couponService;
+
+    public CouponsApiController(ICouponService couponService)
+    {
+        _couponService = couponService;
+    }
+
+    private long GetCurrentUserId()
+    {
+        var claim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(claim) || !long.TryParse(claim, out var userId))
+            return 1;
+        return userId;
+    }
+
     [HttpGet("coupons")]
     [Authorize(Policy = AuthConstants.Policies.CustomerOnly)]
     public ActionResult<ApiResponse<IReadOnlyList<UserCouponDto>>> Mine()
@@ -39,29 +55,33 @@ public sealed class CouponsApiController : ApiControllerBase
 
     [HttpGet("admin/coupon-templates")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
-    public ActionResult<ApiResponse<PagedResult<CouponTemplateDto>>> SearchTemplates([FromQuery] CouponTemplateQuery query)
+    public async Task<ActionResult<ApiResponse<PagedResult<CouponTemplateDto>>>> SearchTemplates([FromQuery] CouponTemplateQuery query)
     {
-        return NotReady<PagedResult<CouponTemplateDto>>("Admin coupon template search endpoint is defined and awaiting implementation.");
+        var result = await _couponService.SearchTemplatesAsync(query);
+        return Ok(ApiResponse<PagedResult<CouponTemplateDto>>.Ok(result));
     }
 
     [HttpPost("admin/coupon-templates")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
-    public ActionResult<ApiResponse<int>> CreateTemplate([FromBody] CouponTemplateRequest request)
+    public async Task<ActionResult<ApiResponse<int>>> CreateTemplate([FromBody] CouponTemplateRequest request)
     {
-        return NotReady<int>("Admin coupon template create endpoint is defined and awaiting implementation.");
+        var id = await _couponService.CreateTemplateAsync(request, GetCurrentUserId());
+        return Ok(ApiResponse<int>.Ok(id));
     }
 
     [HttpPut("admin/coupon-templates/{templateId:int}")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
-    public ActionResult<ApiResponse<object?>> UpdateTemplate(int templateId, [FromBody] CouponTemplateRequest request)
+    public async Task<ActionResult<ApiResponse<object?>>> UpdateTemplate(int templateId, [FromBody] CouponTemplateRequest request)
     {
-        return NotReady<object?>("Admin coupon template update endpoint is defined and awaiting implementation.");
+        await _couponService.UpdateTemplateAsync(templateId, request, GetCurrentUserId());
+        return Ok(ApiResponse<object?>.Ok(null));
     }
 
     [HttpPut("admin/coupon-templates/{templateId:int}/status")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
-    public ActionResult<ApiResponse<object?>> SetTemplateStatus(int templateId, [FromBody] StatusUpdateRequest request)
+    public async Task<ActionResult<ApiResponse<object?>>> SetTemplateStatus(int templateId, [FromBody] StatusUpdateRequest request)
     {
-        return NotReady<object?>("Admin coupon template status endpoint is defined and awaiting implementation.");
+        await _couponService.SetTemplateStatusAsync(templateId, request.Status, GetCurrentUserId());
+        return Ok(ApiResponse<object?>.Ok(null));
     }
 }
