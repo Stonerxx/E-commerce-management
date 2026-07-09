@@ -25,7 +25,7 @@ public sealed class ProductSpecRepository : IProductSpecRepository
     public async Task<IReadOnlyList<ProductSpec>> GetByProductAsync(long productId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "SELECT id, product_id, spec_name, spec_value, sort_order, created_at FROM PRODUCT_SPEC WHERE product_id = :productId ORDER BY sort_order";
+        const string sql = "SELECT \"ID\", \"PRODUCT_ID\", \"SPEC_NAME\", \"SPEC_VALUE\", \"SORT_ORDER\", \"CREATED_AT\" FROM \"PRODUCT_SPEC\" WHERE \"PRODUCT_ID\" = :productId ORDER BY \"SORT_ORDER\"";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -53,9 +53,9 @@ public sealed class ProductSpecRepository : IProductSpecRepository
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = """
-            INSERT INTO PRODUCT_SPEC (product_id, spec_name, spec_value, sort_order, created_at)
+            INSERT INTO "PRODUCT_SPEC" ("PRODUCT_ID", "SPEC_NAME", "SPEC_VALUE", "SORT_ORDER", "CREATED_AT")
             VALUES (:productId, :specName, :specValue, :sortOrder, :createdAt)
-            RETURNING id INTO :newId
+            RETURNING "ID" INTO :newId
             """;
 
         using var command = connection.CreateCommand();
@@ -80,7 +80,7 @@ public sealed class ProductSpecRepository : IProductSpecRepository
     public async Task<int> DeleteByProductAsync(long productId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "DELETE FROM PRODUCT_SPEC WHERE product_id = :productId";
+        const string sql = "DELETE FROM \"PRODUCT_SPEC\" WHERE \"PRODUCT_ID\" = :productId";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -129,12 +129,12 @@ public sealed class ProductSpecRepository : IProductSpecRepository
     {
         return new ProductSpec
         {
-            Id = reader.GetInt64(reader.GetOrdinal("id")),
-            ProductId = reader.GetInt64(reader.GetOrdinal("product_id")),
-            SpecName = reader.GetString(reader.GetOrdinal("spec_name")),
-            SpecValue = reader.GetString(reader.GetOrdinal("spec_value")),
-            SortOrder = reader.GetInt32(reader.GetOrdinal("sort_order")),
-            CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at"))
+            Id = reader.GetInt64(reader.GetOrdinal("ID")),
+            ProductId = reader.GetInt64(reader.GetOrdinal("PRODUCT_ID")),
+            SpecName = reader.GetString(reader.GetOrdinal("SPEC_NAME")),
+            SpecValue = reader.GetString(reader.GetOrdinal("SPEC_VALUE")),
+            SortOrder = reader.GetInt32(reader.GetOrdinal("SORT_ORDER")),
+            CreatedAt = reader.GetDateTime(reader.GetOrdinal("CREATED_AT"))
         };
     }
 }

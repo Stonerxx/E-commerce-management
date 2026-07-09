@@ -10,4 +10,46 @@ public sealed class AdminController : Controller
     {
         return View();
     }
+
+    [HttpGet("/admin/categories")]
+    public IActionResult Categories()
+    {
+        return View();
+    }
+
+    [HttpGet("/admin/products")]
+    public IActionResult Products()
+    {
+        return View();
+    }
+
+    [HttpGet("/admin/products/create")]
+    public IActionResult CreateProduct()
+    {
+        return View();
+    }
+
+    [HttpGet("/admin/products/{id}/edit")]
+    public IActionResult EditProduct(int id)
+    {
+        return View();
+    }
+
+    [HttpGet("/admin/skus")]
+    public IActionResult Skus()
+    {
+        return View();
+    }
+
+    [HttpGet("/admin/inventory/warnings")]
+    public IActionResult InventoryWarnings()
+    {
+        return View();
+    }
+
+    [HttpGet("/admin/inventory/logs")]
+    public IActionResult InventoryLogs()
+    {
+        return View();
+    }
 }

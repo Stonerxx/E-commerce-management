@@ -35,14 +35,14 @@ public sealed class CategoryRepository : ICategoryRepository
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var sql = new StringBuilder();
-        sql.Append("SELECT id, parent_id, name, tree_level, sort_order, status, icon_url, created_at FROM \"CATEGORY\"");
+        sql.Append("SELECT \"ID\", \"PARENT_ID\", \"NAME\", \"TREE_LEVEL\", \"SORT_ORDER\", \"STATUS\", \"ICON_URL\", \"CREATED_AT\" FROM \"CATEGORY\"");
         
         if (!includeDisabled)
         {
-            sql.Append(" WHERE status = 1");
+            sql.Append(" WHERE \"STATUS\" = 1");
         }
         
-        sql.Append(" ORDER BY tree_level, sort_order, id");
+        sql.Append(" ORDER BY \"TREE_LEVEL\", \"SORT_ORDER\", \"ID\"");
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -64,7 +64,7 @@ public sealed class CategoryRepository : ICategoryRepository
     public async Task<Category?> GetByIdAsync(int categoryId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "SELECT id, parent_id, name, tree_level, sort_order, status, icon_url, created_at FROM \"CATEGORY\" WHERE id = :categoryId";
+        const string sql = "SELECT \"ID\", \"PARENT_ID\", \"NAME\", \"TREE_LEVEL\", \"SORT_ORDER\", \"STATUS\", \"ICON_URL\", \"CREATED_AT\" FROM \"CATEGORY\" WHERE \"ID\" = :categoryId";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -91,9 +91,9 @@ public sealed class CategoryRepository : ICategoryRepository
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = """
-            INSERT INTO "CATEGORY" (parent_id, name, tree_level, sort_order, status, icon_url, created_at)
+            INSERT INTO "CATEGORY" ("PARENT_ID", "NAME", "TREE_LEVEL", "SORT_ORDER", "STATUS", "ICON_URL", "CREATED_AT")
             VALUES (:parentId, :name, :treeLevel, :sortOrder, :status, :iconUrl, :createdAt)
-            RETURNING id INTO :newId
+            RETURNING "ID" INTO :newId
             """;
 
         using var command = connection.CreateCommand();
@@ -120,9 +120,9 @@ public sealed class CategoryRepository : ICategoryRepository
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = """
             UPDATE "CATEGORY" 
-            SET parent_id = :parentId, name = :name, tree_level = :treeLevel, sort_order = :sortOrder, 
-                status = :status, icon_url = :iconUrl, created_at = :createdAt
-            WHERE id = :categoryId
+            SET "PARENT_ID" = :parentId, "NAME" = :name, "TREE_LEVEL" = :treeLevel, "SORT_ORDER" = :sortOrder, 
+                "STATUS" = :status, "ICON_URL" = :iconUrl, "CREATED_AT" = :createdAt
+            WHERE "ID" = :categoryId
             """;
 
         using var command = connection.CreateCommand();
@@ -145,7 +145,7 @@ public sealed class CategoryRepository : ICategoryRepository
     public async Task<int> DeleteAsync(int categoryId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "DELETE FROM \"CATEGORY\" WHERE id = :categoryId";
+        const string sql = "DELETE FROM \"CATEGORY\" WHERE \"ID\" = :categoryId";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -165,7 +165,7 @@ public sealed class CategoryRepository : ICategoryRepository
     public async Task<bool> HasChildrenAsync(int categoryId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "SELECT COUNT(*) FROM \"CATEGORY\" WHERE parent_id = :categoryId";
+        const string sql = "SELECT COUNT(*) FROM \"CATEGORY\" WHERE \"PARENT_ID\" = :categoryId";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -186,7 +186,7 @@ public sealed class CategoryRepository : ICategoryRepository
     public async Task<bool> HasProductsAsync(int categoryId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "SELECT COUNT(*) FROM PRODUCT WHERE category_id = :categoryId";
+        const string sql = "SELECT COUNT(*) FROM \"PRODUCT\" WHERE \"CATEGORY_ID\" = :categoryId";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -246,14 +246,14 @@ public sealed class CategoryRepository : ICategoryRepository
     {
         return new Category
         {
-            Id = reader.GetInt32(reader.GetOrdinal("id")),
-            ParentId = reader.IsDBNull(reader.GetOrdinal("parent_id")) ? null : reader.GetInt32(reader.GetOrdinal("parent_id")),
-            Name = reader.GetString(reader.GetOrdinal("name")),
-            TreeLevel = reader.GetInt32(reader.GetOrdinal("tree_level")),
-            SortOrder = reader.GetInt32(reader.GetOrdinal("sort_order")),
-            Status = reader.GetInt32(reader.GetOrdinal("status")),
-            IconUrl = reader.IsDBNull(reader.GetOrdinal("icon_url")) ? null : reader.GetString(reader.GetOrdinal("icon_url")),
-            CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at"))
+            Id = reader.GetInt32(reader.GetOrdinal("ID")),
+            ParentId = reader.IsDBNull(reader.GetOrdinal("PARENT_ID")) ? null : reader.GetInt32(reader.GetOrdinal("PARENT_ID")),
+            Name = reader.GetString(reader.GetOrdinal("NAME")),
+            TreeLevel = reader.GetInt32(reader.GetOrdinal("TREE_LEVEL")),
+            SortOrder = reader.GetInt32(reader.GetOrdinal("SORT_ORDER")),
+            Status = reader.GetInt32(reader.GetOrdinal("STATUS")),
+            IconUrl = reader.IsDBNull(reader.GetOrdinal("ICON_URL")) ? null : reader.GetString(reader.GetOrdinal("ICON_URL")),
+            CreatedAt = reader.GetDateTime(reader.GetOrdinal("CREATED_AT"))
         };
     }
 }

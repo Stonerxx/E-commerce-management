@@ -1,0 +1,171 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "SKU 管理";
+}
+
+<div id="skusApp" v-cloak>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">SKU 管理</h1>
+            <p class="text-muted mb-0">查看和管理所有商品的 SKU 规格、库存、状态</p>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12 col-lg-4">
+                    <input type="text" class="form-control" placeholder="搜索商品名称或 SKU..." v-model="keyword" v-on:keyup.enter="loadSkus">
+                </div>
+                <div class="col-12 col-lg-3">
+                    <select class="form-select" v-model.number="status">
+                        <option :value="null">全部状态</option>
+                        <option :value="0">已下架</option>
+                        <option :value="1">已上架</option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-2">
+                    <select class="form-select" v-model.number="lowStock">
+                        <option :value="null">全部库存</option>
+                        <option :value="1">仅看低库存</option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-3">
+                    <button class="btn btn-outline-primary w-100" v-on:click="loadSkus">
+                        <i class="bi bi-search"></i> 搜索
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h5 mb-0">SKU 列表</h2>
+            <span class="text-muted small">共 {{ pagination.total }} 条记录</span>
+        </div>
+        <div class="card-body p-0">
+            <div v-if="loading" class="text-center py-5">
+                <div class="spinner-border text-primary"></div>
+            </div>
+            <div v-else-if="rows.length === 0" class="empty-tip text-center">
+                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                暂无 SKU 数据，请先在"商品管理"中创建商品并添加 SKU
+            </div>
+            <table v-else class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>商品</th>
+                        <th>规格</th>
+                        <th>价格</th>
+                        <th>库存</th>
+                        <th>锁定库存</th>
+                        <th>预警阈值</th>
+                        <th>状态</th>
+                        <th style="width: 180px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="row in rows" v-bind:key="row.skuId">
+                        <td>
+                            <a v-bind:href="'/admin/products/' + row.productId + '/edit'" class="text-decoration-none">
+                                {{ row.productName || ('商品#' + row.productId) }}
+                            </a>
+                        </td>
+                        <td><code class="small">{{ row.specDesc }}</code></td>
+                        <td class="text-primary">¥{{ row.price.toFixed(2) }}</td>
+                        <td>
+                            <span v-bind:class="row.stock <= row.warningStock ? 'text-danger fw-bold' : ''">
+                                {{ row.stock }}
+                            </span>
+                        </td>
+                        <td>{{ row.lockedStock }}</td>
+                        <td>{{ row.warningStock }}</td>
+                        <td>
+                            <span class="badge" v-bind:class="row.status === 1 ? 'text-bg-success' : 'text-bg-secondary'">
+                                {{ row.status === 1 ? '已上架' : '已下架' }}
+                            </span>
+                        </td>
+                        <td class="table-actions">
+                            <button class="btn btn-sm btn-outline-secondary"
+                                    v-on:click="toggleStatus(row)">
+                                {{ row.status === 1 ? '下架' : '上架' }}
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary"
+                                    v-on:click="openAdjustModal(row)">
+                                <i class="bi bi-plus-slash-minus"></i> 调库存
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div v-if="pagination.total > pagination.pageSize" class="card-footer">
+            <nav>
+                <ul class="pagination justify-content-center mb-0">
+                    <li class="page-item" v-bind:class="{ disabled: pagination.currentPage === 1 }">
+                        <button class="page-link" v-on:click="loadSkus(pagination.currentPage - 1)">上一页</button>
+                    </li>
+                    <li class="page-item" v-for="p in pageNumbers" v-bind:key="p"
+                        v-bind:class="{ active: pagination.currentPage === p }">
+                        <button class="page-link" v-on:click="loadSkus(p)">{{ p }}</button>
+                    </li>
+                    <li class="page-item" v-bind:class="{ disabled: pagination.currentPage >= pagination.totalPages }">
+                        <button class="page-link" v-on:click="loadSkus(pagination.currentPage + 1)">下一页</button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- 调整库存弹窗 -->
+    <div class="modal fade" id="adjustModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">调整库存</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="small text-muted">SKU</div>
+                        <div>{{ adjustForm.productName }} - {{ adjustForm.specDesc }}</div>
+                        <div class="small text-muted mt-1">当前库存：<strong>{{ adjustForm.currentStock }}</strong></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">调整类型</label>
+                        <select class="form-select" v-model="adjustForm.changeType">
+                            <option value="1">入库（增加）</option>
+                            <option value="2">出库（减少）</option>
+                            <option value="3">盘点（设置）</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">数量 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" v-model.number="adjustForm.changeQty" min="0">
+                        <div class="form-text" v-if="adjustForm.changeType === 1">增加后库存 = {{ adjustForm.currentStock + (adjustForm.changeQty || 0) }}</div>
+                        <div class="form-text" v-if="adjustForm.changeType === 2">减少后库存 = {{ adjustForm.currentStock - (adjustForm.changeQty || 0) }}</div>
+                        <div class="form-text" v-if="adjustForm.changeType === 3">设置后库存 = {{ adjustForm.changeQty || 0 }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" v-model="adjustForm.remark" rows="2"></textarea>
+                    </div>
+                    <div v-if="adjustError" class="alert alert-danger py-2 mb-0">{{ adjustError }}</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" v-on:click="submitAdjust" v-bind:disabled="adjusting">
+                        <span v-if="adjusting" class="spinner-border spinner-border-sm me-1"></span>
+                        确认
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/admin-skus.js" asp-append-version="true"></script>
+}

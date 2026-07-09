@@ -11,10 +11,10 @@ namespace ECommerce.Infrastructure.Services;
 
 public static class InventoryChangeTypes
 {
-    public const string AdminAdjust = "ADMIN_ADJUST";
-    public const string OrderLock = "ORDER_LOCK";
-    public const string OrderRelease = "ORDER_RELEASE";
-    public const string OrderDeduct = "ORDER_DEDUCT";
+    public const string AdminAdjust = "ADJUST";
+    public const string OrderLock = "ADJUST";
+    public const string OrderRelease = "CANCEL";
+    public const string OrderDeduct = "SALE";
 }
 
 public sealed class InventoryService : IInventoryService

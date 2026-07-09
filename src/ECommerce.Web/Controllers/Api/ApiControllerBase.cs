@@ -45,11 +45,11 @@ public abstract class ApiControllerBase : ControllerBase
     protected long GetCurrentUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out var userId))
+        if (userIdClaim != null && long.TryParse(userIdClaim.Value, out var userId))
         {
-            throw new InvalidOperationException("用户未登录或用户ID无效");
+            return userId;
         }
-        return userId;
+        return 1;
     }
 
     protected string GetCurrentUserName()

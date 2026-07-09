@@ -1,29 +1,95 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - ECommerce Admin</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <style>
+        [v-cloak] { display: none !important; }
+        .admin-layout { min-height: 100vh; }
+        .admin-sidebar {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            min-height: 100vh;
+            color: #cbd5e1;
+            padding-top: 1rem;
+        }
+        .admin-sidebar .navbar-brand {
+            color: #f1f5f9;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            margin-bottom: 0.5rem;
+        }
+        .admin-sidebar .nav-link {
+            color: #cbd5e1;
+            padding: 0.6rem 1rem;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .admin-sidebar .nav-link:hover {
+            color: #ffffff;
+            background-color: rgba(255,255,255,0.05);
+        }
+        .admin-sidebar .nav-link.active {
+            color: #ffffff;
+            background-color: rgba(56, 189, 248, 0.15);
+            border-left-color: #38bdf8;
+        }
+        .admin-sidebar .nav-link i { margin-right: 0.5rem; }
+        .admin-content { background-color: #f1f5f9; min-height: 100vh; }
+        .stat-card { transition: transform 0.15s, box-shadow 0.15s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .table-actions button, .table-actions a { margin-right: 0.25rem; }
+        .empty-tip { padding: 3rem 1rem; color: #94a3b8; }
+    </style>
 </head>
 <body>
-    <header class="border-bottom">
-        <nav class="navbar navbar-expand-sm navbar-light bg-white">
-            <div class="container-fluid">
-                <a class="navbar-brand" href="/admin">ECommerce Admin</a>
-                <div class="navbar-nav">
-                    <a class="nav-link" href="/admin/products">Products</a>
-                    <a class="nav-link" href="/admin/orders">Orders</a>
-                    <a class="nav-link" href="/admin/statistics">Statistics</a>
-                    <a class="nav-link" href="/admin/operation-logs">Logs</a>
+    <div class="admin-layout d-flex">
+        <aside class="admin-sidebar d-none d-md-block" style="width: 220px; flex-shrink: 0;">
+            <a class="navbar-brand d-block" href="/admin">
+                <i class="bi bi-shop"></i> 电商后台
+            </a>
+            <nav class="nav flex-column">
+                <a class="nav-link" href="/admin" v-cloak>
+                    <i class="bi bi-speedometer2"></i> 控制台
+                </a>
+                <a class="nav-link" href="/admin/categories">
+                    <i class="bi bi-diagram-3"></i> 分类管理
+                </a>
+                <a class="nav-link" href="/admin/products">
+                    <i class="bi bi-box-seam"></i> 商品管理
+                </a>
+                <a class="nav-link" href="/admin/skus">
+                    <i class="bi bi-tags"></i> SKU 管理
+                </a>
+                <a class="nav-link" href="/admin/inventory/warnings">
+                    <i class="bi bi-exclamation-triangle"></i> 库存预警
+                </a>
+                <a class="nav-link" href="/admin/inventory/logs">
+                    <i class="bi bi-clock-history"></i> 库存日志
+                </a>
+            </nav>
+        </aside>
+        <div class="admin-content flex-grow-1">
+            <nav class="navbar navbar-expand bg-white border-bottom px-3">
+                <button class="btn btn-link d-md-none p-0 me-3" type="button">
+                    <i class="bi bi-list fs-4"></i>
+                </button>
+                <span class="navbar-text fw-medium">@ViewData["Title"]</span>
+                <div class="ms-auto d-flex align-items-center gap-3">
+                    <span class="text-muted small d-none d-sm-inline">
+                        <i class="bi bi-person-circle"></i> 管理员
+                    </span>
                 </div>
-            </div>
-        </nav>
-    </header>
-    <main class="container-fluid py-3">
-        @RenderBody()
-    </main>
+            </nav>
+            <main class="container-fluid py-4 px-4">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     @await RenderSectionAsync("Scripts", required: false)

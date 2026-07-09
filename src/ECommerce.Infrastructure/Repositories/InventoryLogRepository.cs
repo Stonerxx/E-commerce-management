@@ -28,25 +28,25 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
 
         var sql = new StringBuilder();
-        sql.Append("SELECT id, sku_id, change_type, change_qty, before_stock, after_stock, operator_id, ref_order_id, remark, created_at ");
-        sql.Append("FROM INVENTORY_LOG ");
+        sql.Append("SELECT \"ID\", \"SKU_ID\", \"CHANGE_TYPE\", \"CHANGE_QTY\", \"BEFORE_STOCK\", \"AFTER_STOCK\", \"OPERATOR_ID\", \"REF_ORDER_ID\", \"REMARK\", \"CREATED_AT\" ");
+        sql.Append("FROM \"INVENTORY_LOG\" ");
 
         var conditions = new List<string>();
         if (query.SkuId.HasValue)
         {
-            conditions.Add("sku_id = :skuId");
+            conditions.Add("\"SKU_ID\" = :skuId");
         }
         if (!string.IsNullOrWhiteSpace(query.ChangeType))
         {
-            conditions.Add("change_type = :changeType");
+            conditions.Add("\"CHANGE_TYPE\" = :changeType");
         }
         if (query.StartTime.HasValue)
         {
-            conditions.Add("created_at >= :startTime");
+            conditions.Add("\"CREATED_AT\" >= :startTime");
         }
         if (query.EndTime.HasValue)
         {
-            conditions.Add("created_at <= :endTime");
+            conditions.Add("\"CREATED_AT\" <= :endTime");
         }
 
         if (conditions.Count > 0)
@@ -54,10 +54,10 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
             sql.Append("WHERE " + string.Join(" AND ", conditions));
         }
 
-        sql.Append(" ORDER BY created_at DESC");
-
+        sql.Append(" ORDER BY \"CREATED_AT\" DESC");
+        
         var countSql = new StringBuilder();
-        countSql.Append("SELECT COUNT(*) FROM INVENTORY_LOG");
+        countSql.Append("SELECT COUNT(*) FROM \"INVENTORY_LOG\"");
         if (conditions.Count > 0)
         {
             countSql.Append(" WHERE " + string.Join(" AND ", conditions));
@@ -108,9 +108,9 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = """
-            INSERT INTO INVENTORY_LOG (sku_id, change_type, change_qty, before_stock, after_stock, operator_id, ref_order_id, remark, created_at)
+            INSERT INTO "INVENTORY_LOG" ("SKU_ID", "CHANGE_TYPE", "CHANGE_QTY", "BEFORE_STOCK", "AFTER_STOCK", "OPERATOR_ID", "REF_ORDER_ID", "REMARK", "CREATED_AT")
             VALUES (:skuId, :changeType, :changeQty, :beforeStock, :afterStock, :operatorId, :refOrderId, :remark, :createdAt)
-            RETURNING id INTO :newId
+            RETURNING "ID" INTO :newId
             """;
 
         using var command = connection.CreateCommand();
@@ -214,16 +214,16 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
     private static InventoryLogDto MapToDto(DbDataReader reader)
     {
         return new InventoryLogDto(
-            LogId: reader.GetInt64(reader.GetOrdinal("id")),
-            SkuId: reader.GetInt64(reader.GetOrdinal("sku_id")),
-            ChangeType: reader.GetString(reader.GetOrdinal("change_type")),
-            ChangeQty: reader.GetInt32(reader.GetOrdinal("change_qty")),
-            BeforeStock: reader.GetInt32(reader.GetOrdinal("before_stock")),
-            AfterStock: reader.GetInt32(reader.GetOrdinal("after_stock")),
-            OperatorId: reader.IsDBNull(reader.GetOrdinal("operator_id")) ? null : reader.GetInt64(reader.GetOrdinal("operator_id")),
-            RefOrderId: reader.IsDBNull(reader.GetOrdinal("ref_order_id")) ? null : reader.GetInt64(reader.GetOrdinal("ref_order_id")),
-            Remark: reader.IsDBNull(reader.GetOrdinal("remark")) ? null : reader.GetString(reader.GetOrdinal("remark")),
-            CreatedAt: reader.GetDateTime(reader.GetOrdinal("created_at"))
+            LogId: reader.GetInt64(reader.GetOrdinal("ID")),
+            SkuId: reader.GetInt64(reader.GetOrdinal("SKU_ID")),
+            ChangeType: reader.GetString(reader.GetOrdinal("CHANGE_TYPE")),
+            ChangeQty: reader.GetInt32(reader.GetOrdinal("CHANGE_QTY")),
+            BeforeStock: reader.GetInt32(reader.GetOrdinal("BEFORE_STOCK")),
+            AfterStock: reader.GetInt32(reader.GetOrdinal("AFTER_STOCK")),
+            OperatorId: reader.IsDBNull(reader.GetOrdinal("OPERATOR_ID")) ? null : reader.GetInt64(reader.GetOrdinal("OPERATOR_ID")),
+            RefOrderId: reader.IsDBNull(reader.GetOrdinal("REF_ORDER_ID")) ? null : reader.GetInt64(reader.GetOrdinal("REF_ORDER_ID")),
+            Remark: reader.IsDBNull(reader.GetOrdinal("REMARK")) ? null : reader.GetString(reader.GetOrdinal("REMARK")),
+            CreatedAt: reader.GetDateTime(reader.GetOrdinal("CREATED_AT"))
         );
     }
 }

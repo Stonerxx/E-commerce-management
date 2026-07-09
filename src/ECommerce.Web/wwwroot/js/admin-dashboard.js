@@ -1,131 +1,141 @@
 (function () {
-    const { createApp } = Vue;
+    const { createApp, ref, onMounted } = Vue;
 
     createApp({
-        data() {
-            return {
-                loading: false,
-                summaryCards: [
-                    {
-                        key: "orders",
-                        label: "今日订单",
-                        value: "0",
-                        badge: "待实现",
-                        badgeClass: "text-bg-secondary",
-                        hint: "第 4 人实现订单后接入 /api/v1/admin/dashboard/summary"
-                    },
-                    {
-                        key: "sales",
-                        label: "今日销售额",
-                        value: "¥0.00",
-                        badge: "统计",
-                        badgeClass: "text-bg-info",
-                        hint: "第 6 人实现统计口径后替换示例数据"
-                    },
-                    {
-                        key: "shipments",
-                        label: "待发货",
-                        value: "0",
-                        badge: "物流",
-                        badgeClass: "text-bg-warning",
-                        hint: "第 5 人实现发货和物流轨迹"
-                    },
-                    {
-                        key: "warnings",
-                        label: "库存预警",
-                        value: "0",
-                        badge: "库存",
-                        badgeClass: "text-bg-danger",
-                        hint: "第 3 人实现库存预警列表"
-                    }
-                ],
-                moduleProgress: [
-                    {
-                        name: "项目骨架与部署",
-                        branch: "feat-member1-foundation-oracle-deploy",
-                        percent: 35,
-                        barClass: "bg-primary",
-                        nextStep: "补 Oracle 实连、部署环境变量和服务器截图"
-                    },
-                    {
-                        name: "用户、权限、地址、日志",
-                        branch: "feat-member2-user-permission-address-log",
-                        percent: 10,
-                        barClass: "bg-success",
-                        nextStep: "实现 AuthService，并让登录页提交后生成 Cookie"
-                    },
-                    {
-                        name: "商品、分类、SKU、库存",
-                        branch: "feat-member3-product-category-sku-inventory",
-                        percent: 10,
-                        barClass: "bg-info",
-                        nextStep: "实现分类树、商品列表、SKU 和库存日志"
-                    },
-                    {
-                        name: "购物车、订单核心流程",
-                        branch: "feat-member4-cart-order-core",
-                        percent: 10,
-                        barClass: "bg-warning",
-                        nextStep: "实现购物车转订单和库存锁定"
-                    },
-                    {
-                        name: "支付、优惠券、物流、评价",
-                        branch: "feat-member5-payment-coupon-logistics-review",
-                        percent: 10,
-                        barClass: "bg-danger",
-                        nextStep: "实现模拟支付成功后的订单状态流转"
-                    },
-                    {
-                        name: "统计、导出、UI、文档",
-                        branch: "feat-member6-stats-export-ui-docs",
-                        percent: 15,
-                        barClass: "bg-secondary",
-                        nextStep: "基于本 Dashboard 样板统一后台页面"
-                    }
-                ],
-                apiChecks: [
-                    {
-                        url: "/health",
-                        status: "未检查",
-                        badgeClass: "text-bg-secondary",
-                        message: "点击刷新系统状态后检查"
-                    },
-                    {
-                        url: "/api/v1/system/version",
-                        status: "未检查",
-                        badgeClass: "text-bg-secondary",
-                        message: "点击刷新系统状态后检查"
-                    }
-                ]
-            };
-        },
-        mounted() {
-            this.refreshSystemStatus();
-        },
-        methods: {
-            async refreshSystemStatus() {
-                this.loading = true;
-                await Promise.all(this.apiChecks.map((item) => this.checkEndpoint(item)));
-                this.loading = false;
-            },
-            async checkEndpoint(item) {
-                try {
-                    const response = await fetch(item.url, {
-                        headers: {
-                            "Accept": "application/json"
-                        }
-                    });
-                    const payload = await response.json();
+        setup() {
+            const loading = ref(false);
+            const stats = ref({
+                productCount: 0,
+                onSaleCount: 0,
+                offSaleCount: 0,
+                categoryCount: 0,
+                skuCount: 0,
+                totalStock: 0,
+                warningCount: 0
+            });
+            const systemStatus = ref({
+                dbConnected: false,
+                dbServer: '-',
+                dbTime: '-'
+            });
+            const recentLogs = ref([]);
 
-                    item.status = response.ok && payload.success ? "正常" : "异常";
-                    item.badgeClass = response.ok && payload.success ? "text-bg-success" : "text-bg-danger";
-                    item.message = payload.message || `HTTP ${response.status}`;
-                } catch (error) {
-                    item.status = "失败";
-                    item.badgeClass = "text-bg-danger";
-                    item.message = error instanceof Error ? error.message : "接口请求失败";
+            function getLogTypeText(t) {
+                switch (t) {
+                    case 1: return '入库';
+                    case 2: return '出库';
+                    case 3: return '盘点';
+                    default: return '其他';
                 }
             }
+
+            function getLogTypeClass(t) {
+                switch (t) {
+                    case 1: return 'text-bg-success';
+                    case 2: return 'text-bg-danger';
+                    case 3: return 'text-bg-info';
+                    default: return 'text-bg-secondary';
+                }
+            }
+
+            function formatTime(iso) {
+                if (!iso) return '-';
+                try {
+                    return new Date(iso).toLocaleString('zh-CN', { hour12: false });
+                } catch {
+                    return iso;
+                }
+            }
+
+            async function loadAll() {
+                loading.value = true;
+                try {
+                    // 1. 系统健康检查
+                    try {
+                        const healthResp = await fetch('/api/health');
+                        const health = await healthResp.json();
+                        systemStatus.value.dbConnected = health.connected;
+                        systemStatus.value.dbServer = health.database || 'Oracle';
+                        systemStatus.value.dbTime = health.serverTime || '-';
+                    } catch {
+                        systemStatus.value.dbConnected = false;
+                    }
+
+                    // 2. 商品统计
+                    const prodResp = await fetch('/api/v1/admin/products?page=1&pageSize=1');
+                    const prodData = await prodResp.json();
+                    if (prodData.success && prodData.data) {
+                        stats.value.productCount = prodData.data.totalCount || 0;
+                    }
+
+                    // 3. 分类统计
+                    const catResp = await fetch('/api/v1/admin/categories');
+                    const catData = await catResp.json();
+                    if (catData.success && catData.data) {
+                        let count = 0;
+                        function countAll(nodes) {
+                            for (const n of nodes) {
+                                count++;
+                                if (n.children && n.children.length) countAll(n.children);
+                            }
+                        }
+                        countAll(catData.data);
+                        stats.value.categoryCount = count;
+                    }
+
+                    // 4. SKU 统计 + 上下架统计
+                    const allProducts = [];
+                    let pPage = 1;
+                    while (true) {
+                        const resp = await fetch(`/api/v1/admin/products?page=${pPage}&pageSize=100`);
+                        const data = await resp.json();
+                        if (data.success && data.data && data.data.items) {
+                            for (const p of data.data.items) allProducts.push(p);
+                            if (p.status === 1) stats.value.onSaleCount++;
+                            else if (p.status === 0) stats.value.offSaleCount++;
+                            if (pPage >= data.data.totalPages || data.data.totalPages === 0) break;
+                            pPage++;
+                        } else break;
+                    }
+
+                    let totalStock = 0;
+                    for (const p of allProducts) {
+                        const skuResp = await fetch(`/api/v1/admin/products/${p.productId}/skus`);
+                        const skuData = await skuResp.json();
+                        if (skuData.success && skuData.data) {
+                            stats.value.skuCount += skuData.data.length;
+                            for (const sku of skuData.data) {
+                                totalStock += (sku.stock || 0);
+                                if (sku.stock <= sku.warningStock) {
+                                    stats.value.warningCount++;
+                                }
+                            }
+                        }
+                    }
+                    stats.value.totalStock = totalStock;
+
+                    // 5. 最近库存日志
+                    const logResp = await fetch('/api/v1/admin/inventory/logs?page=1&pageSize=5');
+                    const logData = await logResp.json();
+                    if (logData.success && logData.data && logData.data.items) {
+                        recentLogs.value = logData.data.items;
+                    }
+                } catch (err) {
+                    console.error('加载Dashboard数据失败:', err);
+                } finally {
+                    loading.value = false;
+                }
+            }
+
+            onMounted(() => {
+                loadAll();
+            });
+
+            return {
+                loading, stats, systemStatus, recentLogs,
+                getLogTypeText, getLogTypeClass, formatTime,
+                loadAll
+            };
         }
-    }).mount("#dashboardApp");
+    }).mount('#dashboardApp');
 })();

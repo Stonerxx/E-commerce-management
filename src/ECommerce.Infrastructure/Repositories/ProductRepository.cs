@@ -42,21 +42,21 @@ public sealed class ProductRepository : IProductRepository
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         
         var sql = new StringBuilder();
-        sql.Append("SELECT p.id, p.category_id, p.name, p.main_image, p.price_min, p.sales_count, p.avg_rating, p.status ");
-        sql.Append("FROM PRODUCT p ");
+        sql.Append("SELECT p.\"ID\", p.\"CATEGORY_ID\", p.\"NAME\", p.\"MAIN_IMAGE\", p.\"PRICE_MIN\", p.\"SALES_COUNT\", p.\"AVG_RATING\", p.\"STATUS\" ");
+        sql.Append("FROM \"PRODUCT\" p ");
         
         var conditions = new List<string>();
         if (query.CategoryId.HasValue)
         {
-            conditions.Add("p.category_id = :categoryId");
+            conditions.Add("p.\"CATEGORY_ID\" = :categoryId");
         }
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {
-            conditions.Add("p.name LIKE :keyword");
+            conditions.Add("p.\"NAME\" LIKE :keyword");
         }
         if (query.Status.HasValue)
         {
-            conditions.Add("p.status = :status");
+            conditions.Add("p.\"STATUS\" = :status");
         }
         
         if (conditions.Count > 0)
@@ -64,10 +64,10 @@ public sealed class ProductRepository : IProductRepository
             sql.Append("WHERE " + string.Join(" AND ", conditions));
         }
         
-        sql.Append(" ORDER BY p.created_at DESC");
+        sql.Append(" ORDER BY p.\"CREATED_AT\" DESC");
         
         var countSql = new StringBuilder();
-        countSql.Append("SELECT COUNT(*) FROM PRODUCT p");
+        countSql.Append("SELECT COUNT(*) FROM \"PRODUCT\" p");
         if (conditions.Count > 0)
         {
             countSql.Append(" WHERE " + string.Join(" AND ", conditions));
@@ -117,7 +117,7 @@ public sealed class ProductRepository : IProductRepository
     public async Task<Product?> GetByIdAsync(long productId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "SELECT id, category_id, name, description, main_image, status, price_min, sales_count, view_count, avg_rating, created_at, updated_at FROM PRODUCT WHERE id = :productId";
+        const string sql = "SELECT \"ID\", \"CATEGORY_ID\", \"NAME\", \"DESCRIPTION\", \"MAIN_IMAGE\", \"STATUS\", \"PRICE_MIN\", \"SALES_COUNT\", \"VIEW_COUNT\", \"AVG_RATING\", \"CREATED_AT\", \"UPDATED_AT\" FROM \"PRODUCT\" WHERE \"ID\" = :productId";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -144,9 +144,9 @@ public sealed class ProductRepository : IProductRepository
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = """
-            INSERT INTO PRODUCT (category_id, name, description, main_image, status, price_min, sales_count, view_count, avg_rating, created_at, updated_at)
+            INSERT INTO "PRODUCT" ("CATEGORY_ID", "NAME", "DESCRIPTION", "MAIN_IMAGE", "STATUS", "PRICE_MIN", "SALES_COUNT", "VIEW_COUNT", "AVG_RATING", "CREATED_AT", "UPDATED_AT")
             VALUES (:categoryId, :name, :description, :mainImage, :status, :priceMin, :salesCount, :viewCount, :avgRating, :createdAt, :updatedAt)
-            RETURNING id INTO :newId
+            RETURNING "ID" INTO :newId
             """;
 
         using var command = connection.CreateCommand();
@@ -171,10 +171,10 @@ public sealed class ProductRepository : IProductRepository
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = """
-            UPDATE PRODUCT 
-            SET category_id = :categoryId, name = :name, description = :description, main_image = :mainImage, 
-                status = :status, price_min = :priceMin, updated_at = :updatedAt
-            WHERE id = :productId
+            UPDATE "PRODUCT" 
+            SET "CATEGORY_ID" = :categoryId, "NAME" = :name, "DESCRIPTION" = :description, "MAIN_IMAGE" = :mainImage, 
+                "STATUS" = :status, "PRICE_MIN" = :priceMin, "UPDATED_AT" = :updatedAt
+            WHERE "ID" = :productId
             """;
 
         using var command = connection.CreateCommand();
@@ -196,7 +196,7 @@ public sealed class ProductRepository : IProductRepository
     public async Task<int> SetStatusAsync(long productId, int status, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "UPDATE PRODUCT SET status = :status, updated_at = :updatedAt WHERE id = :productId";
+        const string sql = "UPDATE \"PRODUCT\" SET \"STATUS\" = :status, \"UPDATED_AT\" = :updatedAt WHERE \"ID\" = :productId";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -226,7 +226,7 @@ public sealed class ProductRepository : IProductRepository
     public async Task<bool> CategoryExistsAsync(int categoryId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "SELECT COUNT(*) FROM \"CATEGORY\" WHERE id = :categoryId AND status = 1";
+        const string sql = "SELECT COUNT(*) FROM \"CATEGORY\" WHERE \"ID\" = :categoryId AND \"STATUS\" = 1";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -247,7 +247,7 @@ public sealed class ProductRepository : IProductRepository
     public async Task<int> IncrementSalesCountAsync(long productId, int quantity, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "UPDATE PRODUCT SET sales_count = sales_count + :quantity, updated_at = :updatedAt WHERE id = :productId";
+        const string sql = "UPDATE \"PRODUCT\" SET \"SALES_COUNT\" = \"SALES_COUNT\" + :quantity, \"UPDATED_AT\" = :updatedAt WHERE \"ID\" = :productId";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -277,7 +277,7 @@ public sealed class ProductRepository : IProductRepository
     public async Task<int> IncrementViewCountAsync(long productId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "UPDATE PRODUCT SET view_count = view_count + 1, updated_at = :updatedAt WHERE id = :productId";
+        const string sql = "UPDATE \"PRODUCT\" SET \"VIEW_COUNT\" = \"VIEW_COUNT\" + 1, \"UPDATED_AT\" = :updatedAt WHERE \"ID\" = :productId";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -302,7 +302,7 @@ public sealed class ProductRepository : IProductRepository
     public async Task<bool> HasSkusAsync(long productId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "SELECT COUNT(*) FROM SKU WHERE product_id = :productId";
+        const string sql = "SELECT COUNT(*) FROM \"SKU\" WHERE \"PRODUCT_ID\" = :productId";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -407,32 +407,32 @@ public sealed class ProductRepository : IProductRepository
     {
         return new Product
         {
-            Id = reader.GetInt64(reader.GetOrdinal("id")),
-            CategoryId = reader.GetInt32(reader.GetOrdinal("category_id")),
-            Name = reader.GetString(reader.GetOrdinal("name")),
-            Description = reader.IsDBNull(reader.GetOrdinal("description")) ? null : reader.GetString(reader.GetOrdinal("description")),
-            MainImage = reader.GetString(reader.GetOrdinal("main_image")),
-            Status = reader.GetInt32(reader.GetOrdinal("status")),
-            PriceMin = reader.GetDecimal(reader.GetOrdinal("price_min")),
-            SalesCount = reader.GetInt32(reader.GetOrdinal("sales_count")),
-            ViewCount = reader.GetInt32(reader.GetOrdinal("view_count")),
-            AvgRating = reader.GetDecimal(reader.GetOrdinal("avg_rating")),
-            CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
-            UpdatedAt = reader.GetDateTime(reader.GetOrdinal("updated_at"))
+            Id = reader.GetInt64(reader.GetOrdinal("ID")),
+            CategoryId = reader.GetInt32(reader.GetOrdinal("CATEGORY_ID")),
+            Name = reader.GetString(reader.GetOrdinal("NAME")),
+            Description = reader.IsDBNull(reader.GetOrdinal("DESCRIPTION")) ? null : reader.GetString(reader.GetOrdinal("DESCRIPTION")),
+            MainImage = reader.GetString(reader.GetOrdinal("MAIN_IMAGE")),
+            Status = reader.GetInt32(reader.GetOrdinal("STATUS")),
+            PriceMin = reader.GetDecimal(reader.GetOrdinal("PRICE_MIN")),
+            SalesCount = reader.GetInt32(reader.GetOrdinal("SALES_COUNT")),
+            ViewCount = reader.GetInt32(reader.GetOrdinal("VIEW_COUNT")),
+            AvgRating = reader.GetDecimal(reader.GetOrdinal("AVG_RATING")),
+            CreatedAt = reader.GetDateTime(reader.GetOrdinal("CREATED_AT")),
+            UpdatedAt = reader.GetDateTime(reader.GetOrdinal("UPDATED_AT"))
         };
     }
 
     private static ProductListItemDto MapToListItemDto(DbDataReader reader)
     {
         return new ProductListItemDto(
-            ProductId: reader.GetInt64(reader.GetOrdinal("id")),
-            CategoryId: reader.GetInt32(reader.GetOrdinal("category_id")),
-            Name: reader.GetString(reader.GetOrdinal("name")),
-            MainImage: reader.GetString(reader.GetOrdinal("main_image")),
-            PriceMin: reader.GetDecimal(reader.GetOrdinal("price_min")),
-            SalesCount: reader.GetInt32(reader.GetOrdinal("sales_count")),
-            AvgRating: reader.GetDecimal(reader.GetOrdinal("avg_rating")),
-            Status: reader.GetInt32(reader.GetOrdinal("status"))
+            ProductId: reader.GetInt64(reader.GetOrdinal("ID")),
+            CategoryId: reader.GetInt32(reader.GetOrdinal("CATEGORY_ID")),
+            Name: reader.GetString(reader.GetOrdinal("NAME")),
+            MainImage: reader.GetString(reader.GetOrdinal("MAIN_IMAGE")),
+            PriceMin: reader.GetDecimal(reader.GetOrdinal("PRICE_MIN")),
+            SalesCount: reader.GetInt32(reader.GetOrdinal("SALES_COUNT")),
+            AvgRating: reader.GetDecimal(reader.GetOrdinal("AVG_RATING")),
+            Status: reader.GetInt32(reader.GetOrdinal("STATUS"))
         );
     }
 }

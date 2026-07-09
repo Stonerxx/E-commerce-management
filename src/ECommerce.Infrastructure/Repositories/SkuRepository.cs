@@ -38,7 +38,7 @@ public sealed class SkuRepository : ISkuRepository
     public async Task<Sku?> GetByIdAsync(long skuId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "SELECT id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status, created_at, updated_at FROM SKU WHERE id = :skuId";
+        const string sql = "SELECT \"ID\", \"PRODUCT_ID\", \"SPEC_DESC\", \"PRICE\", \"ORIGINAL_PRICE\", \"STOCK\", \"LOCKED_STOCK\", \"WARNING_STOCK\", \"SKU_IMAGE\", \"STATUS\", \"CREATED_AT\", \"UPDATED_AT\" FROM \"SKU\" WHERE \"ID\" = :skuId";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -64,7 +64,7 @@ public sealed class SkuRepository : ISkuRepository
     public async Task<IReadOnlyList<SkuDto>> GetByProductAsync(long productId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "SELECT id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status FROM SKU WHERE product_id = :productId ORDER BY created_at";
+        const string sql = "SELECT \"ID\", \"PRODUCT_ID\", \"SPEC_DESC\", \"PRICE\", \"ORIGINAL_PRICE\", \"STOCK\", \"LOCKED_STOCK\", \"WARNING_STOCK\", \"SKU_IMAGE\", \"STATUS\" FROM \"SKU\" WHERE \"PRODUCT_ID\" = :productId ORDER BY \"CREATED_AT\"";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -92,9 +92,9 @@ public sealed class SkuRepository : ISkuRepository
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = """
-            INSERT INTO SKU (product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status, created_at, updated_at)
+            INSERT INTO "SKU" ("PRODUCT_ID", "SPEC_DESC", "PRICE", "ORIGINAL_PRICE", "STOCK", "LOCKED_STOCK", "WARNING_STOCK", "SKU_IMAGE", "STATUS", "CREATED_AT", "UPDATED_AT")
             VALUES (:productId, :specDesc, :price, :originalPrice, :stock, :lockedStock, :warningStock, :skuImage, :status, :createdAt, :updatedAt)
-            RETURNING id INTO :newId
+            RETURNING "ID" INTO :newId
             """;
 
         using var command = connection.CreateCommand();
@@ -119,11 +119,9 @@ public sealed class SkuRepository : ISkuRepository
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = """
-            UPDATE SKU 
-            SET product_id = :productId, spec_desc = :specDesc, price = :price, original_price = :originalPrice, 
-                stock = :stock, locked_stock = :lockedStock, warning_stock = :warningStock, sku_image = :skuImage, 
-                status = :status, updated_at = :updatedAt
-            WHERE id = :skuId
+            UPDATE "SKU"
+            SET "STOCK" = :stock, "LOCKED_STOCK" = :lockedStock, "WARNING_STOCK" = :warningStock, "UPDATED_AT" = :updatedAt
+            WHERE "ID" = :skuId
             """;
 
         using var command = connection.CreateCommand();
@@ -132,7 +130,26 @@ public sealed class SkuRepository : ISkuRepository
             command.Transaction = _unitOfWork.CurrentTransaction;
         }
         command.CommandText = sql;
-        AddParameters(command, sku);
+
+        var stockParam = command.CreateParameter();
+        stockParam.ParameterName = ":stock";
+        stockParam.Value = sku.Stock;
+        command.Parameters.Add(stockParam);
+
+        var lockedStockParam = command.CreateParameter();
+        lockedStockParam.ParameterName = ":lockedStock";
+        lockedStockParam.Value = sku.LockedStock;
+        command.Parameters.Add(lockedStockParam);
+
+        var warningStockParam = command.CreateParameter();
+        warningStockParam.ParameterName = ":warningStock";
+        warningStockParam.Value = sku.WarningStock;
+        command.Parameters.Add(warningStockParam);
+
+        var updatedAtParam = command.CreateParameter();
+        updatedAtParam.ParameterName = ":updatedAt";
+        updatedAtParam.Value = DateTime.Now;
+        command.Parameters.Add(updatedAtParam);
 
         var idParam = command.CreateParameter();
         idParam.ParameterName = ":skuId";
@@ -145,7 +162,7 @@ public sealed class SkuRepository : ISkuRepository
     public async Task<int> SetStatusAsync(long skuId, int status, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "UPDATE SKU SET status = :status, updated_at = :updatedAt WHERE id = :skuId";
+        const string sql = "UPDATE \"SKU\" SET \"STATUS\" = :status, \"UPDATED_AT\" = :updatedAt WHERE \"ID\" = :skuId";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -175,7 +192,7 @@ public sealed class SkuRepository : ISkuRepository
     public async Task<int> DeleteByProductAsync(long productId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "DELETE FROM SKU WHERE product_id = :productId";
+        const string sql = "DELETE FROM \"SKU\" WHERE \"PRODUCT_ID\" = :productId";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -195,7 +212,7 @@ public sealed class SkuRepository : ISkuRepository
     public async Task<int> LockStockAsync(long skuId, int quantity, string orderNo, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "UPDATE SKU SET locked_stock = locked_stock + :quantity, updated_at = :updatedAt WHERE id = :skuId AND stock - locked_stock >= :quantity";
+        const string sql = "UPDATE \"SKU\" SET \"LOCKED_STOCK\" = \"LOCKED_STOCK\" + :quantity, \"UPDATED_AT\" = :updatedAt WHERE \"ID\" = :skuId AND \"STOCK\" - \"LOCKED_STOCK\" >= :quantity";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -225,7 +242,7 @@ public sealed class SkuRepository : ISkuRepository
     public async Task<int> ReleaseStockAsync(long skuId, int quantity, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "UPDATE SKU SET locked_stock = locked_stock - :quantity, updated_at = :updatedAt WHERE id = :skuId AND locked_stock >= :quantity";
+        const string sql = "UPDATE \"SKU\" SET \"LOCKED_STOCK\" = \"LOCKED_STOCK\" - :quantity, \"UPDATED_AT\" = :updatedAt WHERE \"ID\" = :skuId AND \"LOCKED_STOCK\" >= :quantity";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -255,7 +272,7 @@ public sealed class SkuRepository : ISkuRepository
     public async Task<int> DeductStockAsync(long skuId, int quantity, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "UPDATE SKU SET stock = stock - :quantity, locked_stock = locked_stock - :quantity, updated_at = :updatedAt WHERE id = :skuId AND locked_stock >= :quantity";
+        const string sql = "UPDATE \"SKU\" SET \"STOCK\" = \"STOCK\" - :quantity, \"LOCKED_STOCK\" = \"LOCKED_STOCK\" - :quantity, \"UPDATED_AT\" = :updatedAt WHERE \"ID\" = :skuId AND \"LOCKED_STOCK\" >= :quantity";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -344,34 +361,34 @@ public sealed class SkuRepository : ISkuRepository
     {
         return new Sku
         {
-            Id = reader.GetInt64(reader.GetOrdinal("id")),
-            ProductId = reader.GetInt64(reader.GetOrdinal("product_id")),
-            SpecDesc = reader.GetString(reader.GetOrdinal("spec_desc")),
-            Price = reader.GetDecimal(reader.GetOrdinal("price")),
-            OriginalPrice = reader.IsDBNull(reader.GetOrdinal("original_price")) ? null : reader.GetDecimal(reader.GetOrdinal("original_price")),
-            Stock = reader.GetInt32(reader.GetOrdinal("stock")),
-            LockedStock = reader.GetInt32(reader.GetOrdinal("locked_stock")),
-            WarningStock = reader.GetInt32(reader.GetOrdinal("warning_stock")),
-            SkuImage = reader.IsDBNull(reader.GetOrdinal("sku_image")) ? null : reader.GetString(reader.GetOrdinal("sku_image")),
-            Status = reader.GetInt32(reader.GetOrdinal("status")),
-            CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
-            UpdatedAt = reader.GetDateTime(reader.GetOrdinal("updated_at"))
+            Id = reader.GetInt64(reader.GetOrdinal("ID")),
+            ProductId = reader.GetInt64(reader.GetOrdinal("PRODUCT_ID")),
+            SpecDesc = reader.GetString(reader.GetOrdinal("SPEC_DESC")),
+            Price = reader.GetDecimal(reader.GetOrdinal("PRICE")),
+            OriginalPrice = reader.IsDBNull(reader.GetOrdinal("ORIGINAL_PRICE")) ? null : reader.GetDecimal(reader.GetOrdinal("ORIGINAL_PRICE")),
+            Stock = reader.GetInt32(reader.GetOrdinal("STOCK")),
+            LockedStock = reader.GetInt32(reader.GetOrdinal("LOCKED_STOCK")),
+            WarningStock = reader.GetInt32(reader.GetOrdinal("WARNING_STOCK")),
+            SkuImage = reader.IsDBNull(reader.GetOrdinal("SKU_IMAGE")) ? null : reader.GetString(reader.GetOrdinal("SKU_IMAGE")),
+            Status = reader.GetInt32(reader.GetOrdinal("STATUS")),
+            CreatedAt = reader.GetDateTime(reader.GetOrdinal("CREATED_AT")),
+            UpdatedAt = reader.GetDateTime(reader.GetOrdinal("UPDATED_AT"))
         };
     }
 
     private static SkuDto MapToDto(DbDataReader reader)
     {
         return new SkuDto(
-            SkuId: reader.GetInt64(reader.GetOrdinal("id")),
-            ProductId: reader.GetInt64(reader.GetOrdinal("product_id")),
-            SpecDescJson: reader.GetString(reader.GetOrdinal("spec_desc")),
-            Price: reader.GetDecimal(reader.GetOrdinal("price")),
-            OriginalPrice: reader.IsDBNull(reader.GetOrdinal("original_price")) ? null : reader.GetDecimal(reader.GetOrdinal("original_price")),
-            Stock: reader.GetInt32(reader.GetOrdinal("stock")),
-            LockedStock: reader.GetInt32(reader.GetOrdinal("locked_stock")),
-            WarningStock: reader.GetInt32(reader.GetOrdinal("warning_stock")),
-            SkuImage: reader.IsDBNull(reader.GetOrdinal("sku_image")) ? null : reader.GetString(reader.GetOrdinal("sku_image")),
-            Status: reader.GetInt32(reader.GetOrdinal("status"))
+            SkuId: reader.GetInt64(reader.GetOrdinal("ID")),
+            ProductId: reader.GetInt64(reader.GetOrdinal("PRODUCT_ID")),
+            SpecDescJson: reader.GetString(reader.GetOrdinal("SPEC_DESC")),
+            Price: reader.GetDecimal(reader.GetOrdinal("PRICE")),
+            OriginalPrice: reader.IsDBNull(reader.GetOrdinal("ORIGINAL_PRICE")) ? null : reader.GetDecimal(reader.GetOrdinal("ORIGINAL_PRICE")),
+            Stock: reader.GetInt32(reader.GetOrdinal("STOCK")),
+            LockedStock: reader.GetInt32(reader.GetOrdinal("LOCKED_STOCK")),
+            WarningStock: reader.GetInt32(reader.GetOrdinal("WARNING_STOCK")),
+            SkuImage: reader.IsDBNull(reader.GetOrdinal("SKU_IMAGE")) ? null : reader.GetString(reader.GetOrdinal("SKU_IMAGE")),
+            Status: reader.GetInt32(reader.GetOrdinal("STATUS"))
         );
     }
 }

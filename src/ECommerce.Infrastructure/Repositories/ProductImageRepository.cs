@@ -28,7 +28,7 @@ public sealed class ProductImageRepository : IProductImageRepository
     public async Task<IReadOnlyList<ProductImageDto>> GetByProductAsync(long productId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "SELECT id, image_url, sort_order FROM PRODUCT_IMAGE WHERE product_id = :productId ORDER BY sort_order";
+        const string sql = "SELECT \"ID\", \"IMAGE_URL\", \"SORT_ORDER\" FROM \"PRODUCT_IMAGE\" WHERE \"PRODUCT_ID\" = :productId ORDER BY \"SORT_ORDER\"";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -56,9 +56,9 @@ public sealed class ProductImageRepository : IProductImageRepository
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = """
-            INSERT INTO PRODUCT_IMAGE (product_id, image_url, sort_order, created_at)
+            INSERT INTO "PRODUCT_IMAGE" ("PRODUCT_ID", "IMAGE_URL", "SORT_ORDER", "CREATED_AT")
             VALUES (:productId, :imageUrl, :sortOrder, :createdAt)
-            RETURNING id INTO :newId
+            RETURNING "ID" INTO :newId
             """;
 
         using var command = connection.CreateCommand();
@@ -83,7 +83,7 @@ public sealed class ProductImageRepository : IProductImageRepository
     public async Task<int> DeleteAsync(long imageId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "DELETE FROM PRODUCT_IMAGE WHERE id = :imageId";
+        const string sql = "DELETE FROM \"PRODUCT_IMAGE\" WHERE \"ID\" = :imageId";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -103,7 +103,7 @@ public sealed class ProductImageRepository : IProductImageRepository
     public async Task<int> DeleteByProductAsync(long productId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "DELETE FROM PRODUCT_IMAGE WHERE product_id = :productId";
+        const string sql = "DELETE FROM \"PRODUCT_IMAGE\" WHERE \"PRODUCT_ID\" = :productId";
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -146,9 +146,9 @@ public sealed class ProductImageRepository : IProductImageRepository
     private static ProductImageDto MapToDto(DbDataReader reader)
     {
         return new ProductImageDto(
-            ImageId: reader.GetInt64(reader.GetOrdinal("id")),
-            ImageUrl: reader.GetString(reader.GetOrdinal("image_url")),
-            SortOrder: reader.GetInt32(reader.GetOrdinal("sort_order"))
+            ImageId: reader.GetInt64(reader.GetOrdinal("ID")),
+            ImageUrl: reader.GetString(reader.GetOrdinal("IMAGE_URL")),
+            SortOrder: reader.GetInt32(reader.GetOrdinal("SORT_ORDER"))
         );
     }
 }
