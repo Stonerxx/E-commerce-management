@@ -1,6 +1,9 @@
 using ECommerce.Infrastructure;
 using ECommerce.Shared.Constants;
 using DotNetEnv;
+using ECommerce.Shared.Contracts;
+using System.Security.Claims;
+
 Env.Load("../../deployment/.env");
 
 var builder = WebApplication.CreateBuilder(args);
@@ -52,6 +55,26 @@ if (app.Environment.IsDevelopment())
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+
+        var response = ApiResponse<object>.Fail(
+            "INTERNAL_ERROR",
+            ex.Message,
+            context.TraceIdentifier
+        );
+        await context.Response.WriteAsJsonAsync(response);
+    }
+});
 
 app.UseAuthentication();
 app.UseAuthorization();

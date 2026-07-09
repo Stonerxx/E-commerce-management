@@ -23,7 +23,6 @@ public sealed class AdminStatisticsApiController : ApiControllerBase
         _exportService = exportService;
     }
 
-
     [HttpGet("dashboard/summary")]
     [Authorize(Policy = AuthConstants.Policies.ServiceOrAdmin)]
     // [AllowAnonymous] // ≤‚ ‘”√

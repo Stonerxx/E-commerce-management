@@ -1,22 +1,46 @@
 @{
-    ViewData["Title"] = "Login";
+    ViewData["Title"] = "登录";
+    var returnUrl = ViewData["ReturnUrl"] as string;
+    var demoAuthEnabled = ViewData["DemoAuthEnabled"] as bool? ?? false;
+    var demoAuthPassword = ViewData["DemoAuthPassword"] as string ?? "demo123";
 }
 
 <div class="row justify-content-center">
     <div class="col-md-5">
-        <h1 class="h3 mb-3">Login</h1>
+        <h1 class="h3 mb-3">登录</h1>
         <form method="post" asp-action="LoginPost">
+            <input type="hidden" name="returnUrl" value="@returnUrl" />
             <div asp-validation-summary="All" class="text-danger"></div>
             <div class="mb-3">
-                <label class="form-label" for="username">Username</label>
+                <label class="form-label" for="username">用户名</label>
                 <input class="form-control" id="username" name="username" autocomplete="username" />
             </div>
             <div class="mb-3">
-                <label class="form-label" for="password">Password</label>
+                <label class="form-label" for="password">密码</label>
                 <input class="form-control" id="password" name="password" type="password" autocomplete="current-password" />
             </div>
-            <button class="btn btn-primary" type="submit">Login</button>
-            <a class="btn btn-link" href="/account/register">Register</a>
+            <button class="btn btn-primary" type="submit">登录</button>
+            <a class="btn btn-link" href="/account/register">注册</a>
         </form>
+
+        @if (demoAuthEnabled)
+        {
+            <div class="alert alert-info mt-4 small">
+                <strong>TEMP_DEMO_AUTH 临时演示登录</strong>
+                <div class="mt-2">密码统一为：<code>@demoAuthPassword</code></div>
+                <ul class="mb-0 mt-2">
+                    <li><code>demo_admin</code>：管理员，可访问后台管理</li>
+                    <li><code>demo_service</code>：客服，可访问后台订单</li>
+                    <li><code>demo_user</code>：普通用户，可访问购物车和我的订单</li>
+                    <li><code>demo_buyer</code>：普通用户，带已完成订单和评价数据</li>
+                </ul>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-warning mt-4 small">
+                Demo 登录已关闭，等待 member2 接入真实认证服务。
+            </div>
+        }
     </div>
 </div>

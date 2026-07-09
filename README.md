@@ -48,10 +48,23 @@ http://localhost:5052/admin/dashboard
 
 如果终端已经回到 `PS C:\...>`，说明 Web 服务已经停止，需要重新执行 `dotnet run`。
 
+临时演示登录：
+
+```text
+密码统一为 demo123
+
+demo_admin    ADMIN，后台管理演示
+demo_service  SERVICE，后台订单演示
+demo_user     USER，购物车和我的订单演示
+demo_buyer    USER，已完成订单和评价演示
+```
+
+`TEMP_DEMO_AUTH` 只是联调用临时登录，配置在 `appsettings.json` 的 `DemoAuth` 节。member2 的真实注册登录合入后，需要删除 Controller 中的 `TEMP_DEMO_AUTH` 逻辑并替换为真实 AuthService。
+
 当前项目状态：
 
-- 已完成：解决方案、五层项目、统一响应、DTO、Service 接口、API 路由骨架、登录/注册占位页、健康检查、Oracle 连接配置入口、Vue Dashboard 示例页。
-- 未完成：真实登录注册、商品维护、购物车、订单、支付、优惠券、物流、评价、统计导出等业务实现。
+- 已完成：解决方案、五层项目、统一响应、DTO、Service 接口、API 路由骨架、临时 Demo 登录、健康检查、Oracle 连接配置入口、Vue Dashboard 示例页。
+- 未完成：真实登录注册、商品维护、支付、优惠券、物流、评价、统计导出等业务实现。
 - 现阶段目标：所有组员在各自分支基于已定义接口补实现，不再重新发明接口。
 
 Oracle 连接默认是占位配置，不要提交真实密码。本项目现在约定两个服务器数据库用户：
@@ -87,7 +100,15 @@ Invoke-RestMethod http://localhost:5052/api/v1/system/db-check
 - `deployment/` 下已提供发布脚本、环境变量样例、systemd 服务样例和 Nginx 反向代理样例。
 - 服务器最终验收还需要填真实 `Oracle__ConnectionString`，运行初始化脚本，截图证明服务器公网地址能访问。
 
-发布包生成：
+发布推荐走 GitHub Actions：
+
+```text
+push main 或 feat-member1-foundation-oracle-deploy
+-> GitHub Actions 编译并上传产物
+-> 服务器只解压、替换目录、重启 ecommerce
+```
+
+详细步骤见 [发布说明](docs/PUBLISH.md)。本地发布包仍可手动生成：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File deployment/publish.ps1
