@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using ECommerce.Application.Services;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace ECommerce.Web.Controllers.Api;
 
@@ -14,10 +15,12 @@ public sealed class AdminStatisticsApiController : ApiControllerBase
 {
 
     private readonly IStatisticsService _statisticsService;
+    private readonly IExportService _exportService;
 
-    public AdminStatisticsApiController(IStatisticsService statisticsService)
+    public AdminStatisticsApiController(IStatisticsService statisticsService, IExportService exportService)
     {
         _statisticsService = statisticsService;
+        _exportService = exportService;
     }
 
 
@@ -50,15 +53,19 @@ public sealed class AdminStatisticsApiController : ApiControllerBase
 
     [HttpGet("exports/orders")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
-    public ActionResult<ApiResponse<FileExportDto>> ExportOrders([FromQuery] AdminOrderQuery query)
+    // [AllowAnonymous] // ≤‚ ‘”√
+    public async Task<ActionResult<ApiResponse<FileExportDto>>> ExportOrders([FromQuery] AdminOrderQuery query)
     {
-        return NotReady<FileExportDto>("Order export endpoint is defined and awaiting implementation.");
+        var result = await _exportService.ExportOrdersAsync(query);
+        return ApiResponse<FileExportDto>.Ok(result);
     }
 
     [HttpGet("exports/inventory")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
-    public ActionResult<ApiResponse<FileExportDto>> ExportInventory([FromQuery] InventoryLogQuery query)
+    // [AllowAnonymous] // ≤‚ ‘”√
+    public async Task<ActionResult<ApiResponse<FileExportDto>>> ExportInventory([FromQuery] InventoryLogQuery query)
     {
-        return NotReady<FileExportDto>("Inventory export endpoint is defined and awaiting implementation.");
+        var result = await _exportService.ExportInventoryAsync(query);
+        return ApiResponse<FileExportDto>.Ok(result);
     }
 }

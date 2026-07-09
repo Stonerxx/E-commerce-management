@@ -21,56 +21,51 @@ public class StatisticsService : IStatisticsService
     public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync();
-
-        // ---- 1. 今日订单数（待支付 + 已支付都算今日下单，用创建时间筛选） ----
         var today = DateTime.Today;
+
+        // 1. 从快照表取今日订单数和销售额
         await using var cmd1 = connection.CreateCommand();
         cmd1.CommandText = @"
-        SELECT COUNT(*) 
-        FROM ORDER_MAIN 
-        WHERE CREATED_AT >= :Today AND CREATED_AT < :Tomorrow";
+        SELECT 
+            NVL(ORDER_COUNT, 0) AS OrderCount,
+            NVL(SALES_AMOUNT, 0) AS SalesAmount
+        FROM ORDER_STAT_SNAPSHOT
+        WHERE STAT_DATE = :Today";
         cmd1.Parameters.Add(new OracleParameter(":Today", OracleDbType.Date) { Value = today });
-        cmd1.Parameters.Add(new OracleParameter(":Tomorrow", OracleDbType.Date) { Value = today.AddDays(1) });
         if (_unitOfWork.CurrentTransaction != null) cmd1.Transaction = _unitOfWork.CurrentTransaction;
-        var todayOrderCount = Convert.ToInt32(await cmd1.ExecuteScalarAsync(cancellationToken) ?? 0);
 
-        // ---- 2. 待发货订单数（已支付 Paid = 1） ----
+        int todayOrderCount = 0;
+        decimal todaySalesAmount = 0;
+        await using var reader = await cmd1.ExecuteReaderAsync(cancellationToken);
+        if (await reader.ReadAsync(cancellationToken))
+        {
+            todayOrderCount = reader.GetInt32(reader.GetOrdinal("OrderCount"));
+            todaySalesAmount = reader.GetDecimal(reader.GetOrdinal("SalesAmount"));
+        }
+
+        // 2. 待发货订单数（ORDER_MAIN 表）
         await using var cmd2 = connection.CreateCommand();
         cmd2.CommandText = $"SELECT COUNT(*) FROM ORDER_MAIN WHERE STATUS = {(int)OrderStatus.Paid}";
         if (_unitOfWork.CurrentTransaction != null) cmd2.Transaction = _unitOfWork.CurrentTransaction;
         var pendingShipmentCount = Convert.ToInt32(await cmd2.ExecuteScalarAsync(cancellationToken) ?? 0);
 
-        // ---- 3. 今日销售额（已支付的订单，用创建时间筛选） ----
+        // 3. 库存预警数（SKU + PRODUCT）
         await using var cmd3 = connection.CreateCommand();
-        cmd3.CommandText = @"
-        SELECT NVL(SUM(TOTAL_AMOUNT), 0) 
-        FROM ORDER_MAIN 
-        WHERE STATUS = :StatusPaid 
-          AND CREATED_AT >= :Today 
-          AND CREATED_AT < :Tomorrow";
-        cmd3.Parameters.Add(new OracleParameter(":StatusPaid", OracleDbType.Int32) { Value = (int)OrderStatus.Paid });
-        cmd3.Parameters.Add(new OracleParameter(":Today", OracleDbType.Date) { Value = today });
-        cmd3.Parameters.Add(new OracleParameter(":Tomorrow", OracleDbType.Date) { Value = today.AddDays(1) });
-        if (_unitOfWork.CurrentTransaction != null) cmd3.Transaction = _unitOfWork.CurrentTransaction;
-        var todaySalesAmount = Convert.ToDecimal(await cmd3.ExecuteScalarAsync(cancellationToken) ?? 0);
-
-        // ---- 4. 库存预警数（SKU 在售 Enabled = 1，且可用库存 <= 警戒库存） ----
-        await using var cmd4 = connection.CreateCommand();
-        cmd4.CommandText = $@"
+        cmd3.CommandText = $@"
         SELECT COUNT(*) 
         FROM SKU s
         INNER JOIN PRODUCT p ON p.ID = s.PRODUCT_ID
         WHERE (s.STOCK - s.LOCKED_STOCK) <= s.WARNING_STOCK 
           AND s.STATUS = {(int)SkuStatus.Enabled}
           AND p.STATUS = {(int)ProductStatus.OnShelf}";
-        if (_unitOfWork.CurrentTransaction != null) cmd4.Transaction = _unitOfWork.CurrentTransaction;
-        var inventoryWarningCount = Convert.ToInt32(await cmd4.ExecuteScalarAsync(cancellationToken) ?? 0);
+        if (_unitOfWork.CurrentTransaction != null) cmd3.Transaction = _unitOfWork.CurrentTransaction;
+        var inventoryWarningCount = Convert.ToInt32(await cmd3.ExecuteScalarAsync(cancellationToken) ?? 0);
 
-        // ---- 5. 待审核评价数（Pending = 0） ----
-        await using var cmd5 = connection.CreateCommand();
-        cmd5.CommandText = $"SELECT COUNT(*) FROM REVIEW WHERE STATUS = {(int)ReviewStatus.Pending}";
-        if (_unitOfWork.CurrentTransaction != null) cmd5.Transaction = _unitOfWork.CurrentTransaction;
-        var pendingReviewCount = Convert.ToInt32(await cmd5.ExecuteScalarAsync(cancellationToken) ?? 0);
+        // 4. 待审核评价数（REVIEW 表）
+        await using var cmd4 = connection.CreateCommand();
+        cmd4.CommandText = $"SELECT COUNT(*) FROM REVIEW WHERE STATUS = {(int)ReviewStatus.Pending}";
+        if (_unitOfWork.CurrentTransaction != null) cmd4.Transaction = _unitOfWork.CurrentTransaction;
+        var pendingReviewCount = Convert.ToInt32(await cmd4.ExecuteScalarAsync(cancellationToken) ?? 0);
 
         return new DashboardSummaryDto(
             TodayOrderCount: todayOrderCount,
@@ -135,7 +130,7 @@ public class StatisticsService : IStatisticsService
         }
 
         avg_order_amount = total_order > 0
-            ? total_sales_amount / total_order
+            ? Math.Round(total_sales_amount / total_order, 2, MidpointRounding.AwayFromZero)
             : 0;
 
         var result = new OrderStatisticsDto(
@@ -155,22 +150,22 @@ public class StatisticsService : IStatisticsService
         await using var command = connection.CreateCommand();
         
         command.CommandText = $@"
-        SELECT 
-            p.ID AS ""ProductId"",
-            p.NAME AS ""ProductName"",
-            p.MAIN_IMAGE AS ""MainImage"",
-            SUM(oi.QUANTITY) AS ""SalesCount"",
-            SUM(oi.QUANTITY * oi.UNIT_PRICE) AS ""SalesAmount""
-        FROM ORDER_ITEM oi
-        INNER JOIN SKU s ON s.ID = oi.SKU_ID
-        INNER JOIN PRODUCT p ON p.ID = s.PRODUCT_ID
-        INNER JOIN ORDER_MAIN om ON om.ID = oi.ORDER_ID
-        WHERE om.STATUS = :StatusPaid
-          AND om.CREATED_AT >= :StartDate 
-          AND om.CREATED_AT < :EndDate
-        GROUP BY p.ID, p.NAME, p.MAIN_IMAGE
-        ORDER BY ""SalesAmount"" DESC
-        FETCH FIRST 10 ROWS ONLY";
+            SELECT 
+                p.ID AS ""ProductId"",
+                p.NAME AS ""ProductName"",
+                p.MAIN_IMAGE AS ""MainImage"",
+                SUM(oi.QUANTITY) AS ""SalesCount"",
+                SUM(oi.QUANTITY * oi.UNIT_PRICE) AS ""SalesAmount""
+            FROM ORDER_ITEM oi
+            INNER JOIN SKU s ON s.ID = oi.SKU_ID
+            INNER JOIN PRODUCT p ON p.ID = s.PRODUCT_ID
+            INNER JOIN ORDER_MAIN om ON om.ID = oi.ORDER_ID
+            WHERE om.STATUS = :StatusPaid
+              AND om.CREATED_AT >= :StartDate 
+              AND om.CREATED_AT < :EndDate
+            GROUP BY p.ID, p.NAME, p.MAIN_IMAGE
+            ORDER BY ""SalesAmount"" DESC
+            FETCH FIRST 10 ROWS ONLY";
 
         command.Parameters.Add(new OracleParameter(":StatusPaid", OracleDbType.Int32) { Value = (int)OrderStatus.Paid });
         command.Parameters.Add(new OracleParameter(":StartDate", OracleDbType.Date) { Value = query.StartDate });

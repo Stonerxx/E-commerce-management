@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddScoped<IStatisticsService, StatisticsService>();
+        services.AddScoped<IExportService, ExportService>();
 
         return services;
     }
