@@ -1,7 +1,7 @@
 namespace ECommerce.Domain.Entities;
 
 /// <summary>
-/// ROLE_PERMISSION 表实体：保存角色与权限的多对多绑定关系。
+/// ROLE_PERMISSION 表实体：保存角色和权限的多对多绑定关系。
 /// </summary>
 public sealed class RolePermission
 {
