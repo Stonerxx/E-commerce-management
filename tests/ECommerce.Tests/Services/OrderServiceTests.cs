@@ -34,6 +34,14 @@ public class OrderServiceTests : ServiceTestBase
     public OrderServiceTests()
     {
         _orderRepositoryMock = new Mock<IOrderRepository>();
+        _orderRepositoryMock
+            .Setup(x => x.TryUpdateStatusAsync(
+                It.IsAny<long>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
         _cartRepositoryMock = new Mock<ICartRepository>();
         _skuServiceMock = new Mock<ISkuService>();
         _unitOfWorkMock = CreateUnitOfWorkMock();
@@ -378,8 +386,9 @@ public class OrderServiceTests : ServiceTestBase
         );
 
         // Assert
-        _orderRepositoryMock.Verify(x => x.UpdateOrderStatusAsync(
+        _orderRepositoryMock.Verify(x => x.TryUpdateStatusAsync(
             TestOrderId,
+            (int)OrderStatus.PendingPayment,
             (int)OrderStatus.Cancelled,
             It.IsAny<DateTime>(),
             It.IsAny<CancellationToken>()
@@ -428,8 +437,9 @@ public class OrderServiceTests : ServiceTestBase
         );
 
         // Assert
-        _orderRepositoryMock.Verify(x => x.UpdateOrderStatusAsync(
+        _orderRepositoryMock.Verify(x => x.TryUpdateStatusAsync(
             TestOrderId,
+            (int)OrderStatus.PendingPayment,
             (int)OrderStatus.Cancelled,
             It.IsAny<DateTime>(),
             It.IsAny<CancellationToken>()
@@ -510,8 +520,9 @@ public class OrderServiceTests : ServiceTestBase
         Assert.Equal("FORBIDDEN", exception.Code);
 
         _unitOfWorkMock.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
-        _orderRepositoryMock.Verify(x => x.UpdateOrderStatusAsync(
+        _orderRepositoryMock.Verify(x => x.TryUpdateStatusAsync(
             It.IsAny<long>(),
+            It.IsAny<int>(),
             It.IsAny<int>(),
             It.IsAny<DateTime>(),
             It.IsAny<CancellationToken>()
@@ -555,8 +566,8 @@ public class OrderServiceTests : ServiceTestBase
             .ReturnsAsync(order);
 
         _orderRepositoryMock
-            .Setup(x => x.UpdateOrderStatusAsync(TestOrderId, (int)OrderStatus.Completed, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .Setup(x => x.TryUpdateStatusAsync(TestOrderId, (int)OrderStatus.Shipped, (int)OrderStatus.Completed, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         _orderRepositoryMock
             .Setup(x => x.InsertOrderLogAsync(It.IsAny<OrderLog>(), It.IsAny<CancellationToken>()))
@@ -566,8 +577,9 @@ public class OrderServiceTests : ServiceTestBase
         await _orderService.ConfirmAsync(TestUserId, TestOrderId);
 
         // Assert
-        _orderRepositoryMock.Verify(x => x.UpdateOrderStatusAsync(
+        _orderRepositoryMock.Verify(x => x.TryUpdateStatusAsync(
             TestOrderId,
+            (int)OrderStatus.Shipped,
             (int)OrderStatus.Completed,
             It.IsAny<DateTime>(),
             It.IsAny<CancellationToken>()
@@ -637,8 +649,8 @@ public class OrderServiceTests : ServiceTestBase
             .ReturnsAsync(order);
 
         _orderRepositoryMock
-            .Setup(x => x.UpdateOrderStatusAsync(TestOrderId, (int)OrderStatus.Paid, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .Setup(x => x.TryUpdateStatusAsync(TestOrderId, (int)OrderStatus.PendingPayment, (int)OrderStatus.Paid, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         _orderRepositoryMock
             .Setup(x => x.InsertOrderLogAsync(It.IsAny<OrderLog>(), It.IsAny<CancellationToken>()))
@@ -656,8 +668,9 @@ public class OrderServiceTests : ServiceTestBase
         await _orderService.MarkPaidAsync(TestOrderId, 5001);
 
         // Assert
-        _orderRepositoryMock.Verify(x => x.UpdateOrderStatusAsync(
+        _orderRepositoryMock.Verify(x => x.TryUpdateStatusAsync(
             TestOrderId,
+            (int)OrderStatus.PendingPayment,
             (int)OrderStatus.Paid,
             It.IsAny<DateTime>(),
             It.IsAny<CancellationToken>()
@@ -688,7 +701,7 @@ public class OrderServiceTests : ServiceTestBase
         // Assert
         // 不应该重复更新状态
         _orderRepositoryMock.Verify(
-            x => x.UpdateOrderStatusAsync(It.IsAny<long>(), It.IsAny<int>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            x => x.TryUpdateStatusAsync(It.IsAny<long>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
             Times.Never
         );
         _inventoryServiceMock.Verify(
@@ -732,6 +745,32 @@ public class OrderServiceTests : ServiceTestBase
         _unitOfWorkMock.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task MarkPaidAsync_WhenStatusChangesConcurrently_ShouldRollbackWithoutDeductingStock()
+    {
+        var order = CreateOrderMain(orderId: TestOrderId, userId: TestUserId, status: (int)OrderStatus.PendingPayment);
+        _orderRepositoryMock
+            .Setup(x => x.GetOrderByIdAsync(TestOrderId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(order);
+        _orderRepositoryMock
+            .Setup(x => x.TryUpdateStatusAsync(
+                TestOrderId,
+                (int)OrderStatus.PendingPayment,
+                (int)OrderStatus.Paid,
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var exception = await Assert.ThrowsAsync<BusinessException>(
+            () => _orderService.MarkPaidAsync(TestOrderId, 5001));
+
+        Assert.Equal("ORDER_STATUS_CHANGED", exception.Code);
+        _inventoryServiceMock.Verify(
+            x => x.DeductForPaidOrderAsync(It.IsAny<long>(), It.IsAny<IReadOnlyList<OrderSkuQuantity>>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _unitOfWorkMock.Verify(x => x.RollbackAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     #endregion
 
     #region MarkShippedAsync Tests
@@ -747,8 +786,8 @@ public class OrderServiceTests : ServiceTestBase
             .ReturnsAsync(order);
 
         _orderRepositoryMock
-            .Setup(x => x.UpdateOrderStatusAsync(TestOrderId, (int)OrderStatus.Shipped, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .Setup(x => x.TryUpdateStatusAsync(TestOrderId, (int)OrderStatus.Paid, (int)OrderStatus.Shipped, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         _orderRepositoryMock
             .Setup(x => x.InsertOrderLogAsync(It.IsAny<OrderLog>(), It.IsAny<CancellationToken>()))
@@ -768,8 +807,9 @@ public class OrderServiceTests : ServiceTestBase
         );
 
         // Assert
-        _orderRepositoryMock.Verify(x => x.UpdateOrderStatusAsync(
+        _orderRepositoryMock.Verify(x => x.TryUpdateStatusAsync(
             TestOrderId,
+            (int)OrderStatus.Paid,
             (int)OrderStatus.Shipped,
             It.IsAny<DateTime>(),
             It.IsAny<CancellationToken>()
@@ -917,8 +957,8 @@ public class OrderServiceTests : ServiceTestBase
             .ReturnsAsync(order);
 
         _orderRepositoryMock
-            .Setup(x => x.UpdateOrderStatusAsync(TestOrderId, (int)OrderStatus.Cancelled, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .Setup(x => x.TryUpdateStatusAsync(TestOrderId, (int)OrderStatus.PendingPayment, (int)OrderStatus.Cancelled, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         _orderRepositoryMock
             .Setup(x => x.InsertOrderLogAsync(It.IsAny<OrderLog>(), It.IsAny<CancellationToken>()))

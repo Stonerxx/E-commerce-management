@@ -119,17 +119,28 @@ public class OrderRepository : IOrderRepository
     }
 
     // 更新
-    public async Task UpdateOrderStatusAsync(long orderId, int status, DateTime updatedAt, CancellationToken cancellationToken = default)
+    public async Task<bool> TryUpdateStatusAsync(
+        long orderId,
+        int expectedStatus,
+        int targetStatus,
+        DateTime updatedAt,
+        CancellationToken cancellationToken = default)
     {
         await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "UPDATE order_main SET status = :Status, updated_at = :UpdatedAt WHERE id = :Id";
+        const string sql = @"
+            UPDATE order_main
+            SET status = :TargetStatus, updated_at = :UpdatedAt
+            WHERE id = :OrderId AND status = :ExpectedStatus";
+
         await using var cmd = Connection.CreateCommand();
         cmd.CommandText = sql;
         cmd.Transaction = Transaction;
-        cmd.Parameters.Add(CreateParameter("Status", status));
+        cmd.Parameters.Add(CreateParameter("TargetStatus", targetStatus));
         cmd.Parameters.Add(CreateParameter("UpdatedAt", updatedAt));
-        cmd.Parameters.Add(CreateParameter("Id", orderId));
-        await cmd.ExecuteNonQueryAsync(cancellationToken);
+        cmd.Parameters.Add(CreateParameter("OrderId", orderId));
+        cmd.Parameters.Add(CreateParameter("ExpectedStatus", expectedStatus));
+
+        return await cmd.ExecuteNonQueryAsync(cancellationToken) == 1;
     }
 
     // 查询单条

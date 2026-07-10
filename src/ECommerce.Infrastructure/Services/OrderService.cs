@@ -285,11 +285,13 @@ public class OrderService : IOrderService
         try
         {
             // 3. 更新订单状态为已取消
-            await _orderRepository.UpdateOrderStatusAsync(
+            var statusChanged = await _orderRepository.TryUpdateStatusAsync(
                 orderId,
+                (int)OrderStatus.PendingPayment,
                 (int)OrderStatus.Cancelled,
                 DateTime.Now,
                 cancellationToken);
+            EnsureStatusChanged(statusChanged);
 
             // 4. 写入订单状态日志（ORDER_LOG）
             await _orderRepository.InsertOrderLogAsync(new OrderLog
@@ -354,7 +356,13 @@ public class OrderService : IOrderService
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            await _orderRepository.UpdateOrderStatusAsync(orderId, (int)OrderStatus.Completed, DateTime.Now, cancellationToken);
+            var statusChanged = await _orderRepository.TryUpdateStatusAsync(
+                orderId,
+                (int)OrderStatus.Shipped,
+                (int)OrderStatus.Completed,
+                DateTime.Now,
+                cancellationToken);
+            EnsureStatusChanged(statusChanged);
 
             await _orderRepository.InsertOrderLogAsync(new OrderLog
             {
@@ -398,7 +406,13 @@ public class OrderService : IOrderService
         try
         {
             // 更新订单状态为已支付（使用枚举）
-            await _orderRepository.UpdateOrderStatusAsync(orderId, (int)OrderStatus.Paid, DateTime.Now, cancellationToken);
+            var statusChanged = await _orderRepository.TryUpdateStatusAsync(
+                orderId,
+                (int)OrderStatus.PendingPayment,
+                (int)OrderStatus.Paid,
+                DateTime.Now,
+                cancellationToken);
+            EnsureStatusChanged(statusChanged);
 
             // 记录订单日志
             await _orderRepository.InsertOrderLogAsync(new OrderLog
@@ -438,7 +452,13 @@ public class OrderService : IOrderService
         try
         {
             // 更新订单状态为已发货（使用枚举）
-            await _orderRepository.UpdateOrderStatusAsync(orderId, (int)OrderStatus.Shipped, DateTime.Now, cancellationToken);
+            var statusChanged = await _orderRepository.TryUpdateStatusAsync(
+                orderId,
+                (int)OrderStatus.Paid,
+                (int)OrderStatus.Shipped,
+                DateTime.Now,
+                cancellationToken);
+            EnsureStatusChanged(statusChanged);
 
             // 记录订单日志
             await _orderRepository.InsertOrderLogAsync(new OrderLog
@@ -509,6 +529,14 @@ public class OrderService : IOrderService
         if (userCouponId.HasValue)
         {
             throw new BusinessException("COUPON_NOT_READY", "优惠券功能正在开发，当前暂不可使用");
+        }
+    }
+
+    private static void EnsureStatusChanged(bool statusChanged)
+    {
+        if (!statusChanged)
+        {
+            throw new BusinessException("ORDER_STATUS_CHANGED", "订单状态已变化，请刷新后重试");
         }
     }
 
