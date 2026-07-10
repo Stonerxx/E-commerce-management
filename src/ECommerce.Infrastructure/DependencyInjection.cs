@@ -47,6 +47,11 @@ public static class DependencyInjection
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<ICouponService, CouponService>();
 
+        // Member6
+        services.AddScoped<IStatisticsService, StatisticsService>();
+        services.AddScoped<IExportService, ExportService>();
+
+
         return services;
     }
 }

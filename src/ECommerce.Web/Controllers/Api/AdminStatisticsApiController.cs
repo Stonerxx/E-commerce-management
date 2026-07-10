@@ -1,4 +1,5 @@
 using ECommerce.Application.DTOs;
+using ECommerce.Application.Services;
 using ECommerce.Shared.Constants;
 using ECommerce.Shared.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -9,38 +10,60 @@ namespace ECommerce.Web.Controllers.Api;
 [Route("api/v1/admin")]
 public sealed class AdminStatisticsApiController : ApiControllerBase
 {
+    private readonly IStatisticsService _statisticsService;
+    private readonly IExportService _exportService;
+
+    public AdminStatisticsApiController(IStatisticsService statisticsService, IExportService exportService)
+    {
+        _statisticsService = statisticsService;
+        _exportService = exportService;
+    }
+
     [HttpGet("dashboard/summary")]
     [Authorize(Policy = AuthConstants.Policies.ServiceOrAdmin)]
-    public ActionResult<ApiResponse<DashboardSummaryDto>> DashboardSummary()
+    public async Task<ActionResult<ApiResponse<DashboardSummaryDto>>> DashboardSummary(CancellationToken cancellationToken)
     {
-        return NotReady<DashboardSummaryDto>("Dashboard summary endpoint is defined and awaiting implementation.");
+        var result = await _statisticsService.GetDashboardSummaryAsync(cancellationToken);
+        return ApiResponse<DashboardSummaryDto>.Ok(result, HttpContext.TraceIdentifier);
     }
 
     [HttpGet("statistics/orders")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
-    public ActionResult<ApiResponse<OrderStatisticsDto>> OrderStatistics([FromQuery] StatisticsQuery query)
+    public async Task<ActionResult<ApiResponse<OrderStatisticsDto>>> OrderStatistics(
+        [FromQuery] StatisticsQuery query,
+        CancellationToken cancellationToken)
     {
-        return NotReady<OrderStatisticsDto>("Order statistics endpoint is defined and awaiting implementation.");
+        var result = await _statisticsService.GetOrderStatisticsAsync(query, cancellationToken);
+        return ApiResponse<OrderStatisticsDto>.Ok(result, HttpContext.TraceIdentifier);
     }
 
     [HttpGet("statistics/top-products")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
-    public ActionResult<ApiResponse<IReadOnlyList<TopProductDto>>> TopProducts([FromQuery] StatisticsQuery query)
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<TopProductDto>>>> TopProducts(
+        [FromQuery] StatisticsQuery query,
+        CancellationToken cancellationToken)
     {
-        return NotReady<IReadOnlyList<TopProductDto>>("Top product statistics endpoint is defined and awaiting implementation.");
+        var result = await _statisticsService.GetTopProductsAsync(query, cancellationToken);
+        return ApiResponse<IReadOnlyList<TopProductDto>>.Ok(result, HttpContext.TraceIdentifier);
     }
 
     [HttpGet("exports/orders")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
-    public ActionResult<ApiResponse<FileExportDto>> ExportOrders([FromQuery] AdminOrderQuery query)
+    public async Task<ActionResult<ApiResponse<FileExportDto>>> ExportOrders(
+        [FromQuery] AdminOrderQuery query,
+        CancellationToken cancellationToken)
     {
-        return NotReady<FileExportDto>("Order export endpoint is defined and awaiting implementation.");
+        var result = await _exportService.ExportOrdersAsync(query, cancellationToken);
+        return ApiResponse<FileExportDto>.Ok(result, HttpContext.TraceIdentifier);
     }
 
     [HttpGet("exports/inventory")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
-    public ActionResult<ApiResponse<FileExportDto>> ExportInventory([FromQuery] InventoryLogQuery query)
+    public async Task<ActionResult<ApiResponse<FileExportDto>>> ExportInventory(
+        [FromQuery] InventoryLogQuery query,
+        CancellationToken cancellationToken)
     {
-        return NotReady<FileExportDto>("Inventory export endpoint is defined and awaiting implementation.");
+        var result = await _exportService.ExportInventoryAsync(query, cancellationToken);
+        return ApiResponse<FileExportDto>.Ok(result, HttpContext.TraceIdentifier);
     }
 }
