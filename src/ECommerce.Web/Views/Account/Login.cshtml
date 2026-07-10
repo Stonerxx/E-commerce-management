@@ -1,22 +1,31 @@
 @{
-    ViewData["Title"] = "Login";
+    ViewData["Title"] = "登录";
 }
 
 <div class="row justify-content-center">
-    <div class="col-md-5">
-        <h1 class="h3 mb-3">Login</h1>
-        <form method="post" asp-action="LoginPost">
-            <div asp-validation-summary="All" class="text-danger"></div>
-            <div class="mb-3">
-                <label class="form-label" for="username">Username</label>
-                <input class="form-control" id="username" name="username" autocomplete="username" />
-            </div>
-            <div class="mb-3">
-                <label class="form-label" for="password">Password</label>
-                <input class="form-control" id="password" name="password" type="password" autocomplete="current-password" />
-            </div>
-            <button class="btn btn-primary" type="submit">Login</button>
-            <a class="btn btn-link" href="/account/register">Register</a>
-        </form>
+    <div class="col-12 col-md-7 col-lg-5">
+        <div class="border rounded bg-white p-4 shadow-sm">
+            <h1 class="h3 mb-2">账号登录</h1>
+            <p class="text-muted mb-4">登录后会根据角色进入对应页面：普通用户进入首页，客服和管理员进入后台。</p>
+            <form method="post" asp-action="LoginPost">
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <div class="mb-3">
+                    <label class="form-label" for="username">用户名</label>
+                    <input class="form-control" id="username" name="username" autocomplete="username" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="password">密码</label>
+                    <input class="form-control" id="password" name="password" type="password" autocomplete="current-password" required />
+                </div>
+                <div class="form-check mb-4">
+                    <input class="form-check-input" id="rememberMe" name="rememberMe" type="checkbox" value="true" />
+                    <label class="form-check-label" for="rememberMe">7 天内保持登录</label>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-primary" type="submit">登录</button>
+                    <a class="btn btn-link" href="/account/register">没有账号，去注册</a>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
