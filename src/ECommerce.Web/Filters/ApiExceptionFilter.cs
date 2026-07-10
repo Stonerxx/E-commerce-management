@@ -43,9 +43,21 @@ public sealed class ApiExceptionFilter : IExceptionFilter
             return;
         }
 
+        if (context.Exception is InvalidOperationException invalidOperationException)
+        {
+            _logger.LogError(invalidOperationException, "Application configuration or state error. TraceId: {TraceId}", traceId);
+            context.Result = new ObjectResult(
+                ApiResponse<object?>.Fail(ErrorCodes.ConfigurationError, invalidOperationException.Message, traceId))
+            {
+                StatusCode = StatusCodes.Status500InternalServerError
+            };
+            context.ExceptionHandled = true;
+            return;
+        }
+
         _logger.LogError(context.Exception, "Unhandled API error. TraceId: {TraceId}", traceId);
         context.Result = new ObjectResult(
-            ApiResponse<object?>.Fail(ErrorCodes.ValidationError, "服务器内部错误", traceId))
+            ApiResponse<object?>.Fail(ErrorCodes.InternalServerError, "服务器内部错误", traceId))
         {
             StatusCode = StatusCodes.Status500InternalServerError
         };

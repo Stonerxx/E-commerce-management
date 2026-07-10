@@ -12,10 +12,12 @@ namespace ECommerce.Web.Controllers;
 public sealed class AccountController : Controller
 {
     private readonly IAuthService _authService;
+    private readonly ILogger<AccountController> _logger;
 
-    public AccountController(IAuthService authService)
+    public AccountController(IAuthService authService, ILogger<AccountController> logger)
     {
         _authService = authService;
+        _logger = logger;
     }
 
     [HttpGet("/account/login")]
@@ -47,6 +49,14 @@ public sealed class AccountController : Controller
         catch (BusinessException ex)
         {
             ModelState.AddModelError(string.Empty, ex.Message);
+            return View("Login");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Login failed unexpectedly. TraceId: {TraceId}", HttpContext.TraceIdentifier);
+            ModelState.AddModelError(
+                string.Empty,
+                $"登录失败：请检查服务器数据库连接和演示数据是否已更新。TraceId: {HttpContext.TraceIdentifier}");
             return View("Login");
         }
     }
