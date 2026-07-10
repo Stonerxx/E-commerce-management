@@ -13,7 +13,7 @@ PUBLISH_BAD="${PUBLISH_BAD:-/var/www/ecommerce-bad}"
 APP_OWNER="${APP_OWNER:-www-data:www-data}"
 
 HOME_URL="${HOME_URL:-http://127.0.0.1:5000/}"
-HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:5000/health}"
+HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:5000/health/ready}"
 RUN_TESTS="${RUN_TESTS:-0}"
 PULL_CODE="${PULL_CODE:-1}"
 ALLOW_DIRTY="${ALLOW_DIRTY:-0}"
@@ -38,7 +38,7 @@ Environment overrides:
   SERVICE_NAME=ecommerce
   PUBLISH_CURRENT=/var/www/ecommerce
   HOME_URL=http://127.0.0.1:5000/
-  HEALTH_URL=http://127.0.0.1:5000/health
+  HEALTH_URL=http://127.0.0.1:5000/health/ready
   RUN_TESTS=0|1
   PULL_CODE=0|1
   ALLOW_DIRTY=0|1

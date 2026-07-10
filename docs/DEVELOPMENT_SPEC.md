@@ -605,7 +605,7 @@ deployment/linux/nginx-ecommerce.conf.example
 ```text
 ASPNETCORE_ENVIRONMENT=Production
 ASPNETCORE_URLS=http://127.0.0.1:5000
-Oracle__ConnectionString=User Id=...;Password=...;Data Source=...:1521/XEPDB1
+Oracle__ConnectionString=User Id=...;Password=...;Data Source=...:1521/FREEPDB1
 ```
 
 云服务器部署验收至少包括：

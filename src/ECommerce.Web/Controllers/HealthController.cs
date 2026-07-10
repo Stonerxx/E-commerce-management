@@ -17,8 +17,9 @@ public sealed class HealthController : ControllerBase
     }
 
     [HttpGet("/health")]
+    [HttpGet("/health/live")]
     [AllowAnonymous]
-    public ActionResult<ApiResponse<object>> Health()
+    public ActionResult<ApiResponse<object>> Live()
     {
         var payload = new
         {
@@ -28,6 +29,17 @@ public sealed class HealthController : ControllerBase
         };
 
         return Ok(ApiResponse<object>.Ok(payload, HttpContext.TraceIdentifier));
+    }
+
+    [HttpGet("/health/ready")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApiResponse<DatabaseCheckResult>>> Ready(CancellationToken cancellationToken)
+    {
+        var result = await _databaseHealthCheck.CheckAsync(cancellationToken);
+        var response = ApiResponse<DatabaseCheckResult>.Ok(result, HttpContext.TraceIdentifier);
+        return result.Configured && result.Connected
+            ? Ok(response)
+            : StatusCode(StatusCodes.Status503ServiceUnavailable, response);
     }
 
     [HttpGet("/api/v1/system/version")]

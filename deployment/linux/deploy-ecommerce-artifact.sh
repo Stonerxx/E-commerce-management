@@ -11,7 +11,7 @@ PUBLISH_BAD="${PUBLISH_BAD:-/var/www/ecommerce-bad}"
 APP_OWNER="${APP_OWNER:-www-data:www-data}"
 
 HOME_URL="${HOME_URL:-http://127.0.0.1:5000/}"
-HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:5000/health}"
+HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:5000/health/ready}"
 
 usage() {
   cat <<'EOF'
