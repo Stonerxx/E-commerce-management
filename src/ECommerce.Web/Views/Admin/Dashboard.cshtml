@@ -1,182 +1,107 @@
 @{
     Layout = "_AdminLayout";
-    ViewData["Title"] = "控制台";
+    ViewData["Title"] = "数据概览";
 }
 
 <div id="dashboardApp" v-cloak>
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
         <div>
-            <h1 class="h3 mb-1">控制台</h1>
-            <p class="text-muted mb-0">商品、库存整体概览与系统状态</p>
+            <h1 class="h3 mb-1">数据概览</h1>
+            <p class="text-muted mb-0">订单、销售、库存和评价的运营摘要。最后更新：{{ lastUpdated }}</p>
         </div>
-        <button class="btn btn-outline-primary" v-on:click="loadAll" v-bind:disabled="loading">
-            <i class="bi bi-arrow-clockwise"></i> 刷新数据
+        <button class="btn btn-outline-primary" type="button" v-on:click="refreshAll" v-bind:disabled="loading">
+            <span v-if="loading" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+            <i class="fa-solid fa-rotate"></i> 刷新
         </button>
     </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-xl-3">
-            <div class="card stat-card h-100">
+    <div v-if="errorMessage" class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>{{ errorMessage }}</span>
+    </div>
+
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-5 g-3 mb-4">
+        <div class="col" v-for="card in summaryCards" v-bind:key="card.key">
+            <div class="card h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="text-muted small mb-1">商品总数</p>
-                            <p class="h3 mb-0">{{ stats.productCount }}</p>
+                            <p class="text-muted small mb-1">{{ card.label }}</p>
+                            <p class="h3 mb-0">{{ card.value }}</p>
                         </div>
-                        <span class="badge text-bg-primary fs-6">
-                            <i class="bi bi-box-seam"></i>
+                        <span class="badge fs-6" v-bind:class="card.badgeClass">
+                            <i v-bind:class="card.icon"></i>
                         </span>
                     </div>
-                    <p class="small text-muted mb-0 mt-3">
-                        在售：{{ stats.onSaleCount }}　下架：{{ stats.offSaleCount }}
-                    </p>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-xl-3">
-            <div class="card stat-card h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="text-muted small mb-1">分类总数</p>
-                            <p class="h3 mb-0">{{ stats.categoryCount }}</p>
-                        </div>
-                        <span class="badge text-bg-info fs-6">
-                            <i class="bi bi-diagram-3"></i>
-                        </span>
-                    </div>
-                    <p class="small text-muted mb-0 mt-3">
-                        树形多级分类管理
-                    </p>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-xl-3">
-            <div class="card stat-card h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="text-muted small mb-1">SKU 总数</p>
-                            <p class="h3 mb-0">{{ stats.skuCount }}</p>
-                        </div>
-                        <span class="badge text-bg-success fs-6">
-                            <i class="bi bi-tags"></i>
-                        </span>
-                    </div>
-                    <p class="small text-muted mb-0 mt-3">
-                        总库存：{{ stats.totalStock }}
-                    </p>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-xl-3">
-            <div class="card stat-card h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="text-muted small mb-1">库存预警</p>
-                            <p class="h3 mb-0" v-bind:class="stats.warningCount > 0 ? 'text-danger' : ''">
-                                {{ stats.warningCount }}
-                            </p>
-                        </div>
-                        <span class="badge fs-6" v-bind:class="stats.warningCount > 0 ? 'text-bg-warning' : 'text-bg-success'">
-                            <i class="bi bi-exclamation-triangle"></i>
-                        </span>
-                    </div>
-                    <p class="small text-muted mb-0 mt-3">
-                        <a href="/admin/inventory/warnings">查看预警 &raquo;</a>
-                    </p>
+                    <p class="small text-muted mb-0 mt-3">{{ card.hint }}</p>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-12 col-xl-7">
+        <div class="col-12 col-xl-8">
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h2 class="h5 mb-0">最近库存调整</h2>
-                    <a href="/admin/inventory/logs" class="small text-decoration-none">查看全部</a>
+                    <h2 class="h5 mb-0">近 30 日订单趋势</h2>
+                    <span class="small text-muted">按日统计</span>
                 </div>
-                <div class="card-body p-0">
-                    <div v-if="recentLogs.length === 0" class="empty-tip text-center">
-                        <i class="bi bi-clock-history fs-1 d-block mb-2"></i>
-                        暂无库存调整记录
-                    </div>
-                    <table v-else class="table mb-0 align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>类型</th>
-                                <th>数量</th>
-                                <th>时间</th>
-                                <th>备注</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="log in recentLogs" v-bind:key="log.logId">
-                                <td>
-                                    <span class="badge" v-bind:class="getLogTypeClass(log.changeType)">
-                                        {{ getLogTypeText(log.changeType) }}
-                                    </span>
-                                </td>
-                                <td v-bind:class="log.quantity > 0 ? 'text-success fw-bold' : 'text-danger fw-bold'">
-                                    {{ log.quantity > 0 ? '+' : '' }}{{ log.quantity }}
-                                </td>
-                                <td><span class="small text-muted">{{ formatTime(log.createdAt) }}</span></td>
-                                <td><span class="small">{{ log.remark || '-' }}</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="card-body">
+                    <div id="trendChart" style="width: 100%; height: 320px;"></div>
                 </div>
             </div>
         </div>
-        <div class="col-12 col-xl-5">
+
+        <div class="col-12 col-xl-4">
             <div class="card h-100">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">系统状态</h2>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">热销商品 Top 10</h2>
+                    <span class="small text-muted">近 30 日</span>
                 </div>
                 <div class="card-body">
-                    <div class="list-group list-group-flush">
-                        <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
-                            <div>
-                                <i class="bi bi-database-check text-success"></i>
-                                <strong>数据库</strong>
-                                <p class="small text-muted mb-0">Oracle ({{ systemStatus.dbServer }})</p>
+                    <div v-if="topProducts.length === 0" class="text-center text-muted py-4">
+                        <i class="fa-regular fa-folder-open fs-2 d-block mb-2"></i>
+                        暂无商品统计数据
+                    </div>
+                    <div v-else class="list-group list-group-flush">
+                        <div class="list-group-item px-0 d-flex justify-content-between align-items-center"
+                             v-for="(item, index) in topProducts"
+                             v-bind:key="item.productId">
+                            <div class="d-flex align-items-center gap-2 overflow-hidden">
+                                <span class="badge text-bg-secondary">{{ index + 1 }}</span>
+                                <span class="text-truncate">{{ item.productName }}</span>
                             </div>
-                            <span class="badge" v-bind:class="systemStatus.dbConnected ? 'text-bg-success' : 'text-bg-danger'">
-                                {{ systemStatus.dbConnected ? '已连接' : '断开' }}
-                            </span>
-                        </div>
-                        <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
-                            <div>
-                                <i class="bi bi-clock"></i>
-                                <strong>服务器时间</strong>
-                                <p class="small text-muted mb-0">{{ systemStatus.dbTime }}</p>
-                            </div>
-                            <span class="badge text-bg-secondary">UTC+8</span>
-                        </div>
-                        <div class="list-group-item px-0">
-                            <strong>快捷入口</strong>
-                            <div class="d-flex flex-wrap gap-2 mt-2">
-                                <a href="/admin/products/create" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-plus"></i> 新增商品
-                                </a>
-                                <a href="/admin/categories" class="btn btn-sm btn-outline-info">
-                                    <i class="bi bi-diagram-3"></i> 分类管理
-                                </a>
-                                <a href="/admin/inventory/warnings" class="btn btn-sm btn-outline-warning">
-                                    <i class="bi bi-exclamation-triangle"></i> 库存预警
-                                </a>
-                            </div>
+                            <span class="small fw-semibold">{{ item.salesCount }} 件 / {{ formatMoney(item.salesAmount) }}</span>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="h5 mb-0">快捷入口</h2>
+        </div>
+        <div class="card-body d-flex flex-wrap gap-2">
+            <a href="/admin/orders" class="btn btn-outline-primary">
+                <i class="fa-solid fa-receipt"></i> 订单管理
+            </a>
+            <a href="/admin/products" class="btn btn-outline-primary">
+                <i class="fa-solid fa-box"></i> 商品管理
+            </a>
+            <a href="/admin/inventory/warnings" class="btn btn-outline-warning">
+                <i class="fa-solid fa-triangle-exclamation"></i> 库存预警
+            </a>
+            <a href="/admin/inventory/logs" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-clock-rotate-left"></i> 库存日志
+            </a>
         </div>
     </div>
 </div>
 
 @section Scripts {
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <script src="~/js/admin-dashboard.js" asp-append-version="true"></script>
 }

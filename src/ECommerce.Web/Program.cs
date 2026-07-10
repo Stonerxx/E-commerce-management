@@ -1,11 +1,16 @@
 using ECommerce.Infrastructure;
 using ECommerce.Shared.Constants;
-using ECommerce.Web.Middleware;
+using ECommerce.Web.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add<ApiExceptionFilter>();
+    options.Filters.AddService<RbacPermissionFilter>();
+});
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddScoped<RbacPermissionFilter>();
 
 builder.Services
     .AddAuthentication(AuthConstants.AuthenticationScheme)
@@ -40,8 +45,6 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 
-app.UseMiddleware<BusinessExceptionMiddleware>();
-
 app.UseRouting();
 
 app.UseAuthentication();
@@ -53,12 +56,14 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-app.MapGet("/api/health", async (ECommerce.Infrastructure.Data.IDatabaseHealthCheck healthCheck) => {
+app.MapGet("/api/health", async (ECommerce.Infrastructure.Data.IDatabaseHealthCheck healthCheck) =>
+{
     var result = await healthCheck.CheckAsync();
-    return Results.Json(new {
-        Database = result.Database,
-        Connected = result.Connected,
-        ServerTime = result.ServerTime,
+    return Results.Json(new
+    {
+        result.Database,
+        result.Connected,
+        result.ServerTime,
         Error = result.ErrorMessage
     });
 });

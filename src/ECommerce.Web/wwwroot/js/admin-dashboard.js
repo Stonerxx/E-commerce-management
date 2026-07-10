@@ -1,141 +1,211 @@
 (function () {
-    const { createApp, ref, onMounted } = Vue;
+    const { createApp } = Vue;
 
     createApp({
-        setup() {
-            const loading = ref(false);
-            const stats = ref({
-                productCount: 0,
-                onSaleCount: 0,
-                offSaleCount: 0,
-                categoryCount: 0,
-                skuCount: 0,
-                totalStock: 0,
-                warningCount: 0
-            });
-            const systemStatus = ref({
-                dbConnected: false,
-                dbServer: '-',
-                dbTime: '-'
-            });
-            const recentLogs = ref([]);
-
-            function getLogTypeText(t) {
-                switch (t) {
-                    case 1: return '入库';
-                    case 2: return '出库';
-                    case 3: return '盘点';
-                    default: return '其他';
-                }
-            }
-
-            function getLogTypeClass(t) {
-                switch (t) {
-                    case 1: return 'text-bg-success';
-                    case 2: return 'text-bg-danger';
-                    case 3: return 'text-bg-info';
-                    default: return 'text-bg-secondary';
-                }
-            }
-
-            function formatTime(iso) {
-                if (!iso) return '-';
-                try {
-                    return new Date(iso).toLocaleString('zh-CN', { hour12: false });
-                } catch {
-                    return iso;
-                }
-            }
-
-            async function loadAll() {
-                loading.value = true;
-                try {
-                    // 1. 系统健康检查
-                    try {
-                        const healthResp = await fetch('/api/health');
-                        const health = await healthResp.json();
-                        systemStatus.value.dbConnected = health.connected;
-                        systemStatus.value.dbServer = health.database || 'Oracle';
-                        systemStatus.value.dbTime = health.serverTime || '-';
-                    } catch {
-                        systemStatus.value.dbConnected = false;
-                    }
-
-                    // 2. 商品统计
-                    const prodResp = await fetch('/api/v1/admin/products?page=1&pageSize=1');
-                    const prodData = await prodResp.json();
-                    if (prodData.success && prodData.data) {
-                        stats.value.productCount = prodData.data.totalCount || 0;
-                    }
-
-                    // 3. 分类统计
-                    const catResp = await fetch('/api/v1/admin/categories');
-                    const catData = await catResp.json();
-                    if (catData.success && catData.data) {
-                        let count = 0;
-                        function countAll(nodes) {
-                            for (const n of nodes) {
-                                count++;
-                                if (n.children && n.children.length) countAll(n.children);
-                            }
-                        }
-                        countAll(catData.data);
-                        stats.value.categoryCount = count;
-                    }
-
-                    // 4. SKU 统计 + 上下架统计
-                    const allProducts = [];
-                    let pPage = 1;
-                    while (true) {
-                        const resp = await fetch(`/api/v1/admin/products?page=${pPage}&pageSize=100`);
-                        const data = await resp.json();
-                        if (data.success && data.data && data.data.items) {
-                            for (const p of data.data.items) allProducts.push(p);
-                            if (p.status === 1) stats.value.onSaleCount++;
-                            else if (p.status === 0) stats.value.offSaleCount++;
-                            if (pPage >= data.data.totalPages || data.data.totalPages === 0) break;
-                            pPage++;
-                        } else break;
-                    }
-
-                    let totalStock = 0;
-                    for (const p of allProducts) {
-                        const skuResp = await fetch(`/api/v1/admin/products/${p.productId}/skus`);
-                        const skuData = await skuResp.json();
-                        if (skuData.success && skuData.data) {
-                            stats.value.skuCount += skuData.data.length;
-                            for (const sku of skuData.data) {
-                                totalStock += (sku.stock || 0);
-                                if (sku.stock <= sku.warningStock) {
-                                    stats.value.warningCount++;
-                                }
-                            }
-                        }
-                    }
-                    stats.value.totalStock = totalStock;
-
-                    // 5. 最近库存日志
-                    const logResp = await fetch('/api/v1/admin/inventory/logs?page=1&pageSize=5');
-                    const logData = await logResp.json();
-                    if (logData.success && logData.data && logData.data.items) {
-                        recentLogs.value = logData.data.items;
-                    }
-                } catch (err) {
-                    console.error('加载Dashboard数据失败:', err);
-                } finally {
-                    loading.value = false;
-                }
-            }
-
-            onMounted(() => {
-                loadAll();
-            });
-
+        data() {
             return {
-                loading, stats, systemStatus, recentLogs,
-                getLogTypeText, getLogTypeClass, formatTime,
-                loadAll
+                loading: false,
+                errorMessage: "",
+                lastUpdated: "尚未加载",
+                summaryCards: [
+                    {
+                        key: "orders",
+                        label: "今日订单",
+                        value: "0",
+                        icon: "fa-solid fa-bag-shopping",
+                        badgeClass: "text-bg-primary",
+                        hint: "来自 ORDER_STAT_SNAPSHOT"
+                    },
+                    {
+                        key: "sales",
+                        label: "今日销售额",
+                        value: "¥0.00",
+                        icon: "fa-solid fa-yen-sign",
+                        badgeClass: "text-bg-success",
+                        hint: "已支付销售额快照"
+                    },
+                    {
+                        key: "shipments",
+                        label: "待发货",
+                        value: "0",
+                        icon: "fa-solid fa-truck",
+                        badgeClass: "text-bg-warning",
+                        hint: "已支付待发货订单"
+                    },
+                    {
+                        key: "warnings",
+                        label: "库存预警",
+                        value: "0",
+                        icon: "fa-solid fa-triangle-exclamation",
+                        badgeClass: "text-bg-danger",
+                        hint: "可用库存低于预警线"
+                    },
+                    {
+                        key: "reviews",
+                        label: "待审核评价",
+                        value: "0",
+                        icon: "fa-solid fa-star",
+                        badgeClass: "text-bg-secondary",
+                        hint: "评价审核队列"
+                    }
+                ],
+                topProducts: [],
+                trendData: {
+                    dates: [],
+                    orderCounts: [],
+                    salesAmounts: []
+                },
+                chartInstance: null
             };
+        },
+        mounted() {
+            this.refreshAll();
+            window.addEventListener("resize", this.resizeChart);
+        },
+        beforeUnmount() {
+            window.removeEventListener("resize", this.resizeChart);
+            if (this.chartInstance) {
+                this.chartInstance.dispose();
+                this.chartInstance = null;
+            }
+        },
+        methods: {
+            async refreshAll() {
+                this.loading = true;
+                this.errorMessage = "";
+
+                try {
+                    await Promise.all([
+                        this.loadDashboardSummary(),
+                        this.loadTopProducts(),
+                        this.loadTrendData()
+                    ]);
+                    this.lastUpdated = new Date().toLocaleString();
+                } catch (error) {
+                    this.errorMessage = error.message || "加载统计数据失败";
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            async apiGet(url) {
+                const response = await fetch(url, { credentials: "same-origin" });
+                const payload = await response.json().catch(() => null);
+
+                if (!response.ok || !payload || !payload.success) {
+                    throw new Error(payload?.message || `请求失败：${response.status}`);
+                }
+
+                return payload.data;
+            },
+
+            async loadDashboardSummary() {
+                const data = await this.apiGet("/api/v1/admin/dashboard/summary");
+                this.summaryCards[0].value = String(data?.todayOrderCount ?? 0);
+                this.summaryCards[1].value = this.formatMoney(data?.todaySalesAmount ?? 0);
+                this.summaryCards[2].value = String(data?.pendingShipmentCount ?? 0);
+                this.summaryCards[3].value = String(data?.inventoryWarningCount ?? 0);
+                this.summaryCards[4].value = String(data?.pendingReviewCount ?? 0);
+            },
+
+            async loadTopProducts() {
+                const params = this.buildRangeParams(30);
+                const data = await this.apiGet(`/api/v1/admin/statistics/top-products?${params}`);
+                this.topProducts = data || [];
+            },
+
+            async loadTrendData() {
+                const params = this.buildRangeParams(30);
+                const data = await this.apiGet(`/api/v1/admin/statistics/orders?${params}`);
+                const points = data?.points || [];
+
+                this.trendData.dates = points.map(point => this.formatShortDate(point.date));
+                this.trendData.orderCounts = points.map(point => point.orderCount || 0);
+                this.trendData.salesAmounts = points.map(point => Number(point.salesAmount || 0));
+                this.renderChart();
+            },
+
+            buildRangeParams(days) {
+                const end = new Date();
+                const start = new Date();
+                start.setDate(start.getDate() - days);
+
+                return new URLSearchParams({
+                    startDate: this.formatDateInput(start),
+                    endDate: this.formatDateInput(end),
+                    dimension: "day"
+                });
+            },
+
+            renderChart() {
+                const dom = document.getElementById("trendChart");
+                if (!dom) {
+                    return;
+                }
+
+                if (!this.chartInstance) {
+                    this.chartInstance = echarts.init(dom);
+                }
+
+                const hasData = this.trendData.dates.length > 0;
+                this.chartInstance.setOption({
+                    tooltip: { trigger: "axis" },
+                    legend: { top: 0 },
+                    grid: {
+                        left: "3%",
+                        right: "4%",
+                        bottom: "6%",
+                        top: "14%",
+                        containLabel: true
+                    },
+                    xAxis: {
+                        type: "category",
+                        data: hasData ? this.trendData.dates : ["暂无数据"]
+                    },
+                    yAxis: [
+                        { type: "value", name: "订单数" },
+                        { type: "value", name: "销售额" }
+                    ],
+                    series: [
+                        {
+                            name: "订单数",
+                            type: "line",
+                            smooth: true,
+                            data: hasData ? this.trendData.orderCounts : [0]
+                        },
+                        {
+                            name: "销售额",
+                            type: "bar",
+                            yAxisIndex: 1,
+                            data: hasData ? this.trendData.salesAmounts : [0]
+                        }
+                    ]
+                });
+            },
+
+            resizeChart() {
+                if (this.chartInstance) {
+                    this.chartInstance.resize();
+                }
+            },
+
+            formatMoney(value) {
+                const amount = Number(value || 0);
+                return `¥${amount.toFixed(2)}`;
+            },
+
+            formatDateInput(date) {
+                return date.toISOString().slice(0, 10);
+            },
+
+            formatShortDate(value) {
+                const date = new Date(value);
+                if (Number.isNaN(date.getTime())) {
+                    return "";
+                }
+
+                return `${date.getMonth() + 1}/${date.getDate()}`;
+            }
         }
-    }).mount('#dashboardApp');
+    }).mount("#dashboardApp");
 })();

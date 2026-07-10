@@ -18,7 +18,15 @@ html {
 }
 
 body {
-  margin-bottom: 60px;
+  min-height: 100vh;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+body > .container,
+body > main {
+  flex: 1 0 auto;
 }
 
 [v-cloak] {

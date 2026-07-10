@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ECommerce.Web.Controllers.Api;
 
 [Route("api/v1/admin")]
-// [Authorize(Policy = AuthConstants.Policies.AdminOnly)]  // 临时注释掉权限，方便测试
+[Authorize(Policy = AuthConstants.Policies.AdminOnly)]
 public sealed class AdminCatalogApiController : ApiControllerBase
 {
     private readonly ICategoryService _categoryService;

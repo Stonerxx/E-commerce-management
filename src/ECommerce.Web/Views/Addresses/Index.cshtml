@@ -1,0 +1,102 @@
+@{
+    ViewData["Title"] = "收货地址";
+}
+
+<div id="addressesApp" v-cloak>
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+        <div>
+            <h1 class="h3 mb-1">收货地址管理</h1>
+            <p class="text-muted mb-0">维护当前登录用户的收货地址，支持新增、修改、删除和设置默认地址。</p>
+        </div>
+        <button class="btn btn-outline-primary" type="button" v-on:click="loadAddresses" v-bind:disabled="loading">
+            <span v-if="loading" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+            刷新
+        </button>
+    </div>
+
+    <div class="alert alert-danger" v-if="error">{{ error }}</div>
+    <div class="alert alert-success" v-if="message">{{ message }}</div>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-4">
+            <div class="border rounded bg-white p-3 shadow-sm">
+                <h2 class="h5 mb-3">{{ form.addressId ? '修改地址' : '新增地址' }}</h2>
+                <div class="mb-2">
+                    <label class="form-label" for="receiverName">收货人</label>
+                    <input class="form-control" id="receiverName" v-model.trim="form.receiverName" maxlength="50" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" for="receiverPhone">手机号</label>
+                    <input class="form-control" id="receiverPhone" v-model.trim="form.receiverPhone" maxlength="20" />
+                </div>
+                <div class="row g-2">
+                    <div class="col-4">
+                        <label class="form-label" for="province">省</label>
+                        <input class="form-control" id="province" v-model.trim="form.province" maxlength="50" />
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label" for="city">市</label>
+                        <input class="form-control" id="city" v-model.trim="form.city" maxlength="50" />
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label" for="district">区/县</label>
+                        <input class="form-control" id="district" v-model.trim="form.district" maxlength="50" />
+                    </div>
+                </div>
+                <div class="mb-2 mt-2">
+                    <label class="form-label" for="detailAddress">详细地址</label>
+                    <textarea class="form-control" id="detailAddress" rows="3" v-model.trim="form.detailAddress" maxlength="500"></textarea>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" id="isDefault" type="checkbox" v-model="form.isDefault" />
+                    <label class="form-check-label" for="isDefault">设为默认地址</label>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary" type="button" v-on:click="saveAddress">保存</button>
+                    <button class="btn btn-outline-secondary" type="button" v-on:click="resetForm">清空</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-8">
+            <div class="table-responsive border rounded bg-white shadow-sm">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>收货人</th>
+                            <th>电话</th>
+                            <th>地址</th>
+                            <th>默认</th>
+                            <th class="text-end">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-if="items.length === 0">
+                            <td class="text-center text-muted py-4" colspan="5">暂无地址，请先新增一条收货地址。</td>
+                        </tr>
+                        <tr v-for="item in items" v-bind:key="item.addressId">
+                            <td>{{ item.receiverName }}</td>
+                            <td>{{ item.receiverPhone }}</td>
+                            <td>{{ item.province }} {{ item.city }} {{ item.district }} {{ item.detailAddress }}</td>
+                            <td>
+                                <span class="badge" v-bind:class="item.isDefault ? 'text-bg-success' : 'text-bg-secondary'">
+                                    {{ item.isDefault ? '默认' : '普通' }}
+                                </span>
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <button class="btn btn-sm btn-outline-primary me-1" type="button" v-on:click="editAddress(item)">编辑</button>
+                                <button class="btn btn-sm btn-outline-success me-1" type="button" v-on:click="setDefault(item)" v-bind:disabled="item.isDefault">设默认</button>
+                                <button class="btn btn-sm btn-outline-danger" type="button" v-on:click="deleteAddress(item)">删除</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/addresses.js" asp-append-version="true"></script>
+}

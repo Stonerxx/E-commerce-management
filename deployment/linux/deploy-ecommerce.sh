@@ -189,7 +189,7 @@ build_and_publish() {
   log "Publish to temporary directory"
   rm -rf "$PUBLISH_NEW"
   mkdir -p "$PUBLISH_NEW"
-  dotnet publish "$WEB_CSPROJ" -c Release -o "$PUBLISH_NEW" --no-restore
+  dotnet publish "$WEB_CSPROJ" -c Release -o "$PUBLISH_NEW" --no-build --no-restore
 }
 
 replace_current() {

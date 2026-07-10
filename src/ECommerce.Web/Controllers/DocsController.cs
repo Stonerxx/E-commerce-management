@@ -23,6 +23,12 @@ public sealed class DocsController : Controller
         return MarkdownDocument("DEVELOPMENT_SPEC.md");
     }
 
+    [HttpGet("/docs/demo-flow")]
+    public IActionResult DemoFlow()
+    {
+        return MarkdownDocument("DEMO_FLOW.md");
+    }
+
     private IActionResult MarkdownDocument(string fileName)
     {
         var docsPath = Path.GetFullPath(Path.Combine(_environment.ContentRootPath, "..", "..", "docs", fileName));

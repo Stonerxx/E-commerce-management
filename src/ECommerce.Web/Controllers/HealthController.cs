@@ -46,7 +46,7 @@ public sealed class HealthController : ControllerBase
     }
 
     [HttpGet("/api/v1/system/db-check")]
-    [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
+    [AllowAnonymous]
     public async Task<ActionResult<ApiResponse<DatabaseCheckResult>>> DatabaseCheck(CancellationToken cancellationToken)
     {
         var result = await _databaseHealthCheck.CheckAsync(cancellationToken);

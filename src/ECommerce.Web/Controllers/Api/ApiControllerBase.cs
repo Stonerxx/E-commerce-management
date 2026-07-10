@@ -1,13 +1,29 @@
-using System.Security.Claims;
 using ECommerce.Shared.Contracts;
 using ECommerce.Shared.Errors;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace ECommerce.Web.Controllers.Api;
 
 [ApiController]
 public abstract class ApiControllerBase : ControllerBase
 {
+    protected long GetCurrentUserId()
+    {
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(claim) || !long.TryParse(claim, out var userId))
+        {
+            throw new UnauthorizedAccessException("用户未登录或身份信息无效");
+        }
+
+        return userId;
+    }
+
+    protected string GetCurrentUserName()
+    {
+        return User.Identity?.Name ?? "未知用户";
+    }
+
     protected string GetClientIpAddress()
     {
         if (Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
@@ -40,20 +56,5 @@ public abstract class ApiControllerBase : ControllerBase
             HttpContext.TraceIdentifier);
 
         return StatusCode(StatusCodes.Status501NotImplemented, response);
-    }
-
-    protected long GetCurrentUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim != null && long.TryParse(userIdClaim.Value, out var userId))
-        {
-            return userId;
-        }
-        return 1;
-    }
-
-    protected string GetCurrentUserName()
-    {
-        return User.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
     }
 }
