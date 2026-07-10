@@ -129,8 +129,8 @@ public class StatisticsService : IStatisticsService
             total_sales_amount += point.SalesAmount;
         }
 
-        avg_order_amount = total_order > 0
-            ? Math.Round(total_sales_amount / total_order, 2, MidpointRounding.AwayFromZero)
+        avg_order_amount = total_paid_order > 0
+            ? Math.Round(total_sales_amount / total_paid_order, 2, MidpointRounding.AwayFromZero)
             : 0;
 
         var result = new OrderStatisticsDto(
