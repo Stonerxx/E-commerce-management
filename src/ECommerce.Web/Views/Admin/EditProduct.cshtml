@@ -33,12 +33,11 @@
                                 <label class="form-label">所属分类 <span class="text-danger">*</span></label>
                                 <select class="form-select" v-model.number="form.categoryId">
                                     <option :value="null">请选择分类</option>
-                                    <optgroup v-for="cat in categoryTree" :key="cat.categoryId" :label="cat.name">
-                                        <option v-for="sub in cat.children" :key="sub.categoryId" :value="sub.categoryId">
-                                            └── {{ sub.name }}
-                                        </option>
-                                    </optgroup>
+                                    <option v-for="cat in leafCategories" :key="cat.categoryId" :value="cat.categoryId">
+                                        {{ cat.path }}
+                                    </option>
                                 </select>
+                                <small class="text-muted">仅可选择叶子节点分类（最深5级）</small>
                             </div>
 
                             <div class="mb-3">
@@ -91,8 +90,8 @@
                                         <table class="table table-sm table-borderless mb-0">
                                             <tbody>
                                                 <tr v-for="(spec, index) in specs" :key="index">
-                                                    <td><span class="badge text-bg-light">{{ spec.specName }}</span></td>
-                                                    <td><span class="badge text-bg-info">{{ spec.specValue }}</span></td>
+                                                    <td><span class="badge bg-light text-dark">{{ spec.specName }}</span></td>
+                                                <td><span class="badge bg-info text-dark">{{ spec.specValue }}</span></td>
                                                     <td class="text-end">
                                                         <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" v-on:click="removeSpec(index)">×</button>
                                                     </td>

@@ -56,6 +56,28 @@
                 }));
             });
 
+            // 扁平化分类树，仅返回叶子节点（无子分类的节点），带完整路径
+            const leafCategories = computed(() => {
+                const result = [];
+                function traverse(nodes, parentPath) {
+                    for (const node of nodes) {
+                        const currentPath = parentPath ? parentPath + ' > ' + node.name : node.name;
+                        const hasChildren = node.children && node.children.length > 0;
+                        if (!hasChildren) {
+                            result.push({
+                                categoryId: node.categoryId,
+                                name: node.name,
+                                path: currentPath
+                            });
+                        } else {
+                            traverse(node.children, currentPath);
+                        }
+                    }
+                }
+                traverse(categoryTree.value, '');
+                return result;
+            });
+
             async function loadCategories() {
                 try {
                     const response = await fetch('/api/v1/admin/categories', {
@@ -233,6 +255,7 @@
                 submitting,
                 errorMsg,
                 categoryTree,
+                leafCategories,
                 form,
                 skus,
                 specs,

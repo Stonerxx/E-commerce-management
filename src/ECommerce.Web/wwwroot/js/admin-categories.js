@@ -57,6 +57,27 @@
                 return filtered;
             }
 
+            // 扁平化树形数据，用于表格渲染（支持展开/折叠）
+            const flatTree = computed(() => {
+                const result = [];
+                function traverse(nodes, level) {
+                    for (const node of nodes) {
+                        const hasChildren = node.children && node.children.length > 0;
+                        result.push({
+                            node: node,
+                            level: level,
+                            hasChildren: hasChildren,
+                            isExpanded: node.expanded !== false
+                        });
+                        if (node.expanded !== false && hasChildren) {
+                            traverse(node.children, level + 1);
+                        }
+                    }
+                }
+                traverse(treeData.value, 0);
+                return result;
+            });
+
             const parentOptions = computed(() => {
                 const options = [];
                 flattenTree(treeData.value, options);
@@ -80,10 +101,6 @@
                 } else {
                     form.value.treeLevel = 1;
                 }
-            }
-
-            function indentText(level) {
-                return '　'.repeat(Math.max(0, level - 1));
             }
 
             async function loadCategories() {
@@ -119,7 +136,6 @@
             }
 
             function openCreateModal(parentNode) {
-                console.log('openCreateModal called with:', parentNode);
                 resetForm();
                 if (parentNode) {
                     form.value.parentId = parentNode.categoryId;
@@ -232,12 +248,9 @@
                 const target = event.currentTarget;
                 const action = target.getAttribute('data-action');
                 const categoryId = parseInt(target.getAttribute('data-id'));
-                
-                console.log('handleButtonClick:', action, categoryId);
-                
+
                 if (!isNaN(categoryId)) {
                     const node = findNodeById(treeData.value, categoryId);
-                    console.log('Found node:', node);
                     if (node) {
                         switch (action) {
                             case 'create-child':
@@ -254,18 +267,6 @@
                 }
             }
 
-            function handleCreateChild(parentNode) {
-                openCreateModal(parentNode);
-            }
-
-            function handleEdit(node) {
-                openEditModal(node);
-            }
-
-            function handleDelete(node) {
-                deleteCategory(node);
-            }
-
             onMounted(() => {
                 loadCategories();
             });
@@ -274,12 +275,12 @@
                 loading,
                 showDisabled,
                 treeData,
+                flatTree,
                 parentOptions,
                 isEdit,
                 submitting,
                 errorMsg,
                 form,
-                indentText,
                 updateTreeLevel,
                 loadCategories,
                 openCreateModal,

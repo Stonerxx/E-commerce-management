@@ -4,36 +4,101 @@
 }
 
 <div id="categoriesApp" v-cloak>
-    <h1>分类管理</h1>
-    <button class="btn btn-primary" type="button" v-on:click="openCreateModal(null)">新增根分类</button>
-    
-    <div v-if="treeData.length > 0">
-        <div v-for="item in treeData" :key="item.categoryId">
-            <div style="padding-left: (item.treeLevel - 1) * 24px;">
-                <span>{{ item.name }}</span>
-                <button data-action="create-child" :data-id="item.categoryId" v-on:click="handleButtonClick">新增子分类</button>
-                <button data-action="edit" :data-id="item.categoryId" v-on:click="handleButtonClick">编辑</button>
-                <button data-action="delete" :data-id="item.categoryId" v-on:click="handleButtonClick">删除</button>
-            </div>
-            <div v-if="item.children && item.children.length > 0">
-                <div v-for="subItem in item.children" :key="subItem.categoryId">
-                    <div style="padding-left: (subItem.treeLevel - 1) * 24px;">
-                        <span>{{ subItem.name }}</span>
-                        <button data-action="create-child" :data-id="subItem.categoryId" v-on:click="handleButtonClick">新增子分类</button>
-                        <button data-action="edit" :data-id="subItem.categoryId" v-on:click="handleButtonClick">编辑</button>
-                        <button data-action="delete" :data-id="subItem.categoryId" v-on:click="handleButtonClick">删除</button>
-                    </div>
-                    <div v-if="subItem.children && subItem.children.length > 0">
-                        <div v-for="thirdItem in subItem.children" :key="thirdItem.categoryId">
-                            <div style="padding-left: (thirdItem.treeLevel - 1) * 24px;">
-                                <span>{{ thirdItem.name }}</span>
-                                <button data-action="create-child" :data-id="thirdItem.categoryId" v-on:click="handleButtonClick">新增子分类</button>
-                                <button data-action="edit" :data-id="thirdItem.categoryId" v-on:click="handleButtonClick">编辑</button>
-                                <button data-action="delete" :data-id="thirdItem.categoryId" v-on:click="handleButtonClick">删除</button>
-                            </div>
-                        </div>
-                    </div>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">分类管理</h1>
+            <p class="text-muted mb-0">管理商品分类，支持树形结构、多级分类（最多5级）</p>
+        </div>
+        <button class="btn btn-primary" type="button" v-on:click="openCreateModal(null)">
+            <i class="bi bi-plus-lg"></i> 新增根分类
+        </button>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h5 mb-0">分类列表</h2>
+            <div class="d-flex align-items-center gap-3">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="showDisabledSwitch" v-model="showDisabled" v-on:change="loadCategories">
+                    <label class="form-check-label small text-muted" for="showDisabledSwitch">显示已禁用</label>
                 </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div v-if="loading" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+            </div>
+
+            <div v-else-if="flatTree.length === 0" class="text-center py-5 text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                暂无分类数据，点击"新增根分类"开始创建
+            </div>
+
+            <table v-else class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="min-width: 300px;">分类名称</th>
+                        <th style="width: 80px;">层级</th>
+                        <th style="width: 80px;">排序</th>
+                        <th style="width: 100px;">状态</th>
+                        <th style="width: 220px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="item in flatTree" :key="item.node.categoryId">
+                        <td>
+                            <div class="d-inline-flex align-items-center" :style="{ paddingLeft: item.level * 24 + 'px' }">
+                                <button v-if="item.hasChildren" type="button" class="btn btn-sm btn-link p-0 me-1 text-secondary" style="width: 20px;" v-on:click="toggleExpand(item.node)" title="展开/折叠">
+                                    <i class="bi" :class="item.isExpanded ? 'bi-caret-down-fill' : 'bi-caret-right-fill'"></i>
+                                </button>
+                                <span v-else class="d-inline-block me-1" style="width: 20px;"></span>
+                                <i class="bi me-1" :class="item.hasChildren ? 'bi-folder-fill text-warning' : 'bi-tag text-info'"></i>
+                                <span class="fw-medium">{{ item.node.name }}</span>
+                                <span v-if="item.node.treeLevel >= 5" class="badge bg-danger ms-2">满级</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">L{{ item.node.treeLevel }}</span>
+                        </td>
+                        <td class="text-muted">{{ item.node.sortOrder || 0 }}</td>
+                        <td>
+                            <span v-if="item.node.status === 1" class="badge bg-success">启用</span>
+                            <span v-else class="badge bg-danger">禁用</span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button v-if="item.node.treeLevel < 5" type="button" class="btn btn-outline-primary"
+                                        data-action="create-child" :data-id="item.node.categoryId" v-on:click="handleButtonClick"
+                                        title="新增子分类">
+                                    <i class="bi bi-plus-lg"></i> 子分类
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary"
+                                        data-action="edit" :data-id="item.node.categoryId" v-on:click="handleButtonClick"
+                                        title="编辑">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger"
+                                        data-action="delete" :data-id="item.node.categoryId" v-on:click="handleButtonClick"
+                                        title="删除">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-body py-2">
+            <div class="d-flex align-items-center gap-4 text-muted small">
+                <span><i class="bi bi-info-circle"></i> 最多支持5级分类</span>
+                <span><i class="bi bi-exclamation-triangle"></i> 删除分类前需确保没有子分类和关联商品</span>
+                <span><i class="bi bi-eye-slash"></i> 禁用的分类前台不会显示</span>
+                <span><i class="bi bi-arrow-clockwise"></i> 点击三角图标可展开/收起子分类</span>
             </div>
         </div>
     </div>
@@ -42,13 +107,45 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">{{ isEdit ? '编辑分类' : '新增分类' }}</h5>
+                    <h5 class="modal-title">
+                        <i class="bi" :class="isEdit ? 'bi-pencil-square' : 'bi-plus-square'"></i>
+                        {{ isEdit ? '编辑分类' : '新增分类' }}
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    <div v-if="errorMsg" class="alert alert-danger py-2">{{ errorMsg }}</div>
                     <form v-on:submit.prevent="saveCategory">
-                        <input type="text" v-model="form.name" required>
-                        <button type="submit">{{ isEdit ? '保存' : '创建' }}</button>
+                        <div class="mb-3">
+                            <label class="form-label">分类名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" v-model="form.name" placeholder="请输入分类名称" maxlength="50" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">排序</label>
+                            <input type="number" class="form-control" v-model.number="form.sortOrder" placeholder="数字越小越靠前" min="0">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">图标 URL</label>
+                            <input type="text" class="form-control" v-model="form.iconUrl" placeholder="可选，分类图标地址">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">状态</label>
+                            <select class="form-select" v-model.number="form.status">
+                                <option :value="1">启用</option>
+                                <option :value="0">禁用</option>
+                            </select>
+                        </div>
+                        <div v-if="form.parentId" class="alert alert-info py-2 small">
+                            <i class="bi bi-info-circle"></i>
+                            将在上级分类（层级 {{ form.treeLevel - 1 }}）下创建第 {{ form.treeLevel }} 级子分类
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                            <button type="submit" class="btn btn-primary" :disabled="submitting">
+                                <span v-if="submitting" class="spinner-border spinner-border-sm"></span>
+                                {{ isEdit ? '保存修改' : '创建分类' }}
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
