@@ -1,13 +1,13 @@
-﻿<!DOCTYPE html>
 @{
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
     var isCustomer = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.User);
-    var canUseAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Service)
-        || User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
+    var isAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
+    var canUseAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Service) || isAdmin;
     var currentUserName = User.Identity?.Name ?? "已登录用户";
     var currentRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "UNKNOWN";
 }
-<html lang="en">
+<!DOCTYPE html>
+<html lang="zh-CN">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -18,26 +18,21 @@
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+        <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
                 <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">电商购物平台</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
+                        aria-controls="mainNavbar" aria-expanded="false" aria-label="切换导航">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">首页</a>
-                        </li>
+                <div class="collapse navbar-collapse" id="mainNavbar">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item"><a class="nav-link text-dark" href="/">首页</a></li>
                         @if (isCustomer)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" href="/cart">购物车</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" href="/orders">我的订单</a>
-                            </li>
+                            <li class="nav-item"><a class="nav-link text-dark" href="/cart">购物车</a></li>
+                            <li class="nav-item"><a class="nav-link text-dark" href="/orders">我的订单</a></li>
+                            <li class="nav-item"><a class="nav-link text-dark" href="/addresses">我的地址</a></li>
                         }
                         @if (canUseAdmin)
                         {
@@ -48,20 +43,23 @@
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="/admin">后台首页</a></li>
                                     <li><a class="dropdown-item" href="/admin/orders">订单管理</a></li>
+                                    @if (isAdmin)
+                                    {
+                                        <li><hr class="dropdown-divider" /></li>
+                                        <li><a class="dropdown-item" href="/admin/users">用户管理</a></li>
+                                        <li><a class="dropdown-item" href="/admin/permissions">权限管理</a></li>
+                                        <li><a class="dropdown-item" href="/admin/operation-logs">操作日志</a></li>
+                                    }
                                 </ul>
                             </li>
                         }
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" href="/health">健康检查</a>
-                        </li>
+                        <li class="nav-item"><a class="nav-link text-dark" href="/health">健康检查</a></li>
                     </ul>
                     <ul class="navbar-nav">
                         @if (isAuthenticated)
                         {
                             <li class="nav-item">
-                                <span class="nav-link text-dark">
-                                    @currentUserName (@currentRole)
-                                </span>
+                                <span class="nav-link text-dark">@currentUserName (@currentRole)</span>
                             </li>
                             <li class="nav-item">
                                 <form method="post" action="/account/logout" class="d-inline">
@@ -72,12 +70,8 @@
                         }
                         else
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" href="/account/login">登录</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" href="/account/register">注册</a>
-                            </li>
+                            <li class="nav-item"><a class="nav-link text-dark" href="/account/login">登录</a></li>
+                            <li class="nav-item"><a class="nav-link text-dark" href="/account/register">注册</a></li>
                         }
                     </ul>
                 </div>

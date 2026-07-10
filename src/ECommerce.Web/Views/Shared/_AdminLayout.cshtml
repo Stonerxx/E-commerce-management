@@ -1,5 +1,8 @@
+@{
+    var isAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
+}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,17 +12,24 @@
 </head>
 <body>
     <header class="border-bottom">
-        <nav class="navbar navbar-expand-sm navbar-light bg-white">
+        <nav class="navbar navbar-expand-lg navbar-light bg-white">
             <div class="container-fluid">
                 <a class="navbar-brand" href="/admin">电商后台</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar" aria-controls="adminNavbar"
-                        aria-expanded="false" aria-label="Toggle navigation">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar"
+                        aria-controls="adminNavbar" aria-expanded="false" aria-label="切换后台导航">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div id="adminNavbar" class="navbar-collapse collapse">
+                <div class="collapse navbar-collapse" id="adminNavbar">
                     <div class="navbar-nav me-auto">
                         <a class="nav-link" href="/admin">后台首页</a>
                         <a class="nav-link" href="/admin/orders">订单管理</a>
+                        @if (isAdmin)
+                        {
+                            <a class="nav-link" href="/admin/users">用户管理</a>
+                            <a class="nav-link" href="/admin/permissions">权限管理</a>
+                            <a class="nav-link" href="/admin/operation-logs">操作日志</a>
+                        }
+                        <a class="nav-link" href="/admin/statistics">统计报表</a>
                     </div>
                     <div class="navbar-nav">
                         <a class="nav-link" href="/">返回前台</a>

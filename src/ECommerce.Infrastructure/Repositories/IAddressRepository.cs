@@ -1,12 +1,14 @@
 using ECommerce.Application.DTOs;
 
-namespace ECommerce.Application.Services;
+namespace ECommerce.Infrastructure.Repositories;
 
-public interface IAddressService
+public interface IAddressRepository
 {
-    Task<IReadOnlyList<AddressDto>> GetMyAddressesAsync(long userId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AddressDto>> GetByUserIdAsync(long userId, CancellationToken cancellationToken = default);
 
-    Task<AddressDto> GetForOrderAsync(long userId, long addressId, CancellationToken cancellationToken = default);
+    Task<AddressDto?> GetByIdAsync(long userId, long addressId, CancellationToken cancellationToken = default);
+
+    Task<bool> ExistsAsync(long userId, long addressId, CancellationToken cancellationToken = default);
 
     Task<long> CreateAsync(long userId, AddressRequest request, CancellationToken cancellationToken = default);
 

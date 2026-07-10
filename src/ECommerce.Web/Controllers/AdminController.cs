@@ -13,4 +13,25 @@ public sealed class AdminController : Controller
     {
         return View();
     }
+
+    [HttpGet("/admin/users")]
+    [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
+    public IActionResult Users()
+    {
+        return View();
+    }
+
+    [HttpGet("/admin/permissions")]
+    [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
+    public IActionResult Permissions()
+    {
+        return View();
+    }
+
+    [HttpGet("/admin/operation-logs")]
+    [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
+    public IActionResult OperationLogs()
+    {
+        return View();
+    }
 }

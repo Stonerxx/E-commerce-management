@@ -1,12 +1,16 @@
 using ECommerce.Infrastructure;
 using ECommerce.Shared.Constants;
-using ECommerce.Shared.Contracts;
-using System.Security.Claims;
+using ECommerce.Web.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add<ApiExceptionFilter>();
+    options.Filters.AddService<RbacPermissionFilter>();
+});
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddScoped<RbacPermissionFilter>();
 
 builder.Services
     .AddAuthentication(AuthConstants.AuthenticationScheme)
@@ -42,26 +46,6 @@ if (!app.Environment.IsDevelopment())
 app.UseStaticFiles();
 
 app.UseRouting();
-
-app.Use(async (context, next) =>
-{
-    try
-    {
-        await next();
-    }
-    catch (Exception ex)
-    {
-        context.Response.StatusCode = 500;
-        context.Response.ContentType = "application/json";
-
-        var response = ApiResponse<object>.Fail(
-            "INTERNAL_ERROR",
-            ex.Message,
-            context.TraceIdentifier
-        );
-        await context.Response.WriteAsJsonAsync(response);
-    }
-});
 
 app.UseAuthentication();
 app.UseAuthorization();

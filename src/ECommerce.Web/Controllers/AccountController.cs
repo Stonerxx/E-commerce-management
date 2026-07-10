@@ -1,4 +1,7 @@
+using ECommerce.Application.DTOs;
+using ECommerce.Application.Services;
 using ECommerce.Shared.Constants;
+using ECommerce.Shared.Exceptions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,10 +20,12 @@ public sealed class AccountController : Controller
             ["demo_buyer"] = new(9004, "demo_buyer", AuthConstants.Roles.User)
         };
 
+    private readonly IAuthService _authService;
     private readonly IConfiguration _configuration;
 
-    public AccountController(IConfiguration configuration)
+    public AccountController(IAuthService authService, IConfiguration configuration)
     {
+        _authService = authService;
         _configuration = configuration;
     }
 
@@ -28,68 +33,41 @@ public sealed class AccountController : Controller
     [AllowAnonymous]
     public IActionResult Login([FromQuery] string? returnUrl = null)
     {
-        ViewData["ReturnUrl"] = returnUrl;
-        ViewData["DemoAuthEnabled"] = IsDemoAuthEnabled();
-        ViewData["DemoAuthPassword"] = GetDemoAuthPassword();
+        SetLoginViewData(returnUrl);
         return View();
     }
 
     [HttpPost("/account/login")]
-    [ValidateAntiForgeryToken]
     [AllowAnonymous]
-    public async Task<IActionResult> LoginPost(
-        [FromForm] string username,
-        [FromForm] string password,
-        [FromForm] string? returnUrl = null)
-    {
-        ViewData["ReturnUrl"] = returnUrl;
-        ViewData["DemoAuthEnabled"] = IsDemoAuthEnabled();
-        ViewData["DemoAuthPassword"] = GetDemoAuthPassword();
-
-        if (!IsDemoAuthEnabled())
-        {
-            ModelState.AddModelError(string.Empty, "Demo 登录已关闭，等待 member2 接入真实认证服务。");
-            return View("Login");
-        }
-
-        if (!TryValidateDemoLogin(username, password, out var account))
-        {
-            ModelState.AddModelError(string.Empty, "演示账号或密码错误。");
-            return View("Login");
-        }
-
-        // TEMP_DEMO_AUTH: 临时演示登录。member2 真实 AuthService 合入后删除此分支逻辑。
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, account.UserId.ToString()),
-            new(ClaimTypes.Name, account.Username),
-            new(ClaimTypes.Role, account.Role)
-        };
-
-        var identity = new ClaimsIdentity(claims, AuthConstants.AuthenticationScheme);
-        var principal = new ClaimsPrincipal(identity);
-        var properties = new AuthenticationProperties
-        {
-            IsPersistent = false,
-            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8)
-        };
-
-        await HttpContext.SignInAsync(AuthConstants.AuthenticationScheme, principal, properties);
-
-        if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
-        {
-            return LocalRedirect(returnUrl);
-        }
-
-        return RedirectToAction("Index", "Home");
-    }
-
-    [HttpPost("/account/logout")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Logout()
+    public async Task<IActionResult> LoginPost(
+        string username,
+        string password,
+        bool rememberMe,
+        string? returnUrl,
+        CancellationToken cancellationToken)
     {
-        await HttpContext.SignOutAsync(AuthConstants.AuthenticationScheme);
-        return RedirectToAction("Index", "Home");
+        SetLoginViewData(returnUrl);
+
+        try
+        {
+            // TEMP_DEMO_AUTH: seed_demo_data.sql 仍使用占位 password_hash 时，保留演示账号登录能力。
+            if (TryValidateDemoLogin(username, password, out var demoAccount))
+            {
+                var demoSession = new UserSessionDto(demoAccount.UserId, demoAccount.Username, new[] { demoAccount.Role });
+                await SignInAsync(demoSession, rememberMe);
+                return RedirectAfterLogin(demoSession, returnUrl);
+            }
+
+            var session = await _authService.LoginAsync(new LoginRequest(username, password, rememberMe), cancellationToken);
+            await SignInAsync(session, rememberMe);
+            return RedirectAfterLogin(session, returnUrl);
+        }
+        catch (BusinessException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View("Login");
+        }
     }
 
     [HttpGet("/account/register")]
@@ -100,18 +78,88 @@ public sealed class AccountController : Controller
     }
 
     [HttpPost("/account/register")]
-    [ValidateAntiForgeryToken]
     [AllowAnonymous]
-    public IActionResult RegisterPost()
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RegisterPost(
+        string username,
+        string password,
+        string? phone,
+        string? email,
+        CancellationToken cancellationToken)
     {
-        ModelState.AddModelError(string.Empty, "Registration service is not implemented yet.");
-        return View("Register");
+        try
+        {
+            var session = await _authService.RegisterAsync(new RegisterRequest(username, password, phone, email), cancellationToken);
+            await SignInAsync(session, rememberMe: false);
+            return Redirect("/");
+        }
+        catch (BusinessException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View("Register");
+        }
+    }
+
+    [HttpPost("/account/logout")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Logout()
+    {
+        await _authService.LogoutAsync();
+        await HttpContext.SignOutAsync(AuthConstants.AuthenticationScheme);
+        return Redirect("/");
     }
 
     [HttpGet("/account/access-denied")]
     public IActionResult AccessDenied()
     {
         return View();
+    }
+
+    private async Task SignInAsync(UserSessionDto session, bool rememberMe)
+    {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, session.UserId.ToString()),
+            new(ClaimTypes.Name, session.Username)
+        };
+        claims.AddRange(session.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
+
+        var identity = new ClaimsIdentity(claims, AuthConstants.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+        await HttpContext.SignInAsync(
+            AuthConstants.AuthenticationScheme,
+            principal,
+            new AuthenticationProperties
+            {
+                IsPersistent = rememberMe,
+                ExpiresUtc = rememberMe ? DateTimeOffset.UtcNow.AddDays(7) : DateTimeOffset.UtcNow.AddHours(8)
+            });
+    }
+
+    private IActionResult RedirectAfterLogin(UserSessionDto session, string? returnUrl)
+    {
+        if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+        {
+            return LocalRedirect(returnUrl);
+        }
+
+        return Redirect(GetLoginRedirectUrl(session));
+    }
+
+    private static string GetLoginRedirectUrl(UserSessionDto session)
+    {
+        return session.Roles.Any(role =>
+            string.Equals(role, AuthConstants.Roles.Admin, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, AuthConstants.Roles.Service, StringComparison.OrdinalIgnoreCase))
+            ? "/admin"
+            : "/";
+    }
+
+    private void SetLoginViewData(string? returnUrl)
+    {
+        ViewData["ReturnUrl"] = returnUrl;
+        ViewData["DemoAuthEnabled"] = IsDemoAuthEnabled();
+        ViewData["DemoAuthPassword"] = GetDemoAuthPassword();
     }
 
     private bool IsDemoAuthEnabled()
@@ -127,7 +175,8 @@ public sealed class AccountController : Controller
     private bool TryValidateDemoLogin(string username, string password, out DemoAccount account)
     {
         account = default;
-        return !string.IsNullOrWhiteSpace(username)
+        return IsDemoAuthEnabled()
+            && !string.IsNullOrWhiteSpace(username)
             && DemoAccounts.TryGetValue(username.Trim(), out account)
             && password == GetDemoAuthPassword();
     }

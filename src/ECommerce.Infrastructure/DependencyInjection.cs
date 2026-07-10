@@ -20,21 +20,25 @@ public static class DependencyInjection
         services.AddScoped<IDatabaseHealthCheck, DatabaseHealthCheck>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-        // Repositories
-        // Member4
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IAddressRepository, AddressRepository>();
+        services.AddScoped<IOperationLogRepository, OperationLogRepository>();
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
         services.AddScoped<ICartRepository, CartRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
 
-        // Services
-        // Member4
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IAddressService, AddressService>();
+        services.AddScoped<IOperationLogService, OperationLogService>();
+        services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<ICartService, CartService>();
         services.AddScoped<IOrderService, OrderService>();
-        // TEMP_DEMO_* mocks keep the current demo flow runnable until member2/3/5 real services are merged.
+
+        // TEMP_DEMO_* mocks keep the current demo flow runnable until member3/5 real services are merged.
         services.AddScoped<ISkuService, MockSkuService>();
-        services.AddScoped<IAddressService, MockAddressService>();
         services.AddScoped<IInventoryService, MockInventoryService>();
         services.AddScoped<ICouponService, MockCouponService>();
-        services.AddScoped<IOperationLogService, MockOperationLogService>();
 
         return services;
     }
