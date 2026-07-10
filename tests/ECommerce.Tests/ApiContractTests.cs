@@ -42,23 +42,23 @@ public sealed class ApiContractTests
     public void AdminStatistics_ShouldUseActionLevelPolicies()
     {
         AssertAuthorizePolicy<AdminStatisticsApiController>(
-            nameof(AdminStatisticsApiController.DashboardSummary),
+            nameof(AdminStatisticsApiController.DashboardSummaryAsync),
             AuthConstants.Policies.ServiceOrAdmin);
 
         AssertAuthorizePolicy<AdminStatisticsApiController>(
-            nameof(AdminStatisticsApiController.OrderStatistics),
+            nameof(AdminStatisticsApiController.OrderStatisticsAsync),
             AuthConstants.Policies.AdminOnly);
 
         AssertAuthorizePolicy<AdminStatisticsApiController>(
-            nameof(AdminStatisticsApiController.TopProducts),
+            nameof(AdminStatisticsApiController.TopProductsAsync),
             AuthConstants.Policies.AdminOnly);
 
         AssertAuthorizePolicy<AdminStatisticsApiController>(
-            nameof(AdminStatisticsApiController.ExportOrders),
+            nameof(AdminStatisticsApiController.ExportOrdersAsync),
             AuthConstants.Policies.AdminOnly);
 
         AssertAuthorizePolicy<AdminStatisticsApiController>(
-            nameof(AdminStatisticsApiController.ExportInventory),
+            nameof(AdminStatisticsApiController.ExportInventoryAsync),
             AuthConstants.Policies.AdminOnly);
     }
 

@@ -53,7 +53,7 @@ public sealed class AdminStatisticsApiController : ApiControllerBase
     [HttpGet("exports/orders")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
     // [AllowAnonymous] // ≤‚ ‘”√
-    public async Task<ActionResult<ApiResponse<FileExportDto>>> ExportOrders([FromQuery] AdminOrderQuery query)
+    public async Task<ActionResult<ApiResponse<FileExportDto>>> ExportOrdersAsync([FromQuery] AdminOrderQuery query)
     {
         var result = await _exportService.ExportOrdersAsync(query);
         return ApiResponse<FileExportDto>.Ok(result);
@@ -62,7 +62,7 @@ public sealed class AdminStatisticsApiController : ApiControllerBase
     [HttpGet("exports/inventory")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
     // [AllowAnonymous] // ≤‚ ‘”√
-    public async Task<ActionResult<ApiResponse<FileExportDto>>> ExportInventory([FromQuery] InventoryLogQuery query)
+    public async Task<ActionResult<ApiResponse<FileExportDto>>> ExportInventoryAsync([FromQuery] InventoryLogQuery query)
     {
         var result = await _exportService.ExportInventoryAsync(query);
         return ApiResponse<FileExportDto>.Ok(result);
