@@ -2,7 +2,6 @@ using ECommerce.Application.Services;
 using ECommerce.Infrastructure.Data;
 using ECommerce.Infrastructure.Repositories;
 using ECommerce.Infrastructure.Services;
-using ECommerce.Infrastructure.Services.Mocks;
 using ECommerce.Shared.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +31,7 @@ public static class DependencyInjection
         services.AddScoped<IInventoryLogRepository, InventoryLogRepository>();
         services.AddScoped<ICartRepository, CartRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<ICouponRepository, CouponRepository>();
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
@@ -45,9 +45,7 @@ public static class DependencyInjection
         services.AddScoped<IInventoryService, InventoryService>();
         services.AddScoped<ICartService, CartService>();
         services.AddScoped<IOrderService, OrderService>();
-
-        // TEMP_DEMO_COUPON keeps order preview runnable until member5 real coupon service is merged.
-        services.AddScoped<ICouponService, MockCouponService>();
+        services.AddScoped<ICouponService, CouponService>();
 
         return services;
     }
