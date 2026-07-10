@@ -271,23 +271,18 @@ public class OrderRepository : IOrderRepository
     {
         await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var where = new StringBuilder("WHERE user_id = :UserId");
-        var parameters = new List<DbParameter>();
-        parameters.Add(CreateParameter("UserId", userId));
 
         if (query.Status.HasValue)
         {
             where.Append(" AND status = :Status");
-            parameters.Add(CreateParameter("Status", query.Status.Value));
         }
         if (query.StartTime.HasValue)
         {
             where.Append(" AND created_at >= :StartTime");
-            parameters.Add(CreateParameter("StartTime", query.StartTime.Value));
         }
         if (query.EndTime.HasValue)
         {
             where.Append(" AND created_at < :EndTime");
-            parameters.Add(CreateParameter("EndTime", query.EndTime.Value.AddDays(1)));
         }
 
         // 总条数
@@ -295,7 +290,7 @@ public class OrderRepository : IOrderRepository
         await using var cmdCount = Connection.CreateCommand();
         cmdCount.CommandText = countSql;
         cmdCount.Transaction = Transaction;
-        foreach (var p in parameters) cmdCount.Parameters.Add(p);
+        AddUserOrderQueryParameters(cmdCount, userId, query);
         var totalCount = Convert.ToInt64(await cmdCount.ExecuteScalarAsync(cancellationToken));
 
         if (totalCount == 0)
@@ -317,14 +312,12 @@ public class OrderRepository : IOrderRepository
             ORDER BY created_at DESC
             OFFSET :Offset ROWS FETCH NEXT :PageSize ROWS ONLY";
 
-        var dataParams = new List<DbParameter>(parameters);
-        dataParams.Add(CreateParameter("Offset", offset));
-        dataParams.Add(CreateParameter("PageSize", query.PageSize));
-
         await using var cmdData = Connection.CreateCommand();
         cmdData.CommandText = dataSql;
         cmdData.Transaction = Transaction;
-        foreach (var p in dataParams) cmdData.Parameters.Add(p);
+        AddUserOrderQueryParameters(cmdData, userId, query);
+        cmdData.Parameters.Add(CreateParameter("Offset", offset));
+        cmdData.Parameters.Add(CreateParameter("PageSize", query.PageSize));
 
         var items = new List<OrderListItemDto>();
         await using var reader = await cmdData.ExecuteReaderAsync(cancellationToken);
@@ -348,39 +341,33 @@ public class OrderRepository : IOrderRepository
     {
         await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var where = new StringBuilder("WHERE 1=1");
-        var parameters = new List<DbParameter>();
 
         if (query.UserId.HasValue)
         {
             where.Append(" AND user_id = :UserId");
-            parameters.Add(CreateParameter("UserId", query.UserId.Value));
         }
         if (!string.IsNullOrWhiteSpace(query.OrderNo))
         {
             where.Append(" AND order_no = :OrderNo");
-            parameters.Add(CreateParameter("OrderNo", query.OrderNo.Trim()));
         }
         if (query.Status.HasValue)
         {
             where.Append(" AND status = :Status");
-            parameters.Add(CreateParameter("Status", query.Status.Value));
         }
         if (query.StartTime.HasValue)
         {
             where.Append(" AND created_at >= :StartTime");
-            parameters.Add(CreateParameter("StartTime", query.StartTime.Value));
         }
         if (query.EndTime.HasValue)
         {
             where.Append(" AND created_at < :EndTime");
-            parameters.Add(CreateParameter("EndTime", query.EndTime.Value.AddDays(1)));
         }
 
         var countSql = $"SELECT COUNT(*) FROM order_main {where}";
         await using var cmdCount = Connection.CreateCommand();
         cmdCount.CommandText = countSql;
         cmdCount.Transaction = Transaction;
-        foreach (var p in parameters) cmdCount.Parameters.Add(p);
+        AddAdminOrderQueryParameters(cmdCount, query);
         var totalCount = Convert.ToInt64(await cmdCount.ExecuteScalarAsync(cancellationToken));
 
         if (totalCount == 0)
@@ -401,14 +388,12 @@ public class OrderRepository : IOrderRepository
             ORDER BY created_at DESC
             OFFSET :Offset ROWS FETCH NEXT :PageSize ROWS ONLY";
 
-        var dataParams = new List<DbParameter>(parameters);
-        dataParams.Add(CreateParameter("Offset", offset));
-        dataParams.Add(CreateParameter("PageSize", query.PageSize));
-
         await using var cmdData = Connection.CreateCommand();
         cmdData.CommandText = dataSql;
         cmdData.Transaction = Transaction;
-        foreach (var p in dataParams) cmdData.Parameters.Add(p);
+        AddAdminOrderQueryParameters(cmdData, query);
+        cmdData.Parameters.Add(CreateParameter("Offset", offset));
+        cmdData.Parameters.Add(CreateParameter("PageSize", query.PageSize));
 
         var items = new List<OrderListItemDto>();
         await using var reader = await cmdData.ExecuteReaderAsync(cancellationToken);
@@ -426,6 +411,48 @@ public class OrderRepository : IOrderRepository
         }
 
         return new PagedResult<OrderListItemDto>(items, query.PageIndex, query.PageSize, totalCount);
+    }
+
+    private static void AddUserOrderQueryParameters(DbCommand command, long userId, OrderQuery query)
+    {
+        command.Parameters.Add(CreateParameter("UserId", userId));
+
+        if (query.Status.HasValue)
+        {
+            command.Parameters.Add(CreateParameter("Status", query.Status.Value));
+        }
+        if (query.StartTime.HasValue)
+        {
+            command.Parameters.Add(CreateParameter("StartTime", query.StartTime.Value));
+        }
+        if (query.EndTime.HasValue)
+        {
+            command.Parameters.Add(CreateParameter("EndTime", query.EndTime.Value.AddDays(1)));
+        }
+    }
+
+    private static void AddAdminOrderQueryParameters(DbCommand command, AdminOrderQuery query)
+    {
+        if (query.UserId.HasValue)
+        {
+            command.Parameters.Add(CreateParameter("UserId", query.UserId.Value));
+        }
+        if (!string.IsNullOrWhiteSpace(query.OrderNo))
+        {
+            command.Parameters.Add(CreateParameter("OrderNo", query.OrderNo.Trim()));
+        }
+        if (query.Status.HasValue)
+        {
+            command.Parameters.Add(CreateParameter("Status", query.Status.Value));
+        }
+        if (query.StartTime.HasValue)
+        {
+            command.Parameters.Add(CreateParameter("StartTime", query.StartTime.Value));
+        }
+        if (query.EndTime.HasValue)
+        {
+            command.Parameters.Add(CreateParameter("EndTime", query.EndTime.Value.AddDays(1)));
+        }
     }
 
     // 映射辅助
