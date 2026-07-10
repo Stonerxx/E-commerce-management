@@ -2,6 +2,7 @@ using ECommerce.Application.DTOs;
 using ECommerce.Application.Services;
 using ECommerce.Domain.Entities;
 using ECommerce.Infrastructure.Repositories;
+using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Contracts;
 using ECommerce.Shared.Exceptions;
 
@@ -13,17 +14,20 @@ public sealed class ProductService : IProductService
     private readonly IProductImageRepository _productImageRepository;
     private readonly IProductSpecRepository _productSpecRepository;
     private readonly ISkuService _skuService;
+    private readonly IUnitOfWork _unitOfWork;
 
     public ProductService(
         IProductRepository productRepository,
         IProductImageRepository productImageRepository,
         IProductSpecRepository productSpecRepository,
-        ISkuService skuService)
+        ISkuService skuService,
+        IUnitOfWork unitOfWork)
     {
         _productRepository = productRepository;
         _productImageRepository = productImageRepository;
         _productSpecRepository = productSpecRepository;
         _skuService = skuService;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<PagedResult<ProductListItemDto>> SearchAsync(ProductQuery query, CancellationToken cancellationToken = default)
@@ -74,39 +78,62 @@ public sealed class ProductService : IProductService
             UpdatedAt = now
         };
 
-        var productId = await _productRepository.CreateAsync(product, cancellationToken);
-
-        foreach (var imageRequest in request.Images)
+        var ownsTransaction = _unitOfWork.CurrentTransaction is null;
+        if (ownsTransaction)
         {
-            var image = new ProductImage
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        }
+
+        try
+        {
+            var productId = await _productRepository.CreateAsync(product, cancellationToken);
+
+            foreach (var imageRequest in request.Images)
             {
-                ProductId = productId,
-                ImageUrl = imageRequest.ImageUrl,
-                SortOrder = imageRequest.SortOrder,
-                CreatedAt = now
-            };
-            await _productImageRepository.CreateAsync(image, cancellationToken);
-        }
+                var image = new ProductImage
+                {
+                    ProductId = productId,
+                    ImageUrl = imageRequest.ImageUrl,
+                    SortOrder = imageRequest.SortOrder,
+                    CreatedAt = now
+                };
+                await _productImageRepository.CreateAsync(image, cancellationToken);
+            }
 
-        foreach (var specRequest in request.Specs)
-        {
-            var spec = new ProductSpec
+            foreach (var specRequest in request.Specs)
             {
-                ProductId = productId,
-                SpecName = specRequest.SpecName,
-                SpecValue = specRequest.SpecValue,
-                SortOrder = specRequest.SortOrder,
-                CreatedAt = now
-            };
-            await _productSpecRepository.CreateAsync(spec, cancellationToken);
-        }
+                var spec = new ProductSpec
+                {
+                    ProductId = productId,
+                    SpecName = specRequest.SpecName,
+                    SpecValue = specRequest.SpecValue,
+                    SortOrder = specRequest.SortOrder,
+                    CreatedAt = now
+                };
+                await _productSpecRepository.CreateAsync(spec, cancellationToken);
+            }
 
-        foreach (var skuRequest in request.Skus)
+            foreach (var skuRequest in request.Skus)
+            {
+                await _skuService.CreateAsync(productId, skuRequest, operatorId, cancellationToken);
+            }
+
+            if (ownsTransaction)
+            {
+                await _unitOfWork.CommitAsync(cancellationToken);
+            }
+
+            return productId;
+        }
+        catch
         {
-            await _skuService.CreateAsync(productId, skuRequest, operatorId, cancellationToken);
-        }
+            if (ownsTransaction)
+            {
+                await _unitOfWork.RollbackAsync(cancellationToken);
+            }
 
-        return productId;
+            throw;
+        }
     }
 
     public async Task UpdateAsync(long productId, ProductSaveRequest request, long operatorId, CancellationToken cancellationToken = default)
@@ -134,39 +161,62 @@ public sealed class ProductService : IProductService
         product.PriceMin = request.Skus.Any() ? request.Skus.Min(s => s.Price) : 0;
         product.UpdatedAt = now;
 
-        await _productRepository.UpdateAsync(product, cancellationToken);
-
-        await _productImageRepository.DeleteByProductAsync(productId, cancellationToken);
-        foreach (var imageRequest in request.Images)
+        var ownsTransaction = _unitOfWork.CurrentTransaction is null;
+        if (ownsTransaction)
         {
-            var image = new ProductImage
-            {
-                ProductId = productId,
-                ImageUrl = imageRequest.ImageUrl,
-                SortOrder = imageRequest.SortOrder,
-                CreatedAt = now
-            };
-            await _productImageRepository.CreateAsync(image, cancellationToken);
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
         }
 
-        await _productSpecRepository.DeleteByProductAsync(productId, cancellationToken);
-        foreach (var specRequest in request.Specs)
+        try
         {
-            var spec = new ProductSpec
-            {
-                ProductId = productId,
-                SpecName = specRequest.SpecName,
-                SpecValue = specRequest.SpecValue,
-                SortOrder = specRequest.SortOrder,
-                CreatedAt = now
-            };
-            await _productSpecRepository.CreateAsync(spec, cancellationToken);
-        }
+            await _productRepository.UpdateAsync(product, cancellationToken);
 
-        await _skuService.DeleteByProductAsync(productId, cancellationToken);
-        foreach (var skuRequest in request.Skus)
+            await _productImageRepository.DeleteByProductAsync(productId, cancellationToken);
+            foreach (var imageRequest in request.Images)
+            {
+                var image = new ProductImage
+                {
+                    ProductId = productId,
+                    ImageUrl = imageRequest.ImageUrl,
+                    SortOrder = imageRequest.SortOrder,
+                    CreatedAt = now
+                };
+                await _productImageRepository.CreateAsync(image, cancellationToken);
+            }
+
+            await _productSpecRepository.DeleteByProductAsync(productId, cancellationToken);
+            foreach (var specRequest in request.Specs)
+            {
+                var spec = new ProductSpec
+                {
+                    ProductId = productId,
+                    SpecName = specRequest.SpecName,
+                    SpecValue = specRequest.SpecValue,
+                    SortOrder = specRequest.SortOrder,
+                    CreatedAt = now
+                };
+                await _productSpecRepository.CreateAsync(spec, cancellationToken);
+            }
+
+            await _skuService.DeleteByProductAsync(productId, cancellationToken);
+            foreach (var skuRequest in request.Skus)
+            {
+                await _skuService.CreateAsync(productId, skuRequest, operatorId, cancellationToken);
+            }
+
+            if (ownsTransaction)
+            {
+                await _unitOfWork.CommitAsync(cancellationToken);
+            }
+        }
+        catch
         {
-            await _skuService.CreateAsync(productId, skuRequest, operatorId, cancellationToken);
+            if (ownsTransaction)
+            {
+                await _unitOfWork.RollbackAsync(cancellationToken);
+            }
+
+            throw;
         }
     }
 
