@@ -48,6 +48,8 @@ public static class DependencyInjection
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<ICouponService, CouponService>();
 
+        services.AddHostedService<OrderTimeoutHostedService>();
+
         // Member6
         services.AddScoped<IStatisticsService, StatisticsService>();
         services.AddScoped<IExportService, ExportService>();
