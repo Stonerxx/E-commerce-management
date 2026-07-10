@@ -106,13 +106,13 @@
 
             getStatusBadge(status) {
                 const map = {
-                    0: 'text-bg-warning',
-                    1: 'text-bg-info',
-                    2: 'text-bg-primary',
-                    3: 'text-bg-success',
-                    4: 'text-bg-secondary'
+                    0: 'bg-warning text-dark',    // 待支付：黄底黑字
+                    1: 'bg-info text-white',      // 已支付：蓝底白字（或 'bg-info text-dark' 更清晰）
+                    2: 'bg-primary text-white',   // 已发货：深蓝底白字
+                    3: 'bg-success text-white',   // 已完成：绿底白字
+                    4: 'bg-secondary text-white'  // 已取消：灰底白字
                 };
-                return map[status] || 'text-bg-secondary';
+                return map[status] || 'bg-secondary text-white';
             },
 
             formatDate(dateStr) {

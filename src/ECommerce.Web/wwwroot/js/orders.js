@@ -73,15 +73,15 @@
                 this.loadOrders();
             },
 
-            getStatusText(status) {
+            getStatusBadge(status) {
                 const map = {
-                    0: '待支付',
-                    1: '已支付',
-                    2: '已发货',
-                    3: '已完成',
-                    4: '已取消'
+                    0: 'bg-warning text-dark',    // 待支付：黄底黑字
+                    1: 'bg-info text-white',      // 已支付：蓝底白字（或 'bg-info text-dark' 更清晰）
+                    2: 'bg-primary text-white',   // 已发货：深蓝底白字
+                    3: 'bg-success text-white',   // 已完成：绿底白字
+                    4: 'bg-secondary text-white'  // 已取消：灰底白字
                 };
-                return map[status] || '未知';
+                return map[status] || 'bg-secondary text-white';
             },
 
             getStatusBadge(status) {
