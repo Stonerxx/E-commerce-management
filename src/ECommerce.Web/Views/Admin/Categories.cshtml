@@ -31,6 +31,16 @@
                 </div>
             </div>
 
+            <div v-else-if="loadError" class="text-center py-5">
+                <div class="alert alert-danger d-inline-block text-start" style="max-width: 600px;">
+                    <h6 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> 加载失败</h6>
+                    <p class="mb-2 small">{{ loadError }}</p>
+                    <button class="btn btn-sm btn-outline-danger" v-on:click="loadCategories">
+                        <i class="bi bi-arrow-clockwise"></i> 重试
+                    </button>
+                </div>
+            </div>
+
             <div v-else-if="flatTree.length === 0" class="text-center py-5 text-muted">
                 <i class="bi bi-inbox fs-1 d-block mb-2"></i>
                 暂无分类数据，点击"新增根分类"开始创建
@@ -115,14 +125,14 @@
                 </div>
                 <div class="modal-body">
                     <div v-if="errorMsg" class="alert alert-danger py-2">{{ errorMsg }}</div>
-                    <form v-on:submit.prevent="saveCategory">
+                    <form v-on:submit.prevent="saveCategory" novalidate>
                         <div class="mb-3">
                             <label class="form-label">分类名称 <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" v-model="form.name" placeholder="请输入分类名称" maxlength="50" required>
+                            <input type="text" class="form-control" v-model="form.name" placeholder="请输入分类名称">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">排序</label>
-                            <input type="number" class="form-control" v-model.number="form.sortOrder" placeholder="数字越小越靠前" min="0">
+                            <input type="text" class="form-control" v-model="form.sortOrder" placeholder="数字越小越靠前">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">图标 URL</label>
@@ -130,9 +140,9 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">状态</label>
-                            <select class="form-select" v-model.number="form.status">
-                                <option :value="1">启用</option>
-                                <option :value="0">禁用</option>
+                            <select class="form-select" v-model="form.status">
+                                <option value="1">启用</option>
+                                <option value="0">禁用</option>
                             </select>
                         </div>
                         <div v-if="form.parentId" class="alert alert-info py-2 small">

@@ -1,9 +1,21 @@
 (function () {
     const { createApp, ref, computed, onMounted } = Vue;
 
+    async function safeFetchJson(url, options) {
+        const response = await fetch(url, options);
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+            return await response.json();
+        }
+        const text = await response.text();
+        const firstLine = text.split('\n')[0].substring(0, 200);
+        throw new Error('服务器返回错误：' + firstLine);
+    }
+
     createApp({
         setup() {
             const loading = ref(false);
+            const loadError = ref('');
             const showDisabled = ref(false);
             const treeData = ref([]);
 
@@ -105,16 +117,19 @@
 
             async function loadCategories() {
                 loading.value = true;
+                loadError.value = '';
                 try {
-                    const response = await fetch('/api/v1/admin/categories', {
+                    const payload = await safeFetchJson('/api/v1/admin/categories', {
                         headers: { 'Accept': 'application/json' }
                     });
-                    const payload = await response.json();
 
                     if (payload.success && payload.data) {
                         treeData.value = filterTree(payload.data, showDisabled.value);
+                    } else {
+                        loadError.value = payload.message || '加载分类失败';
                     }
                 } catch (error) {
+                    loadError.value = error.message || '网络错误';
                     console.warn('API请求失败:', error.message);
                 } finally {
                     loading.value = false;
@@ -186,7 +201,10 @@
                         : '/api/v1/admin/categories';
                     const method = isEdit.value ? 'PUT' : 'POST';
 
-                    const response = await fetch(url, {
+                    const sortOrder = parseInt(form.value.sortOrder);
+                    const status = parseInt(form.value.status);
+
+                    const payload = await safeFetchJson(url, {
                         method: method,
                         headers: {
                             'Content-Type': 'application/json',
@@ -196,13 +214,11 @@
                             name: form.value.name.trim(),
                             parentId: form.value.parentId,
                             treeLevel: form.value.treeLevel,
-                            sortOrder: form.value.sortOrder || 0,
+                            sortOrder: isNaN(sortOrder) ? 0 : sortOrder,
                             iconUrl: form.value.iconUrl || null,
-                            status: form.value.status
+                            status: isNaN(status) ? 1 : status
                         })
                     });
-
-                    const payload = await response.json();
 
                     if (payload.success) {
                         hideModal();
@@ -223,12 +239,10 @@
                 }
 
                 try {
-                    const response = await fetch(`/api/v1/admin/categories/${node.categoryId}`, {
+                    const payload = await safeFetchJson(`/api/v1/admin/categories/${node.categoryId}`, {
                         method: 'DELETE',
                         headers: { 'Accept': 'application/json' }
                     });
-
-                    const payload = await response.json();
 
                     if (payload.success) {
                         await loadCategories();
@@ -273,6 +287,7 @@
 
             return {
                 loading,
+                loadError,
                 showDisabled,
                 treeData,
                 flatTree,
