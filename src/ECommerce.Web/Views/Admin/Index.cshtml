@@ -1,0 +1,72 @@
+﻿@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "后台管理";
+}
+
+<div class="container-fluid">
+    <h1 class="h3 mb-4">后台管理</h1>
+
+    <div class="row g-4">
+        <!-- 统计入口 -->
+        <div class="col-md-4 col-xl-3">
+            <a href="/admin/statistics" class="text-decoration-none">
+                <div class="card h-100 shadow-sm hover-shadow">
+                    <div class="card-body text-center">
+                        <i class="fas fa-chart-pie fa-3x text-primary mb-3"></i>
+                        <h5 class="card-title">数据统计</h5>
+                        <p class="card-text text-muted small">查看销售趋势和热销商品</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 订单管理入口 -->
+        <div class="col-md-4 col-xl-3">
+            <a href="/admin/orders" class="text-decoration-none">
+                <div class="card h-100 shadow-sm hover-shadow">
+                    <div class="card-body text-center">
+                        <i class="fas fa-shopping-cart fa-3x text-success mb-3"></i>
+                        <h5 class="card-title">订单管理</h5>
+                        <p class="card-text text-muted small">查看和处理订单</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 商品管理入口 -->
+        <div class="col-md-4 col-xl-3">
+            <a href="/admin/products" class="text-decoration-none">
+                <div class="card h-100 shadow-sm hover-shadow">
+                    <div class="card-body text-center">
+                        <i class="fas fa-box fa-3x text-warning mb-3"></i>
+                        <h5 class="card-title">商品管理</h5>
+                        <p class="card-text text-muted small">管理商品上下架</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 用户管理入口 -->
+        <div class="col-md-4 col-xl-3">
+            <a href="/admin/users" class="text-decoration-none">
+                <div class="card h-100 shadow-sm hover-shadow">
+                    <div class="card-body text-center">
+                        <i class="fas fa-users fa-3x text-info mb-3"></i>
+                        <h5 class="card-title">用户管理</h5>
+                        <p class="card-text text-muted small">查看和管理用户</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-shadow {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .hover-shadow:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15) !important;
+    }
+</style>

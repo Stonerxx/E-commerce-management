@@ -8,8 +8,7 @@ namespace ECommerce.Web.Controllers;
 public sealed class AdminController : Controller
 {
     [HttpGet("/admin")]
-    [HttpGet("/admin/dashboard")]
-    public IActionResult Dashboard()
+    public IActionResult Index()
     {
         return View();
     }
