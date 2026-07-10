@@ -5,125 +5,202 @@
         data() {
             return {
                 loading: false,
+                lastUpdated: '加载中...',
                 summaryCards: [
                     {
                         key: "orders",
                         label: "今日订单",
                         value: "0",
-                        badge: "待实现",
-                        badgeClass: "text-bg-secondary",
-                        hint: "第 4 人实现订单后接入 /api/v1/admin/dashboard/summary"
+                        icon: '<i class="fas fa-shopping-bag"></i>'
                     },
                     {
                         key: "sales",
                         label: "今日销售额",
                         value: "¥0.00",
-                        badge: "统计",
-                        badgeClass: "text-bg-info",
-                        hint: "第 6 人实现统计口径后替换示例数据"
+                        icon: '<i class="fas fa-yen-sign"></i>'
                     },
                     {
                         key: "shipments",
                         label: "待发货",
                         value: "0",
-                        badge: "物流",
-                        badgeClass: "text-bg-warning",
-                        hint: "第 5 人实现发货和物流轨迹"
+                        icon: '<i class="fas fa-truck"></i>'
                     },
                     {
                         key: "warnings",
                         label: "库存预警",
                         value: "0",
-                        badge: "库存",
-                        badgeClass: "text-bg-danger",
-                        hint: "第 3 人实现库存预警列表"
+                        icon: '<i class="fas fa-exclamation-triangle"></i>'
+                    },
+                    {
+                        key: "reviews",
+                        label: "待审核评价",
+                        value: "0",
+                        icon: '<i class="fas fa-star"></i>'
                     }
                 ],
-                moduleProgress: [
-                    {
-                        name: "项目骨架与部署",
-                        branch: "feat-member1-foundation-oracle-deploy",
-                        percent: 55,
-                        barClass: "bg-primary",
-                        nextStep: "填真实 Oracle__ConnectionString，执行 db-check，补服务器访问和部署截图"
-                    },
-                    {
-                        name: "用户、权限、地址、日志",
-                        branch: "feat-member2-user-permission-address-log",
-                        percent: 10,
-                        barClass: "bg-success",
-                        nextStep: "实现 AuthService，并让登录页提交后生成 Cookie"
-                    },
-                    {
-                        name: "商品、分类、SKU、库存",
-                        branch: "feat-member3-product-category-sku-inventory",
-                        percent: 10,
-                        barClass: "bg-info",
-                        nextStep: "实现分类树、商品列表、SKU 和库存日志"
-                    },
-                    {
-                        name: "购物车、订单核心流程",
-                        branch: "feat-member4-cart-order-core",
-                        percent: 10,
-                        barClass: "bg-warning",
-                        nextStep: "实现购物车转订单和库存锁定"
-                    },
-                    {
-                        name: "支付、优惠券、物流、评价",
-                        branch: "feat-member5-payment-coupon-logistics-review",
-                        percent: 10,
-                        barClass: "bg-danger",
-                        nextStep: "实现模拟支付成功后的订单状态流转"
-                    },
-                    {
-                        name: "统计、导出、UI、文档",
-                        branch: "feat-member6-stats-export-ui-docs",
-                        percent: 15,
-                        barClass: "bg-secondary",
-                        nextStep: "基于本 Dashboard 样板统一后台页面"
-                    }
-                ],
-                apiChecks: [
-                    {
-                        url: "/health",
-                        status: "未检查",
-                        badgeClass: "text-bg-secondary",
-                        message: "点击刷新系统状态后检查"
-                    },
-                    {
-                        url: "/api/v1/system/version",
-                        status: "未检查",
-                        badgeClass: "text-bg-secondary",
-                        message: "点击刷新系统状态后检查"
-                    }
-                ]
+                topProducts: [],
+                trendData: {
+                    dates: [],
+                    orderCounts: []
+                },
+                chartInstance: null
             };
         },
         mounted() {
-            this.refreshSystemStatus();
+            this.loadDashboardSummary();
+            this.loadTopProducts();
+            this.loadTrendData();
+            this.updateLastUpdated();
+            // 窗口大小变化时重绘图表
+            window.addEventListener('resize', this.resizeChart);
+        },
+        beforeUnmount() {
+            window.removeEventListener('resize', this.resizeChart);
+            if (this.chartInstance) {
+                this.chartInstance.dispose();
+                this.chartInstance = null;
+            }
         },
         methods: {
-            async refreshSystemStatus() {
+            updateLastUpdated() {
+                const now = new Date();
+                this.lastUpdated = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+            },
+
+            async refreshAll() {
                 this.loading = true;
-                await Promise.all(this.apiChecks.map((item) => this.checkEndpoint(item)));
+                await Promise.all([
+                    this.loadDashboardSummary(true),
+                    this.loadTopProducts(true),
+                    this.loadTrendData(true)
+                ]);
+                this.updateLastUpdated();
                 this.loading = false;
             },
-            async checkEndpoint(item) {
-                try {
-                    const response = await fetch(item.url, {
-                        headers: {
-                            "Accept": "application/json"
-                        }
-                    });
-                    const payload = await response.json();
 
-                    item.status = response.ok && payload.success ? "正常" : "异常";
-                    item.badgeClass = response.ok && payload.success ? "text-bg-success" : "text-bg-danger";
-                    item.message = payload.message || `HTTP ${response.status}`;
-                } catch (error) {
-                    item.status = "失败";
-                    item.badgeClass = "text-bg-danger";
-                    item.message = error instanceof Error ? error.message : "接口请求失败";
+            async loadDashboardSummary(silent = false) {
+                try {
+                    const response = await fetch('/api/v1/admin/dashboard/summary');
+                    const result = await response.json();
+                    if (response.ok && result.success) {
+                        const data = result.data;
+                        this.summaryCards[0].value = data.todayOrderCount?.toString() || "0";
+                        this.summaryCards[1].value = `¥${(data.todaySalesAmount ?? 0).toFixed(2)}`;
+                        this.summaryCards[2].value = data.pendingShipmentCount?.toString() || "0";
+                        this.summaryCards[3].value = data.inventoryWarningCount?.toString() || "0";
+                        this.summaryCards[4].value = data.pendingReviewCount?.toString() || "0";
+                    }
+                } catch (e) {
+                    if (!silent) console.error('加载统计摘要失败:', e);
+                }
+            },
+
+            async loadTopProducts(silent = false) {
+                try {
+                    // 默认近30天
+                    const end = new Date();
+                    const start = new Date();
+                    start.setDate(start.getDate() - 30);
+                    const params = new URLSearchParams({
+                        startDate: start.toISOString().split('T')[0],
+                        endDate: end.toISOString().split('T')[0]
+                    });
+                    const response = await fetch(`/api/v1/admin/statistics/top-products?${params}`);
+                    const result = await response.json();
+                    if (response.ok && result.success) {
+                        this.topProducts = result.data || [];
+                    }
+                } catch (e) {
+                    if (!silent) console.error('加载热销商品失败:', e);
+                }
+            },
+
+            async loadTrendData(silent = false) {
+                try {
+                    const end = new Date();
+                    const start = new Date();
+                    start.setDate(start.getDate() - 30);
+                    const params = new URLSearchParams({
+                        startDate: start.toISOString().split('T')[0],
+                        endDate: end.toISOString().split('T')[0]
+                    });
+                    const response = await fetch(`/api/v1/admin/statistics/orders?${params}`);
+                    const result = await response.json();
+                    if (response.ok && result.success && result.data) {
+                        const points = result.data.points || [];
+                        this.trendData.dates = points.map(p => {
+                            const d = new Date(p.date);
+                            return `${d.getMonth() + 1}/${d.getDate()}`;
+                        });
+                        this.trendData.orderCounts = points.map(p => p.orderCount);
+                        this.renderChart();
+                    }
+                } catch (e) {
+                    if (!silent) console.error('加载趋势数据失败:', e);
+                }
+            },
+
+            renderChart() {
+                const dom = document.getElementById('trendChart');
+                if (!dom) return;
+                if (this.chartInstance) {
+                    this.chartInstance.dispose();
+                }
+                this.chartInstance = echarts.init(dom);
+                const option = {
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: { type: 'shadow' }
+                    },
+                    grid: {
+                        left: '3%',
+                        right: '4%',
+                        bottom: '8%',
+                        top: '6%',
+                        containLabel: true
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: this.trendData.dates.length > 0 ? this.trendData.dates : ['暂无数据'],
+                        axisLine: { show: false },
+                        axisTick: { show: false }
+                    },
+                    yAxis: {
+                        type: 'value',
+                        splitLine: { lineStyle: { color: '#f0f0f0' } },
+                        axisLabel: { fontSize: 11 }
+                    },
+                    series: [
+                        {
+                            name: '订单数',
+                            type: 'line',
+                            smooth: true,
+                            symbol: 'circle',
+                            symbolSize: 6,
+                            lineStyle: {
+                                width: 2,
+                                color: '#4f6f8f'
+                            },
+                            areaStyle: {
+                                color: {
+                                    type: 'linear',
+                                    x: 0, y: 0, x2: 0, y2: 1,
+                                    colorStops: [
+                                        { offset: 0, color: 'rgba(79,111,143,0.3)' },
+                                        { offset: 1, color: 'rgba(79,111,143,0.02)' }
+                                    ]
+                                }
+                            },
+                            data: this.trendData.orderCounts.length > 0 ? this.trendData.orderCounts : [0]
+                        }
+                    ]
+                };
+                this.chartInstance.setOption(option);
+            },
+
+            resizeChart() {
+                if (this.chartInstance) {
+                    this.chartInstance.resize();
                 }
             }
         }
