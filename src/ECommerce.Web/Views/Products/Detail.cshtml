@@ -1,0 +1,157 @@
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "商品详情";
+    var productId = ViewData["ProductId"];
+    var isCustomer = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.User);
+}
+
+<div id="productDetailApp" v-cloak>
+    <div v-if="loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">加载中...</span>
+        </div>
+    </div>
+
+    <div v-else-if="errorMsg" class="text-center py-5">
+        <i class="bi bi-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
+        <p class="text-muted mt-3">{{ errorMsg }}</p>
+        <a href="/products" class="btn btn-outline-primary">返回商品列表</a>
+    </div>
+
+    <div v-else class="py-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">首页</a></li>
+                <li class="breadcrumb-item"><a href="/products">商品列表</a></li>
+                <li class="breadcrumb-item active">{{ product.name }}</li>
+            </ol>
+        </nav>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="text-center mb-3">
+                            <img :src="selectedImage || product.mainImage" class="img-fluid rounded" alt="商品主图" style="max-height: 400px; object-fit: contain;">
+                        </div>
+                        <div v-if="product.images && product.images.length > 0" class="d-flex flex-wrap gap-2 justify-content-center">
+                            <button v-for="img in product.images" :key="img.imageId"
+                                    type="button"
+                                    class="btn btn-outline-secondary p-0"
+                                    :class="{ 'border-primary': selectedImage === img.imageUrl }"
+                                    v-on:click="selectedImage = img.imageUrl">
+                                <img :src="img.imageUrl" alt="缩略图" style="width: 60px; height: 60px; object-fit: cover;">
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h1 class="h3 mb-2">{{ product.name }}</h1>
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="text-warning">
+                                <i v-for="n in 5" :key="n" class="bi"
+                                   :class="n <= Math.round(product.avgRating) ? 'bi-star-fill' : 'bi-star'"></i>
+                            </div>
+                            <span class="text-muted">{{ product.avgRating.toFixed(1) }} 分</span>
+                            <span class="text-muted">销量 {{ product.salesCount }}</span>
+                            <span class="text-muted">浏览 {{ product.viewCount }}</span>
+                        </div>
+
+                        <div class="bg-light rounded p-3 mb-3">
+                            <div class="d-flex align-items-baseline gap-2">
+                                <span class="text-danger h3 mb-0">¥{{ product.priceMin.toFixed(2) }}</span>
+                                <span v-if="product.status === 2" class="badge bg-warning">预售</span>
+                                <span v-else-if="product.status === 0" class="badge bg-secondary">已下架</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3" v-if="specGroups.length > 0">
+                            <h6 class="mb-2">规格选择</h6>
+                            <div v-for="group in specGroups" :key="group.specName" class="mb-2">
+                                <label class="form-label text-muted small">{{ group.specName }}</label>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="button"
+                                            class="btn btn-sm"
+                                            :class="selectedSpecs[group.specName] === val ? 'btn-primary' : 'btn-outline-secondary'"
+                                            v-for="val in group.values" :key="val"
+                                            v-on:click="selectSpec(group.specName, val)">
+                                        {{ val }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3" v-if="currentSku">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">当前选择：</span>
+                                <span class="fw-medium">{{ currentSkuSpecText }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">单价：</span>
+                                <span class="text-danger fw-bold fs-5">¥{{ currentSku.price.toFixed(2) }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">库存：</span>
+                                <span :class="currentSku.stock > 0 ? 'text-success' : 'text-danger'">
+                                    {{ currentSku.stock > 0 ? '有货 (' + currentSku.stock + '件)' : '无货' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">购买数量</label>
+                            <div class="input-group" style="width: 140px;">
+                                <button class="btn btn-outline-secondary" type="button" v-on:click="quantity--" :disabled="quantity <= 1">-</button>
+                                <input type="number" class="form-control text-center" v-model.number="quantity" min="1">
+                                <button class="btn btn-outline-secondary" type="button" v-on:click="quantity++"
+                                        :disabled="currentSku && quantity >= currentSku.stock">+</button>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <template v-if="@isCustomer">
+                                <button type="button" class="btn btn-outline-primary flex-grow-1"
+                                        v-on:click="addToCart"
+                                        :disabled="!currentSku || currentSku.stock <= 0 || addingToCart">
+                                    <i class="bi bi-cart-plus"></i>
+                                    <span v-if="addingToCart">添加中...</span>
+                                    <span v-else>加入购物车</span>
+                                </button>
+                                <button type="button" class="btn btn-danger flex-grow-1"
+                                        v-on:click="buyNow"
+                                        :disabled="!currentSku || currentSku.stock <= 0">
+                                    <i class="bi bi-bag-check"></i> 立即购买
+                                </button>
+                            </template>
+                            <template v-else>
+                                <a href="/account/login" class="btn btn-primary flex-grow-1">
+                                    <i class="bi bi-box-arrow-in-right"></i> 登录后购买
+                                </a>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 class="h5 mb-0">商品详情</h2>
+            </div>
+            <div class="card-body">
+                <div v-if="product.description" class="product-description">
+                    <p>{{ product.description }}</p>
+                </div>
+                <div v-else class="text-muted">
+                    暂无商品描述
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/product-detail.js" asp-append-version="true"></script>
+}
