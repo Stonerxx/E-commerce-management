@@ -24,6 +24,12 @@ public static class DependencyInjection
         services.AddScoped<IAddressRepository, AddressRepository>();
         services.AddScoped<IOperationLogRepository, OperationLogRepository>();
         services.AddScoped<IPermissionRepository, PermissionRepository>();
+        services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IProductImageRepository, ProductImageRepository>();
+        services.AddScoped<IProductSpecRepository, ProductSpecRepository>();
+        services.AddScoped<ISkuRepository, SkuRepository>();
+        services.AddScoped<IInventoryLogRepository, InventoryLogRepository>();
         services.AddScoped<ICartRepository, CartRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
 
@@ -32,12 +38,15 @@ public static class DependencyInjection
         services.AddScoped<IAddressService, AddressService>();
         services.AddScoped<IOperationLogService, OperationLogService>();
         services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<IProductService, ProductService>();
+        services.AddScoped<IProductImageService, ProductImageService>();
+        services.AddScoped<ISkuService, SkuService>();
+        services.AddScoped<IInventoryService, InventoryService>();
         services.AddScoped<ICartService, CartService>();
         services.AddScoped<IOrderService, OrderService>();
 
-        // TEMP_DEMO_* mocks keep the current demo flow runnable until member3/5 real services are merged.
-        services.AddScoped<ISkuService, MockSkuService>();
-        services.AddScoped<IInventoryService, MockInventoryService>();
+        // TEMP_DEMO_COUPON keeps order preview runnable until member5 real coupon service is merged.
         services.AddScoped<ICouponService, MockCouponService>();
 
         return services;

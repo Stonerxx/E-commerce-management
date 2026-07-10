@@ -7,80 +7,80 @@
                 loading: false,
                 summaryCards: [
                     {
-                        key: "orders",
-                        label: "今日订单",
-                        value: "0",
-                        badge: "待实现",
-                        badgeClass: "text-bg-secondary",
-                        hint: "第 4 人实现订单后接入 /api/v1/admin/dashboard/summary"
-                    },
-                    {
-                        key: "sales",
-                        label: "今日销售额",
-                        value: "¥0.00",
-                        badge: "统计",
+                        key: "products",
+                        label: "商品管理",
+                        value: "已接入",
+                        badge: "member3",
                         badgeClass: "text-bg-info",
-                        hint: "第 6 人实现统计口径后替换示例数据"
+                        hint: "分类、商品、SKU 和库存页面已合入预演分支"
                     },
                     {
-                        key: "shipments",
-                        label: "待发货",
-                        value: "0",
-                        badge: "物流",
+                        key: "orders",
+                        label: "订单管理",
+                        value: "已接入",
+                        badge: "member4",
                         badgeClass: "text-bg-warning",
-                        hint: "第 5 人实现发货和物流轨迹"
+                        hint: "购物车和订单核心流程来自 member4"
+                    },
+                    {
+                        key: "auth",
+                        label: "用户权限",
+                        value: "已接入",
+                        badge: "member2",
+                        badgeClass: "text-bg-success",
+                        hint: "登录、地址、权限和操作日志来自 member2"
                     },
                     {
                         key: "warnings",
                         label: "库存预警",
-                        value: "0",
+                        value: "待联调",
                         badge: "库存",
                         badgeClass: "text-bg-danger",
-                        hint: "第 3 人实现库存预警列表"
+                        hint: "需要真实数据库数据后检查库存预警接口"
                     }
                 ],
                 moduleProgress: [
                     {
                         name: "项目骨架与部署",
                         branch: "feat-member1-foundation-oracle-deploy",
-                        percent: 55,
+                        percent: 80,
                         barClass: "bg-primary",
-                        nextStep: "填真实 Oracle__ConnectionString，执行 db-check，补服务器访问和部署截图"
+                        nextStep: "确认 GitHub Actions 部署和服务器环境变量"
                     },
                     {
                         name: "用户、权限、地址、日志",
                         branch: "feat-member2-user-permission-address-log",
-                        percent: 10,
+                        percent: 75,
                         barClass: "bg-success",
-                        nextStep: "实现 AuthService，并让登录页提交后生成 Cookie"
+                        nextStep: "确认 demo 账号 password_hash 或保留 TEMP_DEMO_AUTH"
                     },
                     {
                         name: "商品、分类、SKU、库存",
                         branch: "feat-member3-product-category-sku-inventory",
-                        percent: 10,
+                        percent: 70,
                         barClass: "bg-info",
-                        nextStep: "实现分类树、商品列表、SKU 和库存日志"
+                        nextStep: "确认商品 seed 数据和库存日志类型"
                     },
                     {
                         name: "购物车、订单核心流程",
                         branch: "feat-member4-cart-order-core",
-                        percent: 10,
+                        percent: 70,
                         barClass: "bg-warning",
-                        nextStep: "实现购物车转订单和库存锁定"
+                        nextStep: "继续联调支付、优惠券、库存扣减"
                     },
                     {
                         name: "支付、优惠券、物流、评价",
                         branch: "feat-member5-payment-coupon-logistics-review",
-                        percent: 10,
+                        percent: 20,
                         barClass: "bg-danger",
-                        nextStep: "实现模拟支付成功后的订单状态流转"
+                        nextStep: "合入后替换 TEMP_DEMO_PAYMENT 和 MockCouponService"
                     },
                     {
                         name: "统计、导出、UI、文档",
                         branch: "feat-member6-stats-export-ui-docs",
-                        percent: 15,
+                        percent: 20,
                         barClass: "bg-secondary",
-                        nextStep: "基于本 Dashboard 样板统一后台页面"
+                        nextStep: "合入后统一 Dashboard 和统计导出入口"
                     }
                 ],
                 apiChecks: [
@@ -95,6 +95,12 @@
                         status: "未检查",
                         badgeClass: "text-bg-secondary",
                         message: "点击刷新系统状态后检查"
+                    },
+                    {
+                        url: "/api/health",
+                        status: "未检查",
+                        badgeClass: "text-bg-secondary",
+                        message: "member3 兼容健康检查入口"
                     }
                 ]
             };
@@ -117,13 +123,13 @@
                     });
                     const payload = await response.json();
 
-                    item.status = response.ok && payload.success ? "正常" : "异常";
-                    item.badgeClass = response.ok && payload.success ? "text-bg-success" : "text-bg-danger";
-                    item.message = payload.message || `HTTP ${response.status}`;
+                    item.status = response.ok ? "正常" : "异常";
+                    item.badgeClass = response.ok ? "text-bg-success" : "text-bg-danger";
+                    item.message = payload.message || payload.status || JSON.stringify(payload).slice(0, 80);
                 } catch (error) {
-                    item.status = "失败";
+                    item.status = "异常";
                     item.badgeClass = "text-bg-danger";
-                    item.message = error instanceof Error ? error.message : "接口请求失败";
+                    item.message = error.message;
                 }
             }
         }

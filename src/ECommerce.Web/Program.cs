@@ -56,4 +56,16 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
+app.MapGet("/api/health", async (ECommerce.Infrastructure.Data.IDatabaseHealthCheck healthCheck) =>
+{
+    var result = await healthCheck.CheckAsync();
+    return Results.Json(new
+    {
+        result.Database,
+        result.Connected,
+        result.ServerTime,
+        Error = result.ErrorMessage
+    });
+});
+
 app.Run();

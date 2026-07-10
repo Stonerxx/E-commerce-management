@@ -1,0 +1,62 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "分类管理";
+}
+
+<div id="categoriesApp" v-cloak>
+    <h1>分类管理</h1>
+    <button class="btn btn-primary" type="button" v-on:click="openCreateModal(null)">新增根分类</button>
+    
+    <div v-if="treeData.length > 0">
+        <div v-for="item in treeData" :key="item.categoryId">
+            <div style="padding-left: (item.treeLevel - 1) * 24px;">
+                <span>{{ item.name }}</span>
+                <button data-action="create-child" :data-id="item.categoryId" v-on:click="handleButtonClick">新增子分类</button>
+                <button data-action="edit" :data-id="item.categoryId" v-on:click="handleButtonClick">编辑</button>
+                <button data-action="delete" :data-id="item.categoryId" v-on:click="handleButtonClick">删除</button>
+            </div>
+            <div v-if="item.children && item.children.length > 0">
+                <div v-for="subItem in item.children" :key="subItem.categoryId">
+                    <div style="padding-left: (subItem.treeLevel - 1) * 24px;">
+                        <span>{{ subItem.name }}</span>
+                        <button data-action="create-child" :data-id="subItem.categoryId" v-on:click="handleButtonClick">新增子分类</button>
+                        <button data-action="edit" :data-id="subItem.categoryId" v-on:click="handleButtonClick">编辑</button>
+                        <button data-action="delete" :data-id="subItem.categoryId" v-on:click="handleButtonClick">删除</button>
+                    </div>
+                    <div v-if="subItem.children && subItem.children.length > 0">
+                        <div v-for="thirdItem in subItem.children" :key="thirdItem.categoryId">
+                            <div style="padding-left: (thirdItem.treeLevel - 1) * 24px;">
+                                <span>{{ thirdItem.name }}</span>
+                                <button data-action="create-child" :data-id="thirdItem.categoryId" v-on:click="handleButtonClick">新增子分类</button>
+                                <button data-action="edit" :data-id="thirdItem.categoryId" v-on:click="handleButtonClick">编辑</button>
+                                <button data-action="delete" :data-id="thirdItem.categoryId" v-on:click="handleButtonClick">删除</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ isEdit ? '编辑分类' : '新增分类' }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form v-on:submit.prevent="saveCategory">
+                        <input type="text" v-model="form.name" required>
+                        <button type="submit">{{ isEdit ? '保存' : '创建' }}</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/admin-categories.js" asp-append-version="true"></script>
+}

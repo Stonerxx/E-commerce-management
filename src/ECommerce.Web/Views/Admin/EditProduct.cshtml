@@ -1,0 +1,214 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "编辑商品";
+}
+
+<div id="editProductApp" v-cloak>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">编辑商品</h1>
+            <p class="text-muted mb-0">修改商品信息</p>
+        </div>
+        <a href="/admin/products" class="btn btn-outline-secondary">返回列表</a>
+    </div>
+
+    <div v-if="loading" class="text-center py-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">加载中...</span>
+        </div>
+    </div>
+
+    <div v-else>
+        <div class="card">
+            <div class="card-body">
+                <form v-on:submit.prevent="submitForm">
+                    <div class="row g-4">
+                        <div class="col-12 col-lg-8">
+                            <div class="mb-3">
+                                <label class="form-label">商品名称 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" v-model="form.name" placeholder="请输入商品名称" maxlength="200">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">所属分类 <span class="text-danger">*</span></label>
+                                <select class="form-select" v-model.number="form.categoryId">
+                                    <option :value="null">请选择分类</option>
+                                    <optgroup v-for="cat in categoryTree" :key="cat.categoryId" :label="cat.name">
+                                        <option v-for="sub in cat.children" :key="sub.categoryId" :value="sub.categoryId">
+                                            └── {{ sub.name }}
+                                        </option>
+                                    </optgroup>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">商品描述</label>
+                                <textarea class="form-control" v-model="form.description" rows="3" placeholder="请输入商品描述"></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">主图 URL <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" v-model="form.mainImage" placeholder="请输入商品主图URL">
+                                <div v-if="form.mainImage" class="mt-2">
+                                    <img :src="form.mainImage" class="img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;" alt="预览">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">状态</label>
+                                <select class="form-select" v-model.number="form.status">
+                                    <option :value="1">上架</option>
+                                    <option :value="0">下架</option>
+                                    <option :value="2">预售</option>
+                                </select>
+                            </div>
+
+                            <!-- 规格定义区域 -->
+                            <div class="card mb-3">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="card-title mb-0">商品规格定义 <span class="text-danger">*</span></h5>
+                                    <small class="text-muted">先定义规格，再创建SKU</small>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-4">
+                                            <input type="text" class="form-control form-control-sm" v-model="specForm.specName" placeholder="规格名（如：颜色）">
+                                        </div>
+                                        <div class="col-4">
+                                            <input type="text" class="form-control form-control-sm" v-model="specForm.specValue" placeholder="规格值（如：红色）">
+                                        </div>
+                                        <div class="col-2">
+                                            <input type="number" class="form-control form-control-sm" v-model.number="specForm.sortOrder" placeholder="排序" min="0">
+                                        </div>
+                                        <div class="col-2">
+                                            <button type="button" class="btn btn-sm btn-outline-primary w-100" v-on:click="addSpec">添加</button>
+                                        </div>
+                                    </div>
+                                    <div v-if="specs.length === 0" class="text-center py-3 text-muted small">
+                                        尚未定义规格，请添加规格名和规格值（如：颜色-红、颜色-蓝、存储-128G）
+                                    </div>
+                                    <div v-else>
+                                        <table class="table table-sm table-borderless mb-0">
+                                            <tbody>
+                                                <tr v-for="(spec, index) in specs" :key="index">
+                                                    <td><span class="badge text-bg-light">{{ spec.specName }}</span></td>
+                                                    <td><span class="badge text-bg-info">{{ spec.specValue }}</span></td>
+                                                    <td class="text-end">
+                                                        <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" v-on:click="removeSpec(index)">×</button>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-lg-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">SKU列表</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div v-if="skus.length === 0" class="text-center py-4 text-muted">
+                                        暂无SKU，点击下方按钮添加
+                                    </div>
+                                    <div v-else class="space-y-2">
+                                        <div v-for="(sku, index) in skus" :key="sku.skuId || index" class="p-3 border rounded">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <span class="fw-medium small">{{ sku.specDescText }}</span>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" v-on:click="removeSku(index)">删除</button>
+                                            </div>
+                                            <div class="row g-2">
+                                                <div class="col-6">
+                                                    <label class="form-label small">价格</label>
+                                                    <input type="number" class="form-control form-control-sm" v-model.number="sku.price" step="0.01" placeholder="价格">
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="form-label small">库存</label>
+                                                    <input type="number" class="form-control form-control-sm" v-model.number="sku.stock" placeholder="库存">
+                                                </div>
+                                            </div>
+                                            <div class="row g-2 mt-2">
+                                                <div class="col-6">
+                                                    <label class="form-label small">原价</label>
+                                                    <input type="number" class="form-control form-control-sm" v-model.number="sku.originalPrice" step="0.01" placeholder="原价">
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="form-label small">预警库存</label>
+                                                    <input type="number" class="form-control form-control-sm" v-model.number="sku.warningStock" placeholder="预警库存">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary w-100 mt-3" v-on:click="addSku">+ 添加SKU</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex justify-content-end gap-3">
+                        <a href="/admin/products" class="btn btn-outline-secondary">取消</a>
+                        <button type="submit" class="btn btn-primary" :disabled="submitting">
+                            <span v-if="submitting" class="spinner-border spinner-border-sm"></span>
+                            保存修改
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- SKU 添加弹窗：从已定义规格中选择 -->
+    <div class="modal fade" id="skuModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">添加SKU</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div v-if="specGroups.length === 0" class="alert alert-warning">
+                        请先添加商品规格定义，再创建SKU
+                    </div>
+                    <div v-else>
+                        <h6 class="mb-3">选择规格组合</h6>
+                        <div v-for="group in specGroups" :key="group.specName" class="mb-3">
+                            <label class="form-label">{{ group.specName }}</label>
+                            <select class="form-select" v-model="skuForm.selections[group.specName]">
+                                <option value="">请选择 {{ group.specName }}</option>
+                                <option v-for="val in group.values" :key="val" :value="val">{{ val }}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label class="form-label">价格 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" v-model.number="skuForm.price" step="0.01" placeholder="价格">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">库存 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" v-model.number="skuForm.stock" placeholder="库存">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">原价</label>
+                        <input type="number" class="form-control" v-model.number="skuForm.originalPrice" step="0.01" placeholder="原价">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">预警库存</label>
+                        <input type="number" class="form-control" v-model.number="skuForm.warningStock" placeholder="预警库存">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" v-on:click="confirmAddSku">确认添加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/admin-product-edit.js" asp-append-version="true"></script>
+}

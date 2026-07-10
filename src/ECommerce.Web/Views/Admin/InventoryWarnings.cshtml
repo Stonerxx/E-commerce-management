@@ -1,0 +1,115 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "库存预警";
+}
+
+<div id="warningsApp" v-cloak>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="bi bi-exclamation-triangle text-warning"></i> 库存预警
+            </h1>
+            <p class="text-muted mb-0">展示库存数量低于预警阈值的 SKU 列表</p>
+        </div>
+        <div>
+            <span class="badge text-bg-warning fs-6">
+                预警 SKU 数：{{ pagination.total }}
+            </span>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12 col-lg-6">
+                    <input type="text" class="form-control" placeholder="搜索商品名称或 SKU..." v-model="keyword" v-on:keyup.enter="loadWarnings">
+                </div>
+                <div class="col-12 col-lg-3">
+                    <button class="btn btn-outline-primary w-100" v-on:click="loadWarnings">
+                        <i class="bi bi-search"></i> 搜索
+                    </button>
+                </div>
+                <div class="col-12 col-lg-3">
+                    <button class="btn btn-outline-secondary w-100" v-on:click="loadWarnings">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="h5 mb-0">预警列表</h2>
+        </div>
+        <div class="card-body p-0">
+            <div v-if="loading" class="text-center py-5">
+                <div class="spinner-border text-primary"></div>
+            </div>
+            <div v-else-if="rows.length === 0" class="empty-tip text-center">
+                <i class="bi bi-check-circle fs-1 d-block mb-2 text-success"></i>
+                暂无库存预警，所有 SKU 库存正常
+            </div>
+            <table v-else class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>商品</th>
+                        <th>规格</th>
+                        <th>当前库存</th>
+                        <th>预警阈值</th>
+                        <th>状态</th>
+                        <th style="width: 180px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="row in rows" v-bind:key="row.skuId">
+                        <td>
+                            <a v-bind:href="'/admin/products/' + row.productId + '/edit'" class="text-decoration-none">
+                                {{ row.productName || ('商品#' + row.productId) }}
+                            </a>
+                        </td>
+                        <td><code class="small">{{ row.specDesc }}</code></td>
+                        <td>
+                            <span class="badge text-bg-danger">{{ row.stock }}</span>
+                        </td>
+                        <td>{{ row.warningStock }}</td>
+                        <td>
+                            <span class="badge" v-bind:class="row.stock === 0 ? 'text-bg-danger' : 'text-bg-warning'">
+                                {{ row.stock === 0 ? '缺货' : '库存不足' }}
+                            </span>
+                        </td>
+                        <td class="table-actions">
+                            <a v-bind:href="'/admin/skus#adjust-' + row.skuId" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-plus-slash-minus"></i> 补货
+                            </a>
+                            <a v-bind:href="'/admin/products/' + row.productId + '/edit'" class="btn btn-sm btn-outline-secondary">
+                                查看商品
+                            </a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div v-if="pagination.total > pagination.pageSize" class="card-footer">
+            <nav>
+                <ul class="pagination justify-content-center mb-0">
+                    <li class="page-item" v-bind:class="{ disabled: pagination.currentPage === 1 }">
+                        <button class="page-link" v-on:click="loadWarnings(pagination.currentPage - 1)">上一页</button>
+                    </li>
+                    <li class="page-item" v-for="p in pageNumbers" v-bind:key="p"
+                        v-bind:class="{ active: pagination.currentPage === p }">
+                        <button class="page-link" v-on:click="loadWarnings(p)">{{ p }}</button>
+                    </li>
+                    <li class="page-item" v-bind:class="{ disabled: pagination.currentPage >= pagination.totalPages }">
+                        <button class="page-link" v-on:click="loadWarnings(pagination.currentPage + 1)">下一页</button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/admin-inventory-warnings.js" asp-append-version="true"></script>
+}
