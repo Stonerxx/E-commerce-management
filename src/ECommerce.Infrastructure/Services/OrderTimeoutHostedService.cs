@@ -84,7 +84,7 @@ public sealed class OrderTimeoutHostedService : IHostedService, IDisposable
 
     private async Task ProcessExpiredOrdersAsync(CancellationToken cancellationToken)
     {
-        using var scope = _scopeFactory.CreateScope();
+        await using var scope = _scopeFactory.CreateAsyncScope();
         var orderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
         var orderService = scope.ServiceProvider.GetRequiredService<IOrderService>();
 
