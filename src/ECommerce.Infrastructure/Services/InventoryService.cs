@@ -91,7 +91,12 @@ public sealed class InventoryService : IInventoryService
             return;
         }
 
-        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        var ownsTransaction = _unitOfWork.CurrentTransaction is null;
+        if (ownsTransaction)
+        {
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        }
+
         try
         {
             foreach (var item in items)
@@ -128,11 +133,18 @@ public sealed class InventoryService : IInventoryService
                 await _inventoryLogRepository.CreateAsync(log, cancellationToken);
             }
 
-            await _unitOfWork.CommitAsync(cancellationToken);
+            if (ownsTransaction)
+            {
+                await _unitOfWork.CommitAsync(cancellationToken);
+            }
         }
         catch
         {
-            await _unitOfWork.RollbackAsync(cancellationToken);
+            if (ownsTransaction)
+            {
+                await _unitOfWork.RollbackAsync(cancellationToken);
+            }
+
             throw;
         }
     }
@@ -144,7 +156,12 @@ public sealed class InventoryService : IInventoryService
             return;
         }
 
-        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        var ownsTransaction = _unitOfWork.CurrentTransaction is null;
+        if (ownsTransaction)
+        {
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        }
+
         try
         {
             foreach (var item in items)
@@ -180,11 +197,18 @@ public sealed class InventoryService : IInventoryService
                 await _inventoryLogRepository.CreateAsync(log, cancellationToken);
             }
 
-            await _unitOfWork.CommitAsync(cancellationToken);
+            if (ownsTransaction)
+            {
+                await _unitOfWork.CommitAsync(cancellationToken);
+            }
         }
         catch
         {
-            await _unitOfWork.RollbackAsync(cancellationToken);
+            if (ownsTransaction)
+            {
+                await _unitOfWork.RollbackAsync(cancellationToken);
+            }
+
             throw;
         }
     }
@@ -196,7 +220,12 @@ public sealed class InventoryService : IInventoryService
             return;
         }
 
-        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        var ownsTransaction = _unitOfWork.CurrentTransaction is null;
+        if (ownsTransaction)
+        {
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        }
+
         try
         {
             foreach (var item in items)
@@ -233,11 +262,18 @@ public sealed class InventoryService : IInventoryService
                 await _inventoryLogRepository.CreateAsync(log, cancellationToken);
             }
 
-            await _unitOfWork.CommitAsync(cancellationToken);
+            if (ownsTransaction)
+            {
+                await _unitOfWork.CommitAsync(cancellationToken);
+            }
         }
         catch
         {
-            await _unitOfWork.RollbackAsync(cancellationToken);
+            if (ownsTransaction)
+            {
+                await _unitOfWork.RollbackAsync(cancellationToken);
+            }
+
             throw;
         }
     }
