@@ -2,8 +2,8 @@
     ViewData["Title"] = "首页";
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
     var isCustomer = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.User);
-    var canUseAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Service)
-        || User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
+    var isAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
+    var canUseAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Service) || isAdmin;
 }
 
 <div class="home-page py-4">
@@ -14,7 +14,7 @@
                 <h1 class="display-6 fw-semibold mb-3">电商购物平台</h1>
                 <p class="lead text-muted mb-0">
                     服务器部署成功后可以从这里进入当前账号可用的页面。
-                    普通用户看到购物流程，客服和管理员看到后台入口，未登录时先进入登录页。
+                    普通用户看到购物流程和地址管理，客服和管理员看到后台入口。
                 </p>
             </div>
             <div class="col-lg-4">
@@ -28,6 +28,7 @@
                     {
                         <a class="btn btn-primary btn-lg" href="/cart">进入购物车</a>
                         <a class="btn btn-outline-primary btn-lg" href="/orders">查看我的订单</a>
+                        <a class="btn btn-outline-primary btn-lg" href="/addresses">管理收货地址</a>
                     }
                     @if (canUseAdmin)
                     {
@@ -45,10 +46,11 @@
             <div class="col-md-6 col-xl-3">
                 <div class="border rounded p-3 h-100 bg-white">
                     <h2 class="h5">前台用户</h2>
-                    <p class="text-muted small">面向普通用户的购物、结算和订单页面。</p>
+                    <p class="text-muted small">面向普通用户的购物、结算、地址和订单页面。</p>
                     <div class="d-grid gap-2">
                         <a class="btn btn-outline-primary" href="/cart">购物车</a>
                         <a class="btn btn-outline-primary" href="/orders">我的订单</a>
+                        <a class="btn btn-outline-primary" href="/addresses">我的地址</a>
                     </div>
                 </div>
             </div>
@@ -63,6 +65,21 @@
                     <div class="d-grid gap-2">
                         <a class="btn btn-outline-secondary" href="/admin">后台首页</a>
                         <a class="btn btn-outline-secondary" href="/admin/orders">订单管理</a>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (isAdmin)
+        {
+            <div class="col-md-6 col-xl-3">
+                <div class="border rounded p-3 h-100 bg-white">
+                    <h2 class="h5">权限审计</h2>
+                    <p class="text-muted small">member2 提供的用户、角色、权限和操作日志入口。</p>
+                    <div class="d-grid gap-2">
+                        <a class="btn btn-outline-secondary" href="/admin/users">用户管理</a>
+                        <a class="btn btn-outline-secondary" href="/admin/permissions">权限管理</a>
+                        <a class="btn btn-outline-secondary" href="/admin/operation-logs">操作日志</a>
                     </div>
                 </div>
             </div>

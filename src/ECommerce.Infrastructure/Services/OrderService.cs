@@ -281,6 +281,9 @@ public class OrderService : IOrderService
         if (order == null)
             throw new BusinessException("ORDER_NOT_FOUND", "订单不存在");
 
+        if (order.UserId != userId)
+            throw new BusinessException("FORBIDDEN", "无权操作此订单");
+
         // 2. 校验订单状态：只有待支付可以取消
         if (order.Status != (int)OrderStatus.PendingPayment)
             throw new BusinessException("ORDER_CANNOT_CANCEL", $"当前订单状态（{order.Status}）不允许取消");

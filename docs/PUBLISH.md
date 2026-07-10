@@ -36,9 +36,10 @@ GitHub Actions restore/build/publish
 
 ```text
 push 到 main
-push 到 feat-member1-foundation-oracle-deploy
-GitHub Actions 页面手动 Run workflow
+GitHub Actions 页面手动 Run workflow（选择 main）
 ```
+
+`merging` 分支只触发 `.github/workflows/build.yml` 的 build/test 检查，不部署服务器。
 
 ## 二、服务器准备 artifact 部署脚本
 

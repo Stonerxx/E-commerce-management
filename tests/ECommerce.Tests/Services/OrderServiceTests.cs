@@ -560,6 +560,38 @@ public class OrderServiceTests : ServiceTestBase
     }
 
     [Fact]
+    public async Task CancelAsync_WrongUser_ShouldThrow()
+    {
+        // Arrange
+        var order = CreateOrderMain(orderId: TestOrderId, userId: 999, status: (int)OrderStatus.PendingPayment);
+
+        _orderRepositoryMock
+            .Setup(x => x.GetOrderByIdAsync(TestOrderId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(order);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<BusinessException>(
+            () => _orderService.CancelAsync(
+                userId: TestUserId,
+                orderId: TestOrderId,
+                operatorId: TestUserId,
+                operatorName: "testuser",
+                reason: "test",
+                ipAddress: "127.0.0.1"
+            )
+        );
+        Assert.Equal("FORBIDDEN", exception.Code);
+
+        _unitOfWorkMock.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _orderRepositoryMock.Verify(x => x.UpdateOrderStatusAsync(
+            It.IsAny<long>(),
+            It.IsAny<int>(),
+            It.IsAny<DateTime>(),
+            It.IsAny<CancellationToken>()
+        ), Times.Never);
+    }
+
+    [Fact]
     public async Task CancelAsync_OrderNotFound_ShouldThrow()
     {
         // Arrange

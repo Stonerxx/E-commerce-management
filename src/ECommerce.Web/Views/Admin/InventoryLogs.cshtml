@@ -1,0 +1,124 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "库存日志";
+}
+
+<div id="logsApp" v-cloak>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="bi bi-clock-history text-primary"></i> 库存日志
+            </h1>
+            <p class="text-muted mb-0">记录所有库存调整操作，支持按 SKU、类型、时间范围查询</p>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12 col-lg-3">
+                    <input type="text" class="form-control" placeholder="搜索商品名称或 SKU..." v-model="keyword" v-on:keyup.enter="loadLogs">
+                </div>
+                <div class="col-12 col-lg-2">
+                    <select class="form-select" v-model.number="changeType">
+                        <option :value="null">全部类型</option>
+                        <option :value="1">入库</option>
+                        <option :value="2">出库</option>
+                        <option :value="3">盘点</option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-3">
+                    <input type="text" class="form-control" placeholder="SKU ID（可选）" v-model="skuId" v-on:keyup.enter="loadLogs">
+                </div>
+                <div class="col-12 col-lg-2">
+                    <button class="btn btn-outline-primary w-100" v-on:click="loadLogs">
+                        <i class="bi bi-search"></i> 搜索
+                    </button>
+                </div>
+                <div class="col-12 col-lg-2">
+                    <button class="btn btn-outline-secondary w-100" v-on:click="resetFilters">
+                        <i class="bi bi-arrow-counterclockwise"></i> 重置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h5 mb-0">调整记录</h2>
+            <span class="text-muted small">共 {{ pagination.total }} 条记录</span>
+        </div>
+        <div class="card-body p-0">
+            <div v-if="loading" class="text-center py-5">
+                <div class="spinner-border text-primary"></div>
+            </div>
+            <div v-else-if="rows.length === 0" class="empty-tip text-center">
+                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                暂无库存调整记录
+            </div>
+            <table v-else class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>日志ID</th>
+                        <th>SKU</th>
+                        <th>商品</th>
+                        <th>类型</th>
+                        <th>变更数量</th>
+                        <th>变更前</th>
+                        <th>变更后</th>
+                        <th>操作人</th>
+                        <th>时间</th>
+                        <th>备注</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="row in rows" v-bind:key="row.logId">
+                        <td>{{ row.logId }}</td>
+                        <td><code>{{ row.skuId }}</code></td>
+                        <td>
+                            <a v-if="row.productId" v-bind:href="'/admin/products/' + row.productId + '/edit'">
+                                {{ row.productName || ('商品#' + row.productId) }}
+                            </a>
+                            <span v-else>-</span>
+                        </td>
+                        <td>
+                            <span class="badge" v-bind:class="getTypeClass(row.changeType)">
+                                {{ getTypeText(row.changeType) }}
+                            </span>
+                        </td>
+                        <td v-bind:class="row.quantity > 0 ? 'text-success fw-bold' : 'text-danger fw-bold'">
+                            {{ row.quantity > 0 ? '+' : '' }}{{ row.quantity }}
+                        </td>
+                        <td>{{ row.stockBefore }}</td>
+                        <td>{{ row.stockAfter }}</td>
+                        <td>{{ row.operatorName || ('用户#' + row.operatorId) }}</td>
+                        <td><span class="small text-muted">{{ formatTime(row.createdAt) }}</span></td>
+                        <td><span class="small">{{ row.remark || '-' }}</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div v-if="pagination.total > pagination.pageSize" class="card-footer">
+            <nav>
+                <ul class="pagination justify-content-center mb-0">
+                    <li class="page-item" v-bind:class="{ disabled: pagination.currentPage === 1 }">
+                        <button class="page-link" v-on:click="loadLogs(pagination.currentPage - 1)">上一页</button>
+                    </li>
+                    <li class="page-item" v-for="p in pageNumbers" v-bind:key="p"
+                        v-bind:class="{ active: pagination.currentPage === p }">
+                        <button class="page-link" v-on:click="loadLogs(p)">{{ p }}</button>
+                    </li>
+                    <li class="page-item" v-bind:class="{ disabled: pagination.currentPage >= pagination.totalPages }">
+                        <button class="page-link" v-on:click="loadLogs(pagination.currentPage + 1)">下一页</button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/admin-inventory-logs.js" asp-append-version="true"></script>
+}

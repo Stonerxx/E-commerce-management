@@ -60,6 +60,18 @@ public class MockAddressService : IAddressService
         return Task.FromResult(addresses ?? Array.Empty<AddressDto>());
     }
 
+    public Task<AddressDto> GetForOrderAsync(long userId, long addressId, CancellationToken cancellationToken = default)
+    {
+        DemoAddresses.TryGetValue(userId, out var addresses);
+        var address = addresses?.FirstOrDefault(x => x.AddressId == addressId);
+        if (address == null)
+        {
+            throw new InvalidOperationException("TEMP_DEMO_ADDRESS address not found.");
+        }
+
+        return Task.FromResult(address);
+    }
+
     public Task<long> CreateAsync(long userId, AddressRequest request, CancellationToken cancellationToken = default)
     {
         // TEMP_DEMO_ADDRESS: 临时 Mock 只服务演示读取，避免返回数据库中不存在的地址 ID。

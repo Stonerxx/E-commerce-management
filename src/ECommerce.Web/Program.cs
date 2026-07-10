@@ -1,17 +1,16 @@
 using ECommerce.Infrastructure;
 using ECommerce.Shared.Constants;
-using DotNetEnv;
-using ECommerce.Shared.Contracts;
-using System.Security.Claims;
-
-Env.Load("../../deployment/.env");
+using ECommerce.Web.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add<ApiExceptionFilter>();
+    options.Filters.AddService<RbacPermissionFilter>();
+});
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddScoped<RbacPermissionFilter>();
 
 builder.Services
     .AddAuthentication(AuthConstants.AuthenticationScheme)
@@ -44,37 +43,9 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
-// ========== 新增：只在开发环境启用 Swagger ==========
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-// =================================================
-
 app.UseStaticFiles();
 
 app.UseRouting();
-
-app.Use(async (context, next) =>
-{
-    try
-    {
-        await next();
-    }
-    catch (Exception ex)
-    {
-        context.Response.StatusCode = 500;
-        context.Response.ContentType = "application/json";
-
-        var response = ApiResponse<object>.Fail(
-            "INTERNAL_ERROR",
-            ex.Message,
-            context.TraceIdentifier
-        );
-        await context.Response.WriteAsJsonAsync(response);
-    }
-});
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -84,5 +55,17 @@ app.MapControllers();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.MapGet("/api/health", async (ECommerce.Infrastructure.Data.IDatabaseHealthCheck healthCheck) =>
+{
+    var result = await healthCheck.CheckAsync();
+    return Results.Json(new
+    {
+        result.Database,
+        result.Connected,
+        result.ServerTime,
+        Error = result.ErrorMessage
+    });
+});
 
 app.Run();

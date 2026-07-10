@@ -135,11 +135,11 @@ http://localhost:5052/docs/development-spec
 
 | 内容 | 当前表现 | 负责分支 |
 | --- | --- | --- |
-| 登录注册 | `TEMP_DEMO_AUTH` 可临时登录，真实注册登录仍待 member2 接入 | `feat-member2-user-permission-address-log` |
-| 商品分类/SKU/库存 | API 路由已占位，未连数据库 | `feat-member3-product-category-sku-inventory` |
-| 购物车/订单 | API 路由已占位，未实现业务事务 | `feat-member4-cart-order-core` |
-| 支付/优惠券/物流/评价 | API 路由已占位，未实现状态流转 | `feat-member5-payment-coupon-logistics-review` |
-| 统计/导出/后台首页 | API 路由已占位，Vue Dashboard 示例页已提供，未实现统计和 Excel | `feat-member6-stats-export-ui-docs` |
+| 登录注册 | 已接入 member2 真实 AuthService；演示账号使用 PBKDF2 seed 密码哈希 | `feat-member2-user-permission-address-log` |
+| 商品分类/SKU/库存 | 已接入 member3 数据库实现 | `feat-member3-product-category-sku-inventory` |
+| 购物车/订单 | 已接入 member4 核心流程 | `feat-member4-cart-order-core` |
+| 支付/优惠券/物流/评价 | 优惠券模板 CRUD 已接入；支付仍保留 `TEMP_DEMO_PAYMENT`，物流和评价仍有占位接口 | `feat-member5-payment-coupon-logistics-review` |
+| 统计/导出/后台首页 | 已接入 member6 统计 Dashboard 和 Excel 导出基础 | `feat-member6-stats-export-ui-docs` |
 | 部署 | 配置样例已提供，还需要真实服务器环境变量、访问验证和部署截图 | `feat-member1-foundation-oracle-deploy` |
 
 技术负责人验收骨架时，看这几项即可：
@@ -151,7 +151,7 @@ http://localhost:5052/docs/development-spec
 5. 浏览器能打开 `http://localhost:5052/health`，返回 `success: true`。
 6. 浏览器能打开 `http://localhost:5052/account/login`。
 
-临时演示登录账号：
+演示登录账号：
 
 ```text
 密码统一为 demo123
@@ -162,7 +162,7 @@ demo_user     USER
 demo_buyer    USER
 ```
 
-注意：`TEMP_DEMO_AUTH` 只是联调用临时登录，member2 合入真实 AuthService 后需要删除。
+注意：这些账号走真实 AuthService 登录，密码哈希来自 `migration/seed_demo_data.sql`。
 7. 访问业务 API 如果返回 `501 NOT_IMPLEMENTED`，这在当前阶段是正常的，表示“接口已占位，等待对应成员实现”。
 
 ## 5. Oracle 怎么配

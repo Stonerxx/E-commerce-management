@@ -58,13 +58,10 @@ public sealed class AdminOrdersApiController : ApiControllerBase
         var operatorName = GetCurrentUserName();
         var ipAddress = GetClientIpAddress();
 
-        // 获取订单归属者 ID
-        var context = await _orderService.GetPaymentContextAsync(0, orderId, cancellationToken);
-        if (context == null)
-            return NotFound(ApiResponse<object>.Fail("ORDER_NOT_FOUND", "订单不存在"));
+        var order = await _orderService.GetAdminDetailAsync(orderId, cancellationToken);
 
         await _orderService.CancelAsync(
-            context.UserId,  // 订单归属者
+            order.UserId,    // 订单归属者
             orderId,
             operatorId,      // 管理员自己
             operatorName,    // 管理员姓名

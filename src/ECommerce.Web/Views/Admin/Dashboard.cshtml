@@ -4,71 +4,98 @@
 }
 
 <div id="dashboardApp" v-cloak>
-    <!-- 顶部标题 -->
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
         <div>
-            <h1 class="display-5 fw-bold mb-1">数据概览</h1>
-            <p class="text-muted mb-0">实时运营数据，<span v-text="lastUpdated"></span></p>
+            <h1 class="h3 mb-1">数据概览</h1>
+            <p class="text-muted mb-0">订单、销售、库存和评价的运营摘要。最后更新：{{ lastUpdated }}</p>
         </div>
-        <button class="btn btn-outline-primary btn-sm" type="button" v-on:click="refreshAll" v-bind:disabled="loading">
+        <button class="btn btn-outline-primary" type="button" v-on:click="refreshAll" v-bind:disabled="loading">
             <span v-if="loading" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-            <i class="fas fa-sync-alt me-1"></i> 刷新
+            <i class="fa-solid fa-rotate"></i> 刷新
         </button>
     </div>
 
-    <!-- 五个统计卡片 -->
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
+    <div v-if="errorMessage" class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>{{ errorMessage }}</span>
+    </div>
+
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-5 g-3 mb-4">
         <div class="col" v-for="card in summaryCards" v-bind:key="card.key">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body d-flex align-items-center">
-                    <div class="flex-shrink-0 me-3" v-html="card.icon" style="font-size: 2rem; color: var(--bs-primary);"></div>
-                    <div class="flex-grow-1">
-                        <p class="text-muted small mb-0">{{ card.label }}</p>
-                        <p class="h4 mb-0 fw-bold">{{ card.value }}</p>
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted small mb-1">{{ card.label }}</p>
+                            <p class="h3 mb-0">{{ card.value }}</p>
+                        </div>
+                        <span class="badge fs-6" v-bind:class="card.badgeClass">
+                            <i v-bind:class="card.icon"></i>
+                        </span>
+                    </div>
+                    <p class="small text-muted mb-0 mt-3">{{ card.hint }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-xl-8">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">近 30 日订单趋势</h2>
+                    <span class="small text-muted">按日统计</span>
+                </div>
+                <div class="card-body">
+                    <div id="trendChart" style="width: 100%; height: 320px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">热销商品 Top 10</h2>
+                    <span class="small text-muted">近 30 日</span>
+                </div>
+                <div class="card-body">
+                    <div v-if="topProducts.length === 0" class="text-center text-muted py-4">
+                        <i class="fa-regular fa-folder-open fs-2 d-block mb-2"></i>
+                        暂无商品统计数据
+                    </div>
+                    <div v-else class="list-group list-group-flush">
+                        <div class="list-group-item px-0 d-flex justify-content-between align-items-center"
+                             v-for="(item, index) in topProducts"
+                             v-bind:key="item.productId">
+                            <div class="d-flex align-items-center gap-2 overflow-hidden">
+                                <span class="badge text-bg-secondary">{{ index + 1 }}</span>
+                                <span class="text-truncate">{{ item.productName }}</span>
+                            </div>
+                            <span class="small fw-semibold">{{ item.salesCount }} 件 / {{ formatMoney(item.salesAmount) }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 图表 + 热销商品 两列布局 -->
-    <div class="row g-3">
-        <!-- 左侧：趋势图（宽列） -->
-        <div class="col-12 col-xl-8">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex justify-content-between align-items-center">
-                    <span class="fw-semibold">📈 近7日订单趋势</span>
-                    <span class="text-muted small">按日统计</span>
-                </div>
-                <div class="card-body">
-                    <div id="trendChart" style="width: 100%; height: 280px;"></div>
-                </div>
-            </div>
+    <div class="card">
+        <div class="card-header">
+            <h2 class="h5 mb-0">快捷入口</h2>
         </div>
-
-        <!-- 右侧：热销商品 Top 10（窄列） -->
-        <div class="col-12 col-xl-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex justify-content-between align-items-center">
-                    <span class="fw-semibold">🏆 热销商品 Top 10</span>
-                    <span class="text-muted small">按销售额</span>
-                </div>
-                <div class="card-body" style="max-height: 280px; overflow-y: auto;">
-                    <div v-if="topProducts.length === 0" class="text-center text-muted py-3">
-                        <i class="fas fa-box-open fs-4 d-block mb-2"></i>
-                        暂无商品数据
-                    </div>
-                    <ul class="list-group list-group-flush" v-else>
-                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2" v-for="(item, index) in topProducts" v-bind:key="item.productId">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="badge bg-secondary rounded-pill" style="min-width: 24px;">{{ index + 1 }}</span>
-                                <span class="text-truncate" style="max-width: 120px;" v-text="item.productName"></span>
-                            </div>
-                            <span class="fw-semibold small">{{ item.salesCount }} 单</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
+        <div class="card-body d-flex flex-wrap gap-2">
+            <a href="/admin/orders" class="btn btn-outline-primary">
+                <i class="fa-solid fa-receipt"></i> 订单管理
+            </a>
+            <a href="/admin/products" class="btn btn-outline-primary">
+                <i class="fa-solid fa-box"></i> 商品管理
+            </a>
+            <a href="/admin/inventory/warnings" class="btn btn-outline-warning">
+                <i class="fa-solid fa-triangle-exclamation"></i> 库存预警
+            </a>
+            <a href="/admin/inventory/logs" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-clock-rotate-left"></i> 库存日志
+            </a>
         </div>
     </div>
 </div>

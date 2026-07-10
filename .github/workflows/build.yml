@@ -3,7 +3,12 @@ name: Build Only
 on:
   workflow_dispatch:
   push:
+    branches:
+      - merging
   pull_request:
+    branches:
+      - main
+      - merging
 
 concurrency:
   group: ecommerce-build-${{ github.ref }}
