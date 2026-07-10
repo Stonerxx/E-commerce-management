@@ -15,6 +15,7 @@ public sealed class AdminOperationAuditFilter : IAsyncActionFilter
     [
         "/api/v1/admin/categories",
         "/api/v1/admin/products",
+        "/api/v1/admin/product-images",
         "/api/v1/admin/skus",
         "/api/v1/admin/users",
         "/api/v1/admin/permissions"
@@ -86,6 +87,7 @@ public sealed class AdminOperationAuditFilter : IAsyncActionFilter
     private static string GetModule(string path)
     {
         if (path.Contains("/categories", StringComparison.OrdinalIgnoreCase)) return "分类管理";
+        if (path.Contains("/product-images", StringComparison.OrdinalIgnoreCase)) return "商品图片管理";
         if (path.Contains("/products", StringComparison.OrdinalIgnoreCase)) return "商品管理";
         if (path.Contains("/skus", StringComparison.OrdinalIgnoreCase)) return "SKU管理";
         if (path.Contains("/users", StringComparison.OrdinalIgnoreCase)) return "用户管理";

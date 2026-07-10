@@ -47,6 +47,17 @@ public sealed class ApiExceptionFilter : IExceptionFilter
             return;
         }
 
+        if (context.Exception is UnauthorizedAccessException)
+        {
+            context.Result = new ObjectResult(
+                ApiResponse<object?>.Fail("UNAUTHORIZED", "登录状态无效或已失效", traceId))
+            {
+                StatusCode = StatusCodes.Status401Unauthorized
+            };
+            context.ExceptionHandled = true;
+            return;
+        }
+
         if (context.Exception is InvalidOperationException invalidOperationException)
         {
             _logger.LogError(invalidOperationException, "Application configuration or state error. TraceId: {TraceId}", traceId);
