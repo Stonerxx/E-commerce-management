@@ -36,10 +36,18 @@ public sealed class HealthController : ControllerBase
     public async Task<ActionResult<ApiResponse<DatabaseCheckResult>>> Ready(CancellationToken cancellationToken)
     {
         var result = await _databaseHealthCheck.CheckAsync(cancellationToken);
-        var response = ApiResponse<DatabaseCheckResult>.Ok(result, HttpContext.TraceIdentifier);
-        return result.Configured && result.Connected
-            ? Ok(response)
-            : StatusCode(StatusCodes.Status503ServiceUnavailable, response);
+        if (result.Configured && result.Connected)
+        {
+            return Ok(ApiResponse<DatabaseCheckResult>.Ok(result, HttpContext.TraceIdentifier));
+        }
+
+        return StatusCode(
+            StatusCodes.Status503ServiceUnavailable,
+            ApiResponse<DatabaseCheckResult>.Fail(
+                "DATABASE_UNAVAILABLE",
+                "数据库未就绪",
+                HttpContext.TraceIdentifier,
+                result));
     }
 
     [HttpGet("/api/v1/system/version")]

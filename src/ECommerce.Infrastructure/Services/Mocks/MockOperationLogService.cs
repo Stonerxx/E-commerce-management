@@ -37,6 +37,6 @@ public class MockOperationLogService : IOperationLogService
     public Task<PagedResult<OperationLogDto>> SearchAsync(OperationLogQuery query, CancellationToken cancellationToken = default)
     {
         // 返回空结果
-        return Task.FromResult(PagedResult<OperationLogDto>.Empty(query.PageIndex, query.PageSize));
+        return Task.FromResult(PagedResult<OperationLogDto>.Empty(query.SafePageIndex, query.SafePageSize));
     }
 }

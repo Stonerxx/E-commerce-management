@@ -175,8 +175,8 @@ public sealed class UserRepository : IUserRepository
 
     public async Task<PagedResult<UserDto>> SearchUsersAsync(UserQuery query, CancellationToken cancellationToken = default)
     {
-        var pageIndex = Math.Max(1, query.PageIndex);
-        var pageSize = Math.Clamp(query.PageSize, 1, 100);
+        var pageIndex = query.SafePageIndex;
+        var pageSize = query.SafePageSize;
         var offset = (pageIndex - 1) * pageSize;
         var keyword = string.IsNullOrWhiteSpace(query.Keyword) ? null : query.Keyword.Trim();
         var role = string.IsNullOrWhiteSpace(query.Role) ? null : query.Role.Trim();

@@ -8,6 +8,49 @@ public class OracleConcurrencyTests
 {
     [DevOracleFact]
     [Trait("Category", "OracleIntegration")]
+    public async Task Cart_quantity_increment_is_atomic_when_two_requests_add_the_same_sku()
+    {
+        var skuId = OracleTestEnvironment.NewId();
+        await using var setupConnection = await OracleTestEnvironment.OpenDevAsync();
+        var references = await OracleTestEnvironment.GetSeedReferencesAsync(setupConnection);
+        await OracleTransactionAndConstraintTests.InsertTemporarySkuAsync(setupConnection, null, skuId, references.ProductId);
+
+        try
+        {
+            await using (var insertCart = OracleTestEnvironment.CreateCommand(setupConnection, @"
+                INSERT INTO CART (user_id, sku_id, quantity, selected)
+                VALUES (:UserId, :SkuId, 1, 1)"))
+            {
+                insertCart.Parameters.Add(":UserId", OracleDbType.Int64).Value = references.UserId;
+                insertCart.Parameters.Add(":SkuId", OracleDbType.Int64).Value = skuId;
+                Assert.Equal(1, await insertCart.ExecuteNonQueryAsync());
+            }
+
+            var results = await Task.WhenAll(
+                TryIncreaseCartQuantityAsync(references.UserId, skuId),
+                TryIncreaseCartQuantityAsync(references.UserId, skuId));
+            Assert.All(results, result => Assert.Equal(1, result));
+
+            await using var verify = OracleTestEnvironment.CreateCommand(setupConnection, "SELECT quantity FROM CART WHERE user_id = :UserId AND sku_id = :SkuId");
+            verify.Parameters.Add(":UserId", OracleDbType.Int64).Value = references.UserId;
+            verify.Parameters.Add(":SkuId", OracleDbType.Int64).Value = skuId;
+            Assert.Equal(3, Convert.ToInt32(await verify.ExecuteScalarAsync()));
+        }
+        finally
+        {
+            await using (var deleteCart = OracleTestEnvironment.CreateCommand(setupConnection, "DELETE FROM CART WHERE sku_id = :SkuId"))
+            {
+                deleteCart.Parameters.Add(":SkuId", OracleDbType.Int64).Value = skuId;
+                await deleteCart.ExecuteNonQueryAsync();
+            }
+            await using var deleteSku = OracleTestEnvironment.CreateCommand(setupConnection, "DELETE FROM SKU WHERE id = :Id");
+            deleteSku.Parameters.Add(":Id", OracleDbType.Int64).Value = skuId;
+            await deleteSku.ExecuteNonQueryAsync();
+        }
+    }
+
+    [DevOracleFact]
+    [Trait("Category", "OracleIntegration")]
     public async Task Stock_lock_is_atomic_when_two_requests_compete_for_one_unit()
     {
         var skuId = OracleTestEnvironment.NewId();
@@ -70,6 +113,13 @@ public class OracleConcurrencyTests
             WHERE id = :Id AND stock - locked_stock >= 1");
         command.Parameters.Add(":Id", OracleDbType.Int64).Value = skuId;
         return await command.ExecuteNonQueryAsync() == 1;
+    }
+
+    private static async Task<int> TryIncreaseCartQuantityAsync(long userId, long skuId)
+    {
+        await using var unitOfWork = new UnitOfWork(new TestOracleConnectionFactory(OracleTestEnvironment.DevConnectionString!));
+        var repository = new CartRepository(unitOfWork);
+        return await repository.TryIncreaseQuantityAsync(userId, skuId, quantity: 1, maximumQuantity: 10, DateTime.UtcNow);
     }
 
     private static async Task<bool> TryUpdateStatusAsync(long orderId, int targetStatus)

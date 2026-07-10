@@ -2,6 +2,7 @@ using ECommerce.Infrastructure;
 using ECommerce.Shared.Constants;
 using ECommerce.Web.Filters;
 using ECommerce.Web.Security;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,10 +10,16 @@ builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add<ApiExceptionFilter>();
     options.Filters.AddService<RbacPermissionFilter>();
+    options.Filters.AddService<AdminOperationAuditFilter>();
 });
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<RbacPermissionFilter>();
 builder.Services.AddScoped<RefreshUserPrincipalCookieEvents>();
+builder.Services.AddScoped<AdminOperationAuditFilter>();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+});
 
 builder.Services
     .AddAuthentication(AuthConstants.AuthenticationScheme)
@@ -38,6 +45,8 @@ builder.Services.AddAuthorization(options =>
 });
 
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
 {

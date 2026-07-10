@@ -1,6 +1,7 @@
 using ECommerce.Application.DTOs;
 using ECommerce.Application.Services;
 using ECommerce.Domain.Entities;
+using ECommerce.Domain.Enums;
 using ECommerce.Infrastructure.Repositories;
 using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Contracts;
@@ -43,13 +44,23 @@ public sealed class ProductService : IProductService
             throw new BusinessException("PRODUCT_NOT_FOUND", "商品不存在");
         }
 
-        await _productRepository.IncrementViewCountAsync(productId, cancellationToken);
-
         var images = await _productImageRepository.GetByProductAsync(productId, cancellationToken);
         var specs = await _productSpecRepository.GetByProductAsync(productId, cancellationToken);
         var skus = await _skuService.GetByProductAsync(productId, cancellationToken);
 
         return MapToDetailDto(product, images, specs, skus);
+    }
+
+    public async Task<ProductDetailDto> GetPublicDetailAndTrackAsync(long productId, CancellationToken cancellationToken = default)
+    {
+        var detail = await GetDetailAsync(productId, cancellationToken);
+        if (detail.Status is not ((int)ProductStatus.OnShelf or (int)ProductStatus.Presale))
+        {
+            throw new BusinessException("PRODUCT_NOT_FOUND", "商品不存在");
+        }
+
+        await _productRepository.IncrementViewCountAsync(productId, cancellationToken);
+        return detail with { ViewCount = detail.ViewCount + 1 };
     }
 
     public async Task<long> CreateAsync(ProductSaveRequest request, long operatorId, CancellationToken cancellationToken = default)
@@ -198,10 +209,33 @@ public sealed class ProductService : IProductService
                 await _productSpecRepository.CreateAsync(spec, cancellationToken);
             }
 
-            await _skuService.DeleteByProductAsync(productId, cancellationToken);
+            var existingSkus = await _skuService.GetByProductAsync(productId, cancellationToken);
+            var existingSkuIds = existingSkus.Select(sku => sku.SkuId).ToHashSet();
+            var retainedSkuIds = new HashSet<long>();
             foreach (var skuRequest in request.Skus)
             {
-                await _skuService.CreateAsync(productId, skuRequest, operatorId, cancellationToken);
+                if (skuRequest.SkuId is { } skuId)
+                {
+                    if (!existingSkuIds.Contains(skuId))
+                    {
+                        throw new BusinessException("SKU_NOT_FOUND", $"SKU {skuId} 不属于当前商品");
+                    }
+                    if (!retainedSkuIds.Add(skuId))
+                    {
+                        throw new BusinessException("SKU_DUPLICATE", $"SKU {skuId} 被重复提交");
+                    }
+
+                    await _skuService.UpdateAsync(skuId, skuRequest, operatorId, cancellationToken);
+                }
+                else
+                {
+                    await _skuService.CreateAsync(productId, skuRequest, operatorId, cancellationToken);
+                }
+            }
+
+            foreach (var existingSkuId in existingSkuIds.Except(retainedSkuIds))
+            {
+                await _skuService.RemoveIfUnreferencedOrDisableAsync(existingSkuId, operatorId, cancellationToken);
             }
 
             if (ownsTransaction)

@@ -271,7 +271,7 @@ public sealed class InventoryService : IInventoryService
         countCommand.CommandText = countSql;
         var totalCount = Convert.ToInt32(await countCommand.ExecuteScalarAsync(cancellationToken));
 
-        var offset = (query.PageIndex - 1) * query.PageSize;
+        var offset = (query.SafePageIndex - 1) * query.SafePageSize;
         sql.Append("OFFSET :offset ROWS FETCH NEXT :pageSize ROWS ONLY");
 
         using var command = connection.CreateCommand();
@@ -284,7 +284,7 @@ public sealed class InventoryService : IInventoryService
 
         var pageSizeParam = command.CreateParameter();
         pageSizeParam.ParameterName = ":pageSize";
-        pageSizeParam.Value = query.PageSize;
+        pageSizeParam.Value = query.SafePageSize;
         command.Parameters.Add(pageSizeParam);
 
         var items = new List<InventoryWarningDto>();
@@ -294,7 +294,7 @@ public sealed class InventoryService : IInventoryService
             items.Add(MapToWarningDto(reader));
         }
 
-        return new PagedResult<InventoryWarningDto>(items, query.PageIndex, query.PageSize, totalCount);
+        return new PagedResult<InventoryWarningDto>(items, query.SafePageIndex, query.SafePageSize, totalCount);
     }
 
     private static InventoryWarningDto MapToWarningDto(DbDataReader reader)

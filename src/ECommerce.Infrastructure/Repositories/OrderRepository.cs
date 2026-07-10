@@ -305,10 +305,10 @@ public class OrderRepository : IOrderRepository
         var totalCount = Convert.ToInt64(await cmdCount.ExecuteScalarAsync(cancellationToken));
 
         if (totalCount == 0)
-            return PagedResult<OrderListItemDto>.Empty(query.PageIndex, query.PageSize);
+            return PagedResult<OrderListItemDto>.Empty(query.SafePageIndex, query.SafePageSize);
 
         // 数据
-        var offset = (query.PageIndex - 1) * query.PageSize;
+        var offset = (query.SafePageIndex - 1) * query.SafePageSize;
         var dataSql = $@"
             SELECT 
                 id AS OrderId,
@@ -328,7 +328,7 @@ public class OrderRepository : IOrderRepository
         cmdData.Transaction = Transaction;
         AddUserOrderQueryParameters(cmdData, userId, query);
         cmdData.Parameters.Add(CreateParameter("Offset", offset));
-        cmdData.Parameters.Add(CreateParameter("PageSize", query.PageSize));
+        cmdData.Parameters.Add(CreateParameter("PageSize", query.SafePageSize));
 
         var items = new List<OrderListItemDto>();
         await using var reader = await cmdData.ExecuteReaderAsync(cancellationToken);
@@ -345,7 +345,7 @@ public class OrderRepository : IOrderRepository
             ));
         }
 
-        return new PagedResult<OrderListItemDto>(items, query.PageIndex, query.PageSize, totalCount);
+        return new PagedResult<OrderListItemDto>(items, query.SafePageIndex, query.SafePageSize, totalCount);
     }
 
     public async Task<PagedResult<OrderListItemDto>> SearchAdminOrdersAsync(AdminOrderQuery query, CancellationToken cancellationToken = default)
@@ -382,9 +382,9 @@ public class OrderRepository : IOrderRepository
         var totalCount = Convert.ToInt64(await cmdCount.ExecuteScalarAsync(cancellationToken));
 
         if (totalCount == 0)
-            return PagedResult<OrderListItemDto>.Empty(query.PageIndex, query.PageSize);
+            return PagedResult<OrderListItemDto>.Empty(query.SafePageIndex, query.SafePageSize);
 
-        var offset = (query.PageIndex - 1) * query.PageSize;
+        var offset = (query.SafePageIndex - 1) * query.SafePageSize;
         var dataSql = $@"
             SELECT 
                 id AS OrderId,
@@ -404,7 +404,7 @@ public class OrderRepository : IOrderRepository
         cmdData.Transaction = Transaction;
         AddAdminOrderQueryParameters(cmdData, query);
         cmdData.Parameters.Add(CreateParameter("Offset", offset));
-        cmdData.Parameters.Add(CreateParameter("PageSize", query.PageSize));
+        cmdData.Parameters.Add(CreateParameter("PageSize", query.SafePageSize));
 
         var items = new List<OrderListItemDto>();
         await using var reader = await cmdData.ExecuteReaderAsync(cancellationToken);
@@ -421,7 +421,7 @@ public class OrderRepository : IOrderRepository
             ));
         }
 
-        return new PagedResult<OrderListItemDto>(items, query.PageIndex, query.PageSize, totalCount);
+        return new PagedResult<OrderListItemDto>(items, query.SafePageIndex, query.SafePageSize, totalCount);
     }
 
     private static void AddUserOrderQueryParameters(DbCommand command, long userId, OrderQuery query)

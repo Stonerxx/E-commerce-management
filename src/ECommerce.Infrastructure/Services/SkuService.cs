@@ -70,6 +70,13 @@ public sealed class SkuService : ISkuService
             throw new BusinessException("SKU_NOT_FOUND", "SKU不存在");
         }
 
+        if (request.Stock < sku.LockedStock)
+        {
+            throw new BusinessException(
+                "SKU_STOCK_BELOW_LOCKED",
+                $"库存不能小于已锁定库存 {sku.LockedStock}");
+        }
+
         // 校验规格选择必须对应商品已定义的 ProductSpec 记录
         var specDesc = await ValidateAndBuildSpecDescAsync(sku.ProductId, request.SpecSelections, cancellationToken);
 
@@ -102,9 +109,13 @@ public sealed class SkuService : ISkuService
         await _skuRepository.SetStatusAsync(skuId, status, cancellationToken);
     }
 
-    public async Task DeleteByProductAsync(long productId, CancellationToken cancellationToken = default)
+    public async Task RemoveIfUnreferencedOrDisableAsync(long skuId, long operatorId, CancellationToken cancellationToken = default)
     {
-        await _skuRepository.DeleteByProductAsync(productId, cancellationToken);
+        var deleted = await _skuRepository.DeleteIfUnreferencedAsync(skuId, cancellationToken);
+        if (deleted == 0)
+        {
+            await _skuRepository.SetStatusAsync(skuId, 0, cancellationToken);
+        }
     }
 
     /// <summary>
@@ -203,7 +214,8 @@ public sealed class SkuService : ISkuService
             LockedStock: sku.LockedStock,
             WarningStock: sku.WarningStock,
             SkuImage: sku.SkuImage,
-            Status: sku.Status
+            Status: sku.Status,
+            ProductStatus: sku.ProductStatus
         );
     }
 }

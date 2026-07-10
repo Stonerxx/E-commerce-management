@@ -73,7 +73,7 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
 
         var totalCount = Convert.ToInt32(await countCommand.ExecuteScalarAsync(cancellationToken));
 
-        var offset = (query.PageIndex - 1) * query.PageSize;
+        var offset = (query.SafePageIndex - 1) * query.SafePageSize;
         sql.Append(" OFFSET :offset ROWS FETCH NEXT :pageSize ROWS ONLY");
 
         using var command = connection.CreateCommand();
@@ -91,7 +91,7 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
 
         var pageSizeParam = command.CreateParameter();
         pageSizeParam.ParameterName = ":pageSize";
-        pageSizeParam.Value = query.PageSize;
+        pageSizeParam.Value = query.SafePageSize;
         command.Parameters.Add(pageSizeParam);
 
         var items = new List<InventoryLogDto>();
@@ -101,7 +101,7 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
             items.Add(MapToDto(reader));
         }
 
-        return new PagedResult<InventoryLogDto>(items, query.PageIndex, query.PageSize, totalCount);
+        return new PagedResult<InventoryLogDto>(items, query.SafePageIndex, query.SafePageSize, totalCount);
     }
 
     public async Task<long> CreateAsync(InventoryLog log, CancellationToken cancellationToken = default)

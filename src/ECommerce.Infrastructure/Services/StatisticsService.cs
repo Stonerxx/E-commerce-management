@@ -160,7 +160,7 @@ public class StatisticsService : IStatisticsService
             INNER JOIN SKU s ON s.ID = oi.SKU_ID
             INNER JOIN PRODUCT p ON p.ID = s.PRODUCT_ID
             INNER JOIN ORDER_MAIN om ON om.ID = oi.ORDER_ID
-            WHERE om.STATUS = :StatusPaid
+            WHERE om.STATUS IN (:StatusPaid, :StatusShipped, :StatusCompleted)
               AND om.CREATED_AT >= :StartDate 
               AND om.CREATED_AT < :EndDate
             GROUP BY p.ID, p.NAME, p.MAIN_IMAGE
@@ -168,6 +168,8 @@ public class StatisticsService : IStatisticsService
             FETCH FIRST 10 ROWS ONLY";
 
         command.Parameters.Add(new OracleParameter(":StatusPaid", OracleDbType.Int32) { Value = (int)OrderStatus.Paid });
+        command.Parameters.Add(new OracleParameter(":StatusShipped", OracleDbType.Int32) { Value = (int)OrderStatus.Shipped });
+        command.Parameters.Add(new OracleParameter(":StatusCompleted", OracleDbType.Int32) { Value = (int)OrderStatus.Completed });
         command.Parameters.Add(new OracleParameter(":StartDate", OracleDbType.Date) { Value = query.StartDate });
         command.Parameters.Add(new OracleParameter(":EndDate", OracleDbType.Date) { Value = query.EndDate });
 

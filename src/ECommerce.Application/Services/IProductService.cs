@@ -9,6 +9,8 @@ public interface IProductService
 
     Task<ProductDetailDto> GetDetailAsync(long productId, CancellationToken cancellationToken = default);
 
+    Task<ProductDetailDto> GetPublicDetailAndTrackAsync(long productId, CancellationToken cancellationToken = default);
+
     Task<long> CreateAsync(ProductSaveRequest request, long operatorId, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(long productId, ProductSaveRequest request, long operatorId, CancellationToken cancellationToken = default);

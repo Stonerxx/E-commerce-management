@@ -104,9 +104,11 @@ show_service_tail() {
 }
 
 wait_for_health() {
-  local attempt
+  local attempt body
   for attempt in {1..15}; do
-    if curl -fsS "$HEALTH_URL" >/dev/null; then
+    if body="$(curl -fsSL --max-time 10 "$HEALTH_URL")" \
+      && grep -Eq '"success"[[:space:]]*:[[:space:]]*true' <<<"$body" \
+      && grep -Eq '"connected"[[:space:]]*:[[:space:]]*true' <<<"$body"; then
       return 0
     fi
     sleep 2

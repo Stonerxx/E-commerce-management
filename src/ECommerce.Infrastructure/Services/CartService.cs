@@ -7,6 +7,7 @@ using ECommerce.Infrastructure.Repositories;
 using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Exceptions;
 using Microsoft.Extensions.Logging;
+using Oracle.ManagedDataAccess.Client;
 
 namespace ECommerce.Infrastructure.Services;
 
@@ -62,37 +63,63 @@ public class CartService : ICartService
         // 校验 SKU 是否在售（使用枚举）
         if (sku.Status != (int)SkuStatus.Enabled)
             throw new BusinessException("SKU_NOT_AVAILABLE", "SKU已停售");
+        if (sku.ProductStatus is not ((int)ProductStatus.OnShelf or (int)ProductStatus.Presale))
+            throw new BusinessException("PRODUCT_OFF_SHELF", "商品已下架");
 
         // 2. 校验库存（可用库存 = stock - locked_stock）
         var availableStock = sku.Stock - sku.LockedStock;
         if (availableStock < request.Quantity)
             throw new BusinessException("INSUFFICIENT_STOCK", $"库存不足，当前可用库存：{availableStock}");
 
-        // 3. 查询是否已在购物车中
+        // 3. 原子累加已有购物车项，避免“查询后更新”导致并发丢失。
+        if (await _cartRepository.TryIncreaseQuantityAsync(
+                userId,
+                request.SkuId,
+                request.Quantity,
+                availableStock,
+                DateTime.Now,
+                cancellationToken) == 1)
+        {
+            return;
+        }
+
+        var cart = new Cart
+        {
+            UserId = userId,
+            SkuId = request.SkuId,
+            Quantity = request.Quantity,
+            Selected = 1,
+            CreatedAt = DateTime.Now,
+            UpdatedAt = DateTime.Now
+        };
+
+        try
+        {
+            await _cartRepository.AddAsync(cart, cancellationToken);
+            return;
+        }
+        catch (OracleException ex) when (ex.Number == 1)
+        {
+            // 两个请求同时首次加入同一 SKU 时，唯一键竞争的失败方重试原子累加。
+            if (await _cartRepository.TryIncreaseQuantityAsync(
+                    userId,
+                    request.SkuId,
+                    request.Quantity,
+                    availableStock,
+                    DateTime.Now,
+                    cancellationToken) == 1)
+            {
+                return;
+            }
+        }
+
         var existing = await _cartRepository.GetByUserAndSkuAsync(userId, request.SkuId, cancellationToken);
         if (existing != null)
         {
-            // 累加数量，但不超过库存
-            var newQuantity = existing.Quantity + request.Quantity;
-            if (newQuantity > availableStock)
-                throw new BusinessException("INSUFFICIENT_STOCK", $"购物车中已有 {existing.Quantity} 件，再添加 {request.Quantity} 件将超过库存");
-            existing.Quantity = newQuantity;
-            existing.UpdatedAt = DateTime.Now;
-            await _cartRepository.UpdateAsync(existing, cancellationToken);
+            throw new BusinessException("INSUFFICIENT_STOCK", $"购物车中已有 {existing.Quantity} 件，再添加 {request.Quantity} 件将超过库存");
         }
-        else
-        {
-            var cart = new Cart
-            {
-                UserId = userId,
-                SkuId = request.SkuId,
-                Quantity = request.Quantity,
-                Selected = 1,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
-            };
-            await _cartRepository.AddAsync(cart, cancellationToken);
-        }
+
+        throw new BusinessException("CART_ADD_FAILED", "加入购物车失败，请稍后重试");
     }
 
     public async Task UpdateItemAsync(long userId, long cartItemId, UpdateCartItemRequest request, CancellationToken cancellationToken = default)
@@ -115,6 +142,8 @@ public class CartService : ICartService
         // 校验 SKU 是否在售（使用枚举）
         if (sku.Status != (int)SkuStatus.Enabled)
             throw new BusinessException("SKU_NOT_AVAILABLE", "SKU已停售");
+        if (sku.ProductStatus is not ((int)ProductStatus.OnShelf or (int)ProductStatus.Presale))
+            throw new BusinessException("PRODUCT_OFF_SHELF", "商品已下架");
 
         var availableStock = sku.Stock - sku.LockedStock;
         if (availableStock < request.Quantity)

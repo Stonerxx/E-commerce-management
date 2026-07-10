@@ -68,14 +68,14 @@ public static class OracleTestEnvironment
     {
         await using var command = CreateCommand(connection, @"
             SELECT
-                (SELECT id FROM ""USER"" ORDER BY id FETCH FIRST 1 ROW ONLY) AS user_id,
-                (SELECT id FROM ADDRESS ORDER BY id FETCH FIRST 1 ROW ONLY) AS address_id,
+                (SELECT user_id FROM ADDRESS WHERE is_deleted = 0 ORDER BY id FETCH FIRST 1 ROW ONLY) AS user_id,
+                (SELECT id FROM ADDRESS WHERE is_deleted = 0 ORDER BY id FETCH FIRST 1 ROW ONLY) AS address_id,
                 (SELECT id FROM PRODUCT ORDER BY id FETCH FIRST 1 ROW ONLY) AS product_id
             FROM DUAL");
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         Assert.True(await reader.ReadAsync(cancellationToken), "Expected a row from DUAL.");
-        Assert.False(reader.IsDBNull(0), "DEV database has no USER rows. Run init_database.sql and seed_demo_data.sql manually first.");
+        Assert.False(reader.IsDBNull(0), "DEV database has no active ADDRESS rows. Run init_database.sql and seed_demo_data.sql manually first.");
         Assert.False(reader.IsDBNull(1), "DEV database has no ADDRESS rows. Run seed_demo_data.sql manually first.");
         Assert.False(reader.IsDBNull(2), "DEV database has no PRODUCT rows. Run seed_demo_data.sql manually first.");
         return (reader.GetInt64(0), reader.GetInt64(1), reader.GetInt64(2));

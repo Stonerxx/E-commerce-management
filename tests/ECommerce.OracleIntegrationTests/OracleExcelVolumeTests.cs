@@ -18,7 +18,9 @@ public class OracleExcelVolumeTests
     {
         const int rowCount = 5_000;
         var firstOrderId = OracleTestEnvironment.NewId();
-        var prefix = $"ORACLE-EXPORT-{firstOrderId}";
+        var shortToken = (firstOrderId % 1_000_000_000_000L).ToString("D12");
+        var prefix = $"ORACLE-EXPORT-{shortToken}";
+        Assert.True($"{prefix}-0000".Length <= 32, "ORDER_MAIN.ORDER_NO is limited to VARCHAR2(32).");
         await using var connection = await OracleTestEnvironment.OpenDevAsync();
         var references = await OracleTestEnvironment.GetSeedReferencesAsync(connection);
 
@@ -45,8 +47,7 @@ public class OracleExcelVolumeTests
 
             var export = await exportService.ExportOrdersAsync(new AdminOrderQuery
             {
-                OrderNo = prefix,
-                PageSize = rowCount
+                OrderNo = prefix
             });
 
             await using var stream = new MemoryStream(export.Content);

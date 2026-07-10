@@ -83,7 +83,7 @@ public sealed class ProductRepository : IProductRepository
         
         var totalCount = Convert.ToInt32(await countCommand.ExecuteScalarAsync(cancellationToken));
 
-        var offset = (query.PageIndex - 1) * query.PageSize;
+        var offset = (query.SafePageIndex - 1) * query.SafePageSize;
         sql.Append(" OFFSET :offset ROWS FETCH NEXT :pageSize ROWS ONLY");
 
         using var command = connection.CreateCommand();
@@ -101,7 +101,7 @@ public sealed class ProductRepository : IProductRepository
         
         var pageSizeParam = command.CreateParameter();
         pageSizeParam.ParameterName = ":pageSize";
-        pageSizeParam.Value = query.PageSize;
+        pageSizeParam.Value = query.SafePageSize;
         command.Parameters.Add(pageSizeParam);
 
         var items = new List<ProductListItemDto>();
@@ -111,7 +111,7 @@ public sealed class ProductRepository : IProductRepository
             items.Add(MapToListItemDto(reader));
         }
 
-        return new PagedResult<ProductListItemDto>(items, query.PageIndex, query.PageSize, totalCount);
+        return new PagedResult<ProductListItemDto>(items, query.SafePageIndex, query.SafePageSize, totalCount);
     }
 
     public async Task<Product?> GetByIdAsync(long productId, CancellationToken cancellationToken = default)

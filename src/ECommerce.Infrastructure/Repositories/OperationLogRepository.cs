@@ -50,8 +50,8 @@ public sealed class OperationLogRepository : IOperationLogRepository
 
     public async Task<PagedResult<OperationLogDto>> SearchAsync(OperationLogQuery query, CancellationToken cancellationToken = default)
     {
-        var pageIndex = Math.Max(1, query.PageIndex);
-        var pageSize = Math.Clamp(query.PageSize, 1, 100);
+        var pageIndex = query.SafePageIndex;
+        var pageSize = query.SafePageSize;
         var offset = (pageIndex - 1) * pageSize;
         var module = string.IsNullOrWhiteSpace(query.Module) ? null : query.Module.Trim();
 

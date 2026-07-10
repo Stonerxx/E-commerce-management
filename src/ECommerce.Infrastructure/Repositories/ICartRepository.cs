@@ -11,6 +11,9 @@ public interface ICartRepository
     /// <summary> 根据用户和 SKU 查询单条购物车记录 </summary>
     Task<Cart?> GetByUserAndSkuAsync(long userId, long skuId, CancellationToken cancellationToken = default);
 
+    /// <summary> 原子增加已有购物车项的数量，并保证不超过可用库存。 </summary>
+    Task<int> TryIncreaseQuantityAsync(long userId, long skuId, int quantity, int maximumQuantity, DateTime updatedAt, CancellationToken cancellationToken = default);
+
     /// <summary> 批量获取指定的购物车项（用于下单） </summary>
     Task<IReadOnlyList<Cart>> GetByIdsAsync(IReadOnlyList<long> cartItemIds, CancellationToken cancellationToken = default);
 

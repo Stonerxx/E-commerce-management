@@ -35,7 +35,10 @@
                             <a class="nav-link" href="/admin/permissions">权限管理</a>
                             <a class="nav-link" href="/admin/operation-logs">操作日志</a>
                         }
-                        <a class="nav-link" href="/admin/statistics">统计报表</a>
+                        @if (isAdmin)
+                        {
+                            <a class="nav-link" href="/admin/statistics">统计报表</a>
+                        }
                     </div>
                     <div class="navbar-nav">
                         <a class="nav-link" href="/">返回前台</a>

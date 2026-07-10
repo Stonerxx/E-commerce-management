@@ -1,4 +1,5 @@
 using ECommerce.Infrastructure.Data;
+using ECommerce.Shared.Contracts;
 using ECommerce.Web.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -28,6 +29,9 @@ public sealed class HealthControllerTests
 
         var objectResult = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(StatusCodes.Status503ServiceUnavailable, objectResult.StatusCode);
+        var response = Assert.IsType<ApiResponse<DatabaseCheckResult>>(objectResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal("DATABASE_UNAVAILABLE", response.Code);
     }
 
     [Fact]
