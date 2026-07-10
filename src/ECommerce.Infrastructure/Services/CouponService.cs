@@ -24,12 +24,12 @@ public class CouponService : ICouponService
             t.Id,
             t.Name,
             t.Type,
-            t.FaceValue,
-            t.MinConsumption,
-            t.TotalIssue,
-            t.IssuedCount,
-            t.ValidStartTime,
-            t.ValidEndTime,
+            t.Amount,
+            t.MinAmount,
+            t.TotalCount,
+            t.ReceivedCount,
+            t.StartTime,
+            t.EndTime,
             t.Status
         )).ToList();
 
@@ -42,12 +42,12 @@ public class CouponService : ICouponService
         {
             Name = request.Name,
             Type = request.Type,
-            FaceValue = request.Amount,
-            MinConsumption = request.MinAmount,
-            TotalIssue = request.TotalCount,
-            IssuedCount = 0,
-            ValidStartTime = request.StartTime,
-            ValidEndTime = request.EndTime,
+            Amount = request.Amount,
+            MinAmount = request.MinAmount,
+            TotalCount = request.TotalCount,
+            ReceivedCount = 0,
+            StartTime = request.StartTime,
+            EndTime = request.EndTime,
             Status = request.Status
         };
 
@@ -64,11 +64,11 @@ public class CouponService : ICouponService
 
         template.Name = request.Name;
         template.Type = request.Type;
-        template.FaceValue = request.Amount;
-        template.MinConsumption = request.MinAmount;
-        template.TotalIssue = request.TotalCount;
-        template.ValidStartTime = request.StartTime;
-        template.ValidEndTime = request.EndTime;
+        template.Amount = request.Amount;
+        template.MinAmount = request.MinAmount;
+        template.TotalCount = request.TotalCount;
+        template.StartTime = request.StartTime;
+        template.EndTime = request.EndTime;
         template.Status = request.Status;
 
         await _couponRepository.UpdateTemplateAsync(template, cancellationToken);

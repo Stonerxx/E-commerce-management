@@ -58,7 +58,7 @@ public class CouponRepository : ICouponRepository
         // 分页查询
         int offset = (pageIndex - 1) * pageSize;
         string dataSql = $@"
-            SELECT id, name, type, face_value, min_consumption, total_issue, issued_count, valid_start_time, valid_end_time, status
+            SELECT id, name, type, amount, min_amount, total_count, received_count, start_time, end_time, status
             FROM coupon_template 
             {where}
             ORDER BY id DESC
@@ -82,13 +82,12 @@ public class CouponRepository : ICouponRepository
 
         return new PagedResult<CouponTemplate>(items, pageIndex, pageSize, totalCount);
     }
-    
-    // 根据 ID 查询单条
+
     public async Task<CouponTemplate?> GetTemplateByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         string sql = @"
-            SELECT id, name, type, face_value, min_consumption, total_issue, issued_count, valid_start_time, valid_end_time, status
+            SELECT id, name, type, amount, min_amount, total_count, received_count, start_time, end_time, status
             FROM coupon_template 
             WHERE id = :Id";
             
@@ -104,16 +103,15 @@ public class CouponRepository : ICouponRepository
         }
         return null;
     }
-    
-    // 新增优惠券模板
+
     public async Task<int> InsertTemplateAsync(CouponTemplate template, CancellationToken cancellationToken = default)
     {
         await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = @"
             INSERT INTO coupon_template 
-                (name, type, face_value, min_consumption, total_issue, issued_count, valid_start_time, valid_end_time, status)
+                (name, type, amount, min_amount, total_count, received_count, start_time, end_time, status)
             VALUES 
-                (:Name, :Type, :FaceValue, :MinConsumption, :TotalIssue, :IssuedCount, :ValidStartTime, :ValidEndTime, :Status)
+                (:Name, :Type, :Amount, :MinAmount, :TotalCount, :ReceivedCount, :StartTime, :EndTime, :Status)
             RETURNING id INTO :Id";
 
         await using var cmd = Connection.CreateCommand();
@@ -122,12 +120,12 @@ public class CouponRepository : ICouponRepository
 
         cmd.Parameters.Add(CreateParameter("Name", template.Name));
         cmd.Parameters.Add(CreateParameter("Type", template.Type));
-        cmd.Parameters.Add(CreateParameter("FaceValue", template.FaceValue));
-        cmd.Parameters.Add(CreateParameter("MinConsumption", template.MinConsumption));
-        cmd.Parameters.Add(CreateParameter("TotalIssue", template.TotalIssue));
-        cmd.Parameters.Add(CreateParameter("IssuedCount", template.IssuedCount));
-        cmd.Parameters.Add(CreateParameter("ValidStartTime", template.ValidStartTime));
-        cmd.Parameters.Add(CreateParameter("ValidEndTime", template.ValidEndTime));
+        cmd.Parameters.Add(CreateParameter("Amount", template.Amount));
+        cmd.Parameters.Add(CreateParameter("MinAmount", template.MinAmount));
+        cmd.Parameters.Add(CreateParameter("TotalCount", template.TotalCount));
+        cmd.Parameters.Add(CreateParameter("ReceivedCount", template.ReceivedCount));
+        cmd.Parameters.Add(CreateParameter("StartTime", template.StartTime));
+        cmd.Parameters.Add(CreateParameter("EndTime", template.EndTime));
         cmd.Parameters.Add(CreateParameter("Status", template.Status));
 
         var pId = cmd.CreateParameter();
@@ -140,15 +138,14 @@ public class CouponRepository : ICouponRepository
         template.Id = Convert.ToInt32(pId.Value);
         return template.Id;
     }
-    
-    //修改信息，对应管理后台中“编辑保存”的操作
+
     public async Task<bool> UpdateTemplateAsync(CouponTemplate template, CancellationToken cancellationToken = default)
     {
         await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = @"
             UPDATE coupon_template 
-            SET name = :Name, type = :Type, face_value = :FaceValue, min_consumption = :MinConsumption, 
-                total_issue = :TotalIssue, valid_start_time = :ValidStartTime, valid_end_time = :ValidEndTime, status = :Status
+            SET name = :Name, type = :Type, amount = :Amount, min_amount = :MinAmount, 
+                total_count = :TotalCount, start_time = :StartTime, end_time = :EndTime, status = :Status
             WHERE id = :Id";
 
         await using var cmd = Connection.CreateCommand();
@@ -157,18 +154,17 @@ public class CouponRepository : ICouponRepository
 
         cmd.Parameters.Add(CreateParameter("Name", template.Name));
         cmd.Parameters.Add(CreateParameter("Type", template.Type));
-        cmd.Parameters.Add(CreateParameter("FaceValue", template.FaceValue));
-        cmd.Parameters.Add(CreateParameter("MinConsumption", template.MinConsumption));
-        cmd.Parameters.Add(CreateParameter("TotalIssue", template.TotalIssue));
-        cmd.Parameters.Add(CreateParameter("ValidStartTime", template.ValidStartTime));
-        cmd.Parameters.Add(CreateParameter("ValidEndTime", template.ValidEndTime));
+        cmd.Parameters.Add(CreateParameter("Amount", template.Amount));
+        cmd.Parameters.Add(CreateParameter("MinAmount", template.MinAmount));
+        cmd.Parameters.Add(CreateParameter("TotalCount", template.TotalCount));
+        cmd.Parameters.Add(CreateParameter("StartTime", template.StartTime));
+        cmd.Parameters.Add(CreateParameter("EndTime", template.EndTime));
         cmd.Parameters.Add(CreateParameter("Status", template.Status));
         cmd.Parameters.Add(CreateParameter("Id", template.Id));
 
         return await cmd.ExecuteNonQueryAsync(cancellationToken) > 0;
     }
-    
-    //  修改启停状态（上架/下架）
+
     public async Task<bool> UpdateTemplateStatusAsync(int id, int status, CancellationToken cancellationToken = default)
     {
         await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
@@ -191,12 +187,12 @@ public class CouponRepository : ICouponRepository
             Id = reader.GetInt32(reader.GetOrdinal("id")),
             Name = reader.GetString(reader.GetOrdinal("name")),
             Type = reader.GetInt32(reader.GetOrdinal("type")),
-            FaceValue = reader.GetDecimal(reader.GetOrdinal("face_value")),
-            MinConsumption = reader.GetDecimal(reader.GetOrdinal("min_consumption")),
-            TotalIssue = reader.GetInt32(reader.GetOrdinal("total_issue")),
-            IssuedCount = reader.GetInt32(reader.GetOrdinal("issued_count")),
-            ValidStartTime = reader.GetDateTime(reader.GetOrdinal("valid_start_time")),
-            ValidEndTime = reader.GetDateTime(reader.GetOrdinal("valid_end_time")),
+            Amount = reader.GetDecimal(reader.GetOrdinal("amount")),
+            MinAmount = reader.GetDecimal(reader.GetOrdinal("min_amount")),
+            TotalCount = reader.GetInt32(reader.GetOrdinal("total_count")),
+            ReceivedCount = reader.GetInt32(reader.GetOrdinal("received_count")),
+            StartTime = reader.GetDateTime(reader.GetOrdinal("start_time")),
+            EndTime = reader.GetDateTime(reader.GetOrdinal("end_time")),
             Status = reader.GetInt32(reader.GetOrdinal("status"))
         };
     }

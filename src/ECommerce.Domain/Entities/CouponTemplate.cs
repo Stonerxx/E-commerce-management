@@ -1,4 +1,4 @@
-// 映射了云端 Oracle 数据库中的 COUPON_TEMPLATE 表
+// 映射云端 Oracle 数据库中的 COUPON_TEMPLATE 表
 namespace ECommerce.Domain.Entities;
 
 public class CouponTemplate
@@ -9,17 +9,17 @@ public class CouponTemplate
     
     public int Type { get; set; }
     
-    public decimal FaceValue { get; set; }
+    public decimal Amount { get; set; }
     
-    public decimal MinConsumption { get; set; }
+    public decimal MinAmount { get; set; }
     
-    public int TotalIssue { get; set; }
+    public int TotalCount { get; set; }
     
-    public int IssuedCount { get; set; }
+    public int ReceivedCount { get; set; }
     
-    public DateTime ValidStartTime { get; set; }
+    public DateTime StartTime { get; set; }
     
-    public DateTime ValidEndTime { get; set; }
+    public DateTime EndTime { get; set; }
     
     public int Status { get; set; }
 }

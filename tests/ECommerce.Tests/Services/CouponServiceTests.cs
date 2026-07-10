@@ -1,4 +1,3 @@
-// 连接 Controller和 Repository
 using ECommerce.Application.DTOs;
 using ECommerce.Domain.Entities;
 using ECommerce.Infrastructure.Repositories;
@@ -20,8 +19,7 @@ public class CouponServiceTests
         _mockRepo = new Mock<ICouponRepository>();
         _sut = new CouponService(_mockRepo.Object);
     }
-    
-    // 测试分页查询时，Service能不能正确接收Repository的数据并转化成 DTO
+
     [Fact]
     public async Task SearchTemplatesAsync_ShouldReturnMappedDtos()
     {
@@ -29,8 +27,8 @@ public class CouponServiceTests
         var query = new CouponTemplateQuery { PageIndex = 1, PageSize = 10 };
         var templates = new List<CouponTemplate>
         {
-            new CouponTemplate { Id = 1, Name = "Test1" },
-            new CouponTemplate { Id = 2, Name = "Test2" }
+            new CouponTemplate { Id = 1, Name = "Test1", Amount = 20m, MinAmount = 100m },
+            new CouponTemplate { Id = 2, Name = "Test2", Amount = 30m, MinAmount = 200m }
         };
         var pagedResult = new PagedResult<CouponTemplate>(templates, 1, 10, 2);
 
@@ -44,9 +42,9 @@ public class CouponServiceTests
         Assert.Equal(2, result.TotalCount);
         Assert.Equal(2, result.Items.Count);
         Assert.Equal("Test1", result.Items[0].Name);
+        Assert.Equal(20m, result.Items[0].Amount);
     }
-    
-    // 测试创建优惠券时，参数是否被正确拼装，并成功返回新的 ID。
+
     [Fact]
     public async Task CreateTemplateAsync_ShouldCallInsertAndReturnId()
     {
@@ -60,10 +58,9 @@ public class CouponServiceTests
 
         // Assert
         Assert.Equal(99, id);
-        _mockRepo.Verify(x => x.InsertTemplateAsync(It.Is<CouponTemplate>(t => t.Name == "New Coupon" && t.FaceValue == 20m), It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepo.Verify(x => x.InsertTemplateAsync(It.Is<CouponTemplate>(t => t.Name == "New Coupon" && t.Amount == 20m), It.IsAny<CancellationToken>()), Times.Once);
     }
-    
-    // 测试当试图更新一个不存在的优惠券时的情况
+
     [Fact]
     public async Task UpdateTemplateAsync_ShouldThrowWhenNotFound()
     {
@@ -76,13 +73,12 @@ public class CouponServiceTests
         var ex = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdateTemplateAsync(1, request, 1));
         Assert.Equal("NOT_FOUND", ex.Code);
     }
-    
-    // 测试如果找到了该优惠券，能否正确将新参数覆盖上去并保存
+
     [Fact]
     public async Task UpdateTemplateAsync_ShouldCallUpdateWhenFound()
     {
         // Arrange
-        var existingTemplate = new CouponTemplate { Id = 1, Name = "Old", FaceValue = 10m };
+        var existingTemplate = new CouponTemplate { Id = 1, Name = "Old", Amount = 10m };
         _mockRepo.Setup(x => x.GetTemplateByIdAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(existingTemplate);
         _mockRepo.Setup(x => x.UpdateTemplateAsync(It.IsAny<CouponTemplate>(), It.IsAny<CancellationToken>()))
@@ -95,11 +91,10 @@ public class CouponServiceTests
 
         // Assert
         Assert.Equal("Updated", existingTemplate.Name);
-        Assert.Equal(30m, existingTemplate.FaceValue);
+        Assert.Equal(30m, existingTemplate.Amount);
         _mockRepo.Verify(x => x.UpdateTemplateAsync(existingTemplate, It.IsAny<CancellationToken>()), Times.Once);
     }
-    
-    // 测试修改状态时，如果找不到目标数据会不会报错
+
     [Fact]
     public async Task SetTemplateStatusAsync_ShouldThrowWhenNotFound()
     {
@@ -111,8 +106,7 @@ public class CouponServiceTests
         var ex = await Assert.ThrowsAsync<BusinessException>(() => _sut.SetTemplateStatusAsync(1, 0, 1));
         Assert.Equal("NOT_FOUND", ex.Code);
     }
-    
-    // 测试正确的启停状态切换流程
+
     [Fact]
     public async Task SetTemplateStatusAsync_ShouldSucceedWhenFound()
     {
