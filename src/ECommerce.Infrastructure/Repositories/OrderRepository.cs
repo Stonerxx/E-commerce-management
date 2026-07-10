@@ -290,41 +290,57 @@ public class OrderRepository : IOrderRepository
             parameters.Add(CreateParameter("EndTime", query.EndTime.Value.AddDays(1)));
         }
 
-        // 总条数
+        // 1. 执行 COUNT 查询（使用独立的命令和参数）
         var countSql = $"SELECT COUNT(*) FROM order_main {where}";
         await using var cmdCount = Connection.CreateCommand();
         cmdCount.CommandText = countSql;
         cmdCount.Transaction = Transaction;
-        foreach (var p in parameters) cmdCount.Parameters.Add(p);
+        foreach (var p in parameters)
+        {
+            cmdCount.Parameters.Add(p);
+        }
         var totalCount = Convert.ToInt64(await cmdCount.ExecuteScalarAsync(cancellationToken));
 
         if (totalCount == 0)
             return PagedResult<OrderListItemDto>.Empty(query.PageIndex, query.PageSize);
 
-        // 数据
+        // 2. 执行数据查询
         var offset = (query.PageIndex - 1) * query.PageSize;
         var dataSql = $@"
-            SELECT 
-                id AS OrderId,
-                order_no AS OrderNo,
-                user_id AS UserId,
-                status AS Status,
-                pay_amount AS PayAmount,
-                created_at AS CreatedAt,
-                updated_at AS UpdatedAt
-            FROM order_main
-            {where}
-            ORDER BY created_at DESC
-            OFFSET :Offset ROWS FETCH NEXT :PageSize ROWS ONLY";
+        SELECT 
+            id AS OrderId,
+            order_no AS OrderNo,
+            user_id AS UserId,
+            status AS Status,
+            pay_amount AS PayAmount,
+            created_at AS CreatedAt,
+            updated_at AS UpdatedAt
+        FROM order_main
+        {where}
+        ORDER BY created_at DESC
+        OFFSET :Offset ROWS FETCH NEXT :PageSize ROWS ONLY";
 
-        var dataParams = new List<DbParameter>(parameters);
+        // 创建新的参数列表，复制所有查询参数 + 分页参数
+        var dataParams = new List<DbParameter>();
+        // 重新添加所有查询参数
+        dataParams.Add(CreateParameter("UserId", userId));
+        if (query.Status.HasValue)
+            dataParams.Add(CreateParameter("Status", query.Status.Value));
+        if (query.StartTime.HasValue)
+            dataParams.Add(CreateParameter("StartTime", query.StartTime.Value));
+        if (query.EndTime.HasValue)
+            dataParams.Add(CreateParameter("EndTime", query.EndTime.Value.AddDays(1)));
+        // 添加分页参数
         dataParams.Add(CreateParameter("Offset", offset));
         dataParams.Add(CreateParameter("PageSize", query.PageSize));
 
         await using var cmdData = Connection.CreateCommand();
         cmdData.CommandText = dataSql;
         cmdData.Transaction = Transaction;
-        foreach (var p in dataParams) cmdData.Parameters.Add(p);
+        foreach (var p in dataParams)
+        {
+            cmdData.Parameters.Add(p);
+        }
 
         var items = new List<OrderListItemDto>();
         await using var reader = await cmdData.ExecuteReaderAsync(cancellationToken);
@@ -376,39 +392,58 @@ public class OrderRepository : IOrderRepository
             parameters.Add(CreateParameter("EndTime", query.EndTime.Value.AddDays(1)));
         }
 
+        // 1. COUNT 查询
         var countSql = $"SELECT COUNT(*) FROM order_main {where}";
         await using var cmdCount = Connection.CreateCommand();
         cmdCount.CommandText = countSql;
         cmdCount.Transaction = Transaction;
-        foreach (var p in parameters) cmdCount.Parameters.Add(p);
+        foreach (var p in parameters)
+        {
+            cmdCount.Parameters.Add(p);
+        }
         var totalCount = Convert.ToInt64(await cmdCount.ExecuteScalarAsync(cancellationToken));
 
         if (totalCount == 0)
             return PagedResult<OrderListItemDto>.Empty(query.PageIndex, query.PageSize);
 
+        // 2. 数据查询
         var offset = (query.PageIndex - 1) * query.PageSize;
         var dataSql = $@"
-            SELECT 
-                id AS OrderId,
-                order_no AS OrderNo,
-                user_id AS UserId,
-                status AS Status,
-                pay_amount AS PayAmount,
-                created_at AS CreatedAt,
-                updated_at AS UpdatedAt
-            FROM order_main
-            {where}
-            ORDER BY created_at DESC
-            OFFSET :Offset ROWS FETCH NEXT :PageSize ROWS ONLY";
+        SELECT 
+            id AS OrderId,
+            order_no AS OrderNo,
+            user_id AS UserId,
+            status AS Status,
+            pay_amount AS PayAmount,
+            created_at AS CreatedAt,
+            updated_at AS UpdatedAt
+        FROM order_main
+        {where}
+        ORDER BY created_at DESC
+        OFFSET :Offset ROWS FETCH NEXT :PageSize ROWS ONLY";
 
-        var dataParams = new List<DbParameter>(parameters);
+        // 重新创建参数列表
+        var dataParams = new List<DbParameter>();
+        if (query.UserId.HasValue)
+            dataParams.Add(CreateParameter("UserId", query.UserId.Value));
+        if (!string.IsNullOrWhiteSpace(query.OrderNo))
+            dataParams.Add(CreateParameter("OrderNo", query.OrderNo.Trim()));
+        if (query.Status.HasValue)
+            dataParams.Add(CreateParameter("Status", query.Status.Value));
+        if (query.StartTime.HasValue)
+            dataParams.Add(CreateParameter("StartTime", query.StartTime.Value));
+        if (query.EndTime.HasValue)
+            dataParams.Add(CreateParameter("EndTime", query.EndTime.Value.AddDays(1)));
         dataParams.Add(CreateParameter("Offset", offset));
         dataParams.Add(CreateParameter("PageSize", query.PageSize));
 
         await using var cmdData = Connection.CreateCommand();
         cmdData.CommandText = dataSql;
         cmdData.Transaction = Transaction;
-        foreach (var p in dataParams) cmdData.Parameters.Add(p);
+        foreach (var p in dataParams)
+        {
+            cmdData.Parameters.Add(p);
+        }
 
         var items = new List<OrderListItemDto>();
         await using var reader = await cmdData.ExecuteReaderAsync(cancellationToken);
