@@ -24,7 +24,7 @@ http://服务器IP/api/v1/system/db-check
 - `/api/v1/system/db-check` 显示 `connected: true`。
 - `sessionUser` 是当前演示环境对应的 Oracle 用户，例如 `ECOMMERCE_DEMO`。
 
-## 2. 临时演示账号
+## 2. 演示账号
 
 密码统一为：
 
@@ -93,7 +93,6 @@ demo123
 
 | 标记 | 文件 | 替换来源 |
 | --- | --- | --- |
-| `TEMP_DEMO_AUTH` | `src/ECommerce.Web/Controllers/AccountController.cs` | member2 真实认证 |
 | `TEMP_DEMO_ADDRESS` | `src/ECommerce.Infrastructure/Services/Mocks/MockAddressService.cs` | member2 地址服务 |
 | `TEMP_DEMO_SKU` | `src/ECommerce.Infrastructure/Services/Mocks/MockSkuService.cs` | member3 SKU 服务 |
 | `TEMP_DEMO_INVENTORY` | `src/ECommerce.Infrastructure/Services/Mocks/MockInventoryService.cs` | member3 库存服务 |

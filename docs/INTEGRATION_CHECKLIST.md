@@ -165,23 +165,13 @@ migration/seed_demo_data.sql
 
 | 标记 | 文件 | 替换来源 | 处理要求 |
 | --- | --- | --- | --- |
-| `TEMP_DEMO_AUTH` | `src/ECommerce.Web/Controllers/AccountController.cs` | member2 真实认证 | 替换为真实 `IAuthService` 登录 |
 | `TEMP_DEMO_ADDRESS` | `src/ECommerce.Infrastructure/Services/Mocks/MockAddressService.cs` | member2 地址服务 | 替换为真实地址查询和维护 |
 | `TEMP_DEMO_SKU` | `src/ECommerce.Infrastructure/Services/Mocks/MockSkuService.cs` | member3 SKU 服务 | 替换为真实 SKU 查询和维护 |
 | `TEMP_DEMO_INVENTORY` | `src/ECommerce.Infrastructure/Services/Mocks/MockInventoryService.cs` | member3 库存服务 | 替换为真实锁库存、释放库存和扣减库存 |
 | `TEMP_DEMO_COUPON` | `src/ECommerce.Infrastructure/Services/Mocks/MockCouponService.cs` | member5 优惠券服务 | 替换为真实优惠券查询、校验和核销 |
 | `TEMP_DEMO_PAYMENT` | `src/ECommerce.Web/Controllers/PaymentController.cs` | member5 支付服务 | 替换为真实支付页面、支付记录和回调 |
 
-配置位置：
-
-```json
-"DemoAuth": {
-  "Enabled": true,
-  "Password": "demo123"
-}
-```
-
-临时账号：
+演示账号：
 
 ```text
 demo_admin    ADMIN
@@ -192,11 +182,9 @@ demo_buyer    USER
 
 member2 合入真实注册登录后必须处理：
 
-- 删除 `AccountController` 中的 `TEMP_DEMO_AUTH` 分支逻辑。
-- 登录改为调用真实 `IAuthService`。
-- `seed_demo_data.sql` 中的 `DEMO_HASH_REPLACE_AFTER_AUTH` 替换为真实密码哈希。
-- 确认登录后写入 `NameIdentifier`、`Name`、`Role` claims。
-- 如不再需要，删除或关闭 `DemoAuth` 配置。
+- `AccountController` 已调用真实 `IAuthService`。
+- `seed_demo_data.sql` 中的演示账号已替换为真实 PBKDF2 密码哈希。
+- 登录后应写入 `NameIdentifier`、`Name`、`Role` claims。
 
 最终统合前必须运行：
 
@@ -281,7 +269,8 @@ dotnet test ECommerce.sln -c Release --no-build --no-restore
 确认 GitHub Actions：
 
 - `.github/workflows/build.yml` 只构建和测试，不部署。
-- `.github/workflows/deploy.yml` 只在允许的分支或手动触发时部署。
+- `.github/workflows/build.yml` 在 `merging` push 和 PR 检查时运行。
+- `.github/workflows/deploy.yml` 只允许 `main` 部署服务器。
 - 数据库密码不进入 GitHub Secrets，仍由服务器环境变量决定。
 
 ## 11. 服务器发布后检查

@@ -11,22 +11,11 @@ namespace ECommerce.Web.Controllers;
 
 public sealed class AccountController : Controller
 {
-    private static readonly IReadOnlyDictionary<string, DemoAccount> DemoAccounts =
-        new Dictionary<string, DemoAccount>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["demo_admin"] = new(9001, "demo_admin", AuthConstants.Roles.Admin),
-            ["demo_service"] = new(9002, "demo_service", AuthConstants.Roles.Service),
-            ["demo_user"] = new(9003, "demo_user", AuthConstants.Roles.User),
-            ["demo_buyer"] = new(9004, "demo_buyer", AuthConstants.Roles.User)
-        };
-
     private readonly IAuthService _authService;
-    private readonly IConfiguration _configuration;
 
-    public AccountController(IAuthService authService, IConfiguration configuration)
+    public AccountController(IAuthService authService)
     {
         _authService = authService;
-        _configuration = configuration;
     }
 
     [HttpGet("/account/login")]
@@ -51,14 +40,6 @@ public sealed class AccountController : Controller
 
         try
         {
-            // TEMP_DEMO_AUTH: seed_demo_data.sql 仍使用占位 password_hash 时，保留演示账号登录能力。
-            if (TryValidateDemoLogin(username, password, out var demoAccount))
-            {
-                var demoSession = new UserSessionDto(demoAccount.UserId, demoAccount.Username, new[] { demoAccount.Role });
-                await SignInAsync(demoSession, rememberMe);
-                return RedirectAfterLogin(demoSession, returnUrl);
-            }
-
             var session = await _authService.LoginAsync(new LoginRequest(username, password, rememberMe), cancellationToken);
             await SignInAsync(session, rememberMe);
             return RedirectAfterLogin(session, returnUrl);
@@ -158,28 +139,5 @@ public sealed class AccountController : Controller
     private void SetLoginViewData(string? returnUrl)
     {
         ViewData["ReturnUrl"] = returnUrl;
-        ViewData["DemoAuthEnabled"] = IsDemoAuthEnabled();
-        ViewData["DemoAuthPassword"] = GetDemoAuthPassword();
     }
-
-    private bool IsDemoAuthEnabled()
-    {
-        return _configuration.GetValue("DemoAuth:Enabled", true);
-    }
-
-    private string GetDemoAuthPassword()
-    {
-        return _configuration["DemoAuth:Password"] ?? "demo123";
-    }
-
-    private bool TryValidateDemoLogin(string username, string password, out DemoAccount account)
-    {
-        account = default;
-        return IsDemoAuthEnabled()
-            && !string.IsNullOrWhiteSpace(username)
-            && DemoAccounts.TryGetValue(username.Trim(), out account)
-            && password == GetDemoAuthPassword();
-    }
-
-    private readonly record struct DemoAccount(long UserId, string Username, string Role);
 }

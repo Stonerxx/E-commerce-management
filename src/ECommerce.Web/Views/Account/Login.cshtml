@@ -1,8 +1,6 @@
 @{
     ViewData["Title"] = "登录";
     var returnUrl = ViewData["ReturnUrl"] as string;
-    var demoAuthEnabled = ViewData["DemoAuthEnabled"] as bool? ?? false;
-    var demoAuthPassword = ViewData["DemoAuthPassword"] as string ?? "demo123";
 }
 
 <div class="row justify-content-center">
@@ -32,18 +30,15 @@
             </form>
         </div>
 
-        @if (demoAuthEnabled)
-        {
-            <div class="alert alert-info mt-4 small">
-                <strong>TEMP_DEMO_AUTH 临时演示登录</strong>
-                <div class="mt-2">密码统一为：<code>@demoAuthPassword</code></div>
-                <ul class="mb-0 mt-2">
-                    <li><code>demo_admin</code>：管理员，可访问后台管理</li>
-                    <li><code>demo_service</code>：客服，可访问后台订单</li>
-                    <li><code>demo_user</code>：普通用户，可访问购物车和我的订单</li>
-                    <li><code>demo_buyer</code>：普通用户，带已完成订单和评价数据</li>
-                </ul>
-            </div>
-        }
+        <div class="alert alert-info mt-4 small">
+            <strong>演示账号</strong>
+            <div class="mt-2">以下账号已写入 seed 数据，密码统一为：<code>demo123</code></div>
+            <ul class="mb-0 mt-2">
+                <li><code>demo_admin</code>：管理员，可访问后台管理</li>
+                <li><code>demo_service</code>：客服，可访问后台订单</li>
+                <li><code>demo_user</code>：普通用户，可访问购物车和我的订单</li>
+                <li><code>demo_buyer</code>：普通用户，带已完成订单和评价数据</li>
+            </ul>
+        </div>
     </div>
 </div>

@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - feat-member1-foundation-oracle-deploy
 
 concurrency:
   group: ecommerce-deploy
@@ -13,6 +12,7 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
