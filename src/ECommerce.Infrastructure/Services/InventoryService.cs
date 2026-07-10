@@ -262,10 +262,17 @@ public sealed class InventoryService : IInventoryService
         sql.Append("SELECT s.id, s.product_id, p.name as product_name, s.spec_desc, s.stock, s.locked_stock, s.warning_stock ");
         sql.Append("FROM SKU s ");
         sql.Append("INNER JOIN PRODUCT p ON s.product_id = p.id ");
-        sql.Append("WHERE s.stock - s.locked_stock <= s.warning_stock AND s.status = 1 ");
+        sql.Append("WHERE s.stock - s.locked_stock <= s.warning_stock AND s.status = 1 AND p.status = 1 ");
         sql.Append("ORDER BY s.stock - s.locked_stock ASC ");
 
-        const string countSql = "SELECT COUNT(*) FROM SKU WHERE stock - locked_stock <= warning_stock AND status = 1";
+        const string countSql = """
+            SELECT COUNT(*)
+            FROM SKU s
+            INNER JOIN PRODUCT p ON s.product_id = p.id
+            WHERE s.stock - s.locked_stock <= s.warning_stock
+              AND s.status = 1
+              AND p.status = 1
+            """;
 
         using var countCommand = connection.CreateCommand();
         countCommand.CommandText = countSql;

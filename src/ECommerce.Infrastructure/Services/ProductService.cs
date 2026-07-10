@@ -36,6 +36,11 @@ public sealed class ProductService : IProductService
         return await _productRepository.SearchAsync(query, cancellationToken);
     }
 
+    public async Task<PagedResult<ProductListItemDto>> SearchPublicAsync(ProductQuery query, CancellationToken cancellationToken = default)
+    {
+        return await _productRepository.SearchPublicAsync(query, cancellationToken);
+    }
+
     public async Task<ProductDetailDto> GetDetailAsync(long productId, CancellationToken cancellationToken = default)
     {
         var product = await _productRepository.GetByIdAsync(productId, cancellationToken);

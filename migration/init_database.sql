@@ -278,6 +278,7 @@ CREATE TABLE SKU (
     CONSTRAINT fk_sku_product FOREIGN KEY (product_id) REFERENCES PRODUCT(id),
     CONSTRAINT ch_sku_spec_desc_json CHECK (spec_desc IS JSON),
     CONSTRAINT ch_sku_status CHECK (status IN (0,1)),
+    CONSTRAINT uk_sku_product_spec UNIQUE (product_id, spec_desc),
     CONSTRAINT ch_sku_stock_nonnegative CHECK (stock >= 0),
     CONSTRAINT ch_sku_locked_stock_nonnegative CHECK (locked_stock >= 0),
     CONSTRAINT ch_sku_stock_not_below_locked CHECK (stock >= locked_stock)

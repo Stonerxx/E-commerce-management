@@ -105,7 +105,8 @@
                         );
                     }
                     if (status.value != null) filtered = filtered.filter(r => r.status === status.value);
-                    if (lowStock.value === 1) filtered = filtered.filter(r => r.stock <= r.warningStock);
+                    if (lowStock.value === 1) filtered = filtered.filter(
+                        r => r.stock - r.lockedStock <= r.warningStock);
 
                     // 4. 分页（搜索或筛选后重置到第1页）
                     const total = filtered.length;

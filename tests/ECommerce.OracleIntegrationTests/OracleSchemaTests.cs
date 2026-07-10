@@ -54,10 +54,11 @@ public class OracleSchemaTests
                 'CH_ORDER_ITEM_QUANTITY',
                 'CH_SKU_STOCK_NONNEGATIVE',
                 'CH_SKU_LOCKED_STOCK_NONNEGATIVE',
-                'CH_SKU_STOCK_NOT_BELOW_LOCKED')
+                'CH_SKU_STOCK_NOT_BELOW_LOCKED',
+                'UK_SKU_PRODUCT_SPEC')
               AND STATUS = 'ENABLED'";
         var constraintCount = Convert.ToInt32(await command.ExecuteScalarAsync());
-        Assert.Equal(5, constraintCount);
+        Assert.Equal(6, constraintCount);
 
         command.CommandText = """SELECT COUNT(*) FROM "USER" WHERE id = 1 AND username = 'system' AND status = 0""";
         Assert.Equal(1, Convert.ToInt32(await command.ExecuteScalarAsync()));

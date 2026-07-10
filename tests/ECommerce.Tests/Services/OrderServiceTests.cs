@@ -695,11 +695,14 @@ public class OrderServiceTests : ServiceTestBase
         _unitOfWorkMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    [Fact]
-    public async Task MarkPaidAsync_AlreadyPaid_ShouldBeIdempotent()
+    [Theory]
+    [InlineData((int)OrderStatus.Paid)]
+    [InlineData((int)OrderStatus.Shipped)]
+    [InlineData((int)OrderStatus.Completed)]
+    public async Task MarkPaidAsync_AlreadyProcessedPayment_ShouldBeIdempotent(int status)
     {
         // Arrange
-        var order = CreateOrderMain(orderId: TestOrderId, userId: TestUserId, status: (int)OrderStatus.Paid);
+        var order = CreateOrderMain(orderId: TestOrderId, userId: TestUserId, status: status);
 
         _orderRepositoryMock
             .Setup(x => x.GetOrderByIdAsync(TestOrderId, It.IsAny<CancellationToken>()))

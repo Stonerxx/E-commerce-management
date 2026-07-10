@@ -397,10 +397,10 @@ public class OrderService : IOrderService
         if (order == null)
             throw new BusinessException("ORDER_NOT_FOUND", "订单不存在");
 
-        // 幂等性检查：如果已经支付，直接返回（不再重复处理）
-        if (order.Status == (int)OrderStatus.Paid)
+        // 幂等性检查：已支付后的状态流转（已发货、已完成）同样意味着支付已处理。
+        if (order.Status is (int)OrderStatus.Paid or (int)OrderStatus.Shipped or (int)OrderStatus.Completed)
         {
-            _logger.LogWarning("订单 {OrderId} 已支付，重复调用 MarkPaidAsync", orderId);
+            _logger.LogWarning("订单 {OrderId} 已完成支付处理，重复调用 MarkPaidAsync", orderId);
             return;
         }
 

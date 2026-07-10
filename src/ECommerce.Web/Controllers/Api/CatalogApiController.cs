@@ -29,8 +29,7 @@ public sealed class CatalogApiController : ApiControllerBase
     [HttpGet("products")]
     public async Task<ActionResult<ApiResponse<PagedResult<ProductListItemDto>>>> Products([FromQuery] ProductQuery query, CancellationToken cancellationToken)
     {
-        var effectiveQuery = query with { Status = 1 };
-        var result = await _productService.SearchAsync(effectiveQuery, cancellationToken);
+        var result = await _productService.SearchPublicAsync(query, cancellationToken);
         return Ok(ApiResponse<PagedResult<ProductListItemDto>>.Ok(result));
     }
 

@@ -83,9 +83,10 @@ public class OracleTransactionAndConstraintTests
     {
         await using var command = OracleTestEnvironment.CreateCommand(connection, @"
             INSERT INTO SKU (id, product_id, spec_desc, price, stock, locked_stock, warning_stock, status)
-            VALUES (:Id, :ProductId, '{""test"":""oracle-integration""}', 1, 1, 0, 0, 1)", transaction);
+            VALUES (:Id, :ProductId, :SpecDesc, 1, 1, 0, 0, 1)", transaction);
         command.Parameters.Add(":Id", OracleDbType.Int64).Value = skuId;
         command.Parameters.Add(":ProductId", OracleDbType.Int64).Value = productId;
+        command.Parameters.Add(":SpecDesc", OracleDbType.Varchar2).Value = $"{{\"test\":\"oracle-integration-{skuId}\"}}";
         Assert.Equal(1, await command.ExecuteNonQueryAsync());
     }
 

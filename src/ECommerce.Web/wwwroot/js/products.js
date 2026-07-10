@@ -51,8 +51,7 @@
 
                 const params = new URLSearchParams({
                     pageIndex: pageIndex,
-                    pageSize: pagination.value.pageSize,
-                    status: 1
+                    pageSize: pagination.value.pageSize
                 });
                 if (keyword.value.trim()) {
                     params.append('keyword', keyword.value.trim());
