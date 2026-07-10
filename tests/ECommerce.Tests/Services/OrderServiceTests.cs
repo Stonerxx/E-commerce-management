@@ -275,7 +275,7 @@ public class OrderServiceTests : ServiceTestBase
             .Returns(Task.CompletedTask);
 
         _cartRepositoryMock
-            .Setup(x => x.ClearSelectedAsync(TestUserId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.ClearByIdsAsync(TestUserId, It.Is<IReadOnlyList<long>>(ids => ids.SequenceEqual(new long[] { 1 })), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         // Act
@@ -296,7 +296,10 @@ public class OrderServiceTests : ServiceTestBase
 
         _inventoryServiceMock.Verify(x => x.LockForOrderAsync(TestOrderId, It.IsAny<IReadOnlyList<OrderSkuQuantity>>(), It.IsAny<CancellationToken>()), Times.Once);
 
-        _cartRepositoryMock.Verify(x => x.ClearSelectedAsync(TestUserId, It.IsAny<CancellationToken>()), Times.Once);
+        _cartRepositoryMock.Verify(x => x.ClearByIdsAsync(
+            TestUserId,
+            It.Is<IReadOnlyList<long>>(ids => ids.SequenceEqual(new long[] { 1 })),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -349,7 +352,7 @@ public class OrderServiceTests : ServiceTestBase
             .Returns(Task.CompletedTask);
 
         _cartRepositoryMock
-            .Setup(x => x.ClearSelectedAsync(TestUserId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.ClearByIdsAsync(TestUserId, It.Is<IReadOnlyList<long>>(ids => ids.SequenceEqual(new long[] { 1 })), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         // Act

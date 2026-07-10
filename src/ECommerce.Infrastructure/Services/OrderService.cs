@@ -210,8 +210,18 @@ public class OrderService : IOrderService
             var skuQuantities = items.Select(x => new OrderSkuQuantity(x.SkuId, x.Quantity)).ToList();
             await _inventoryService.LockForOrderAsync(orderId, skuQuantities, cancellationToken);
 
-            // 10. 清空购物车（只清选中的）
-            await _cartRepository.ClearSelectedAsync(userId, cancellationToken);
+            // 10. 清空购物车。指定下单项时只能删除本次提交的记录。
+            if (request.CartItemIds is { Count: > 0 })
+            {
+                await _cartRepository.ClearByIdsAsync(
+                    userId,
+                    cartItems.Select(item => item.CartItemId).ToArray(),
+                    cancellationToken);
+            }
+            else
+            {
+                await _cartRepository.ClearSelectedAsync(userId, cancellationToken);
+            }
 
             // 11. 提交事务
             await _unitOfWork.CommitAsync(cancellationToken);

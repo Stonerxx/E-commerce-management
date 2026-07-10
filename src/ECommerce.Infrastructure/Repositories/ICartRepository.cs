@@ -26,6 +26,9 @@ public interface ICartRepository
     /// <summary> 清空用户所有选中的购物车项（selected=1） </summary>
     Task ClearSelectedAsync(long userId, CancellationToken cancellationToken = default);
 
+    /// <summary> 清空用户本次下单指定的购物车项 </summary>
+    Task ClearByIdsAsync(long userId, IReadOnlyList<long> cartItemIds, CancellationToken cancellationToken = default);
+
     /// <summary> 清空用户所有购物车项 </summary>
     Task ClearAllAsync(long userId, CancellationToken cancellationToken = default);
 }

@@ -51,6 +51,9 @@ public class CartService : ICartService
 
     public async Task AddItemAsync(long userId, CartItemRequest request, CancellationToken cancellationToken = default)
     {
+        if (request.Quantity <= 0)
+            throw new BusinessException("INVALID_QUANTITY", "数量必须大于0");
+
         // 1. 通过 Service 接口查询 SKU 信息
         var sku = await _skuService.GetByIdAsync(request.SkuId, cancellationToken);
         if (sku == null)

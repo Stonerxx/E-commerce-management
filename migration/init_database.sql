@@ -325,6 +325,7 @@ CREATE TABLE CART (
     CONSTRAINT fk_cart_user FOREIGN KEY (user_id) REFERENCES "USER"(id),
     CONSTRAINT fk_cart_sku FOREIGN KEY (sku_id) REFERENCES SKU(id),
     CONSTRAINT ch_cart_selected CHECK (selected IN (0,1)),
+    CONSTRAINT ch_cart_quantity CHECK (quantity > 0),
     CONSTRAINT uk_cart_user_sku UNIQUE (user_id, sku_id)
 );
 COMMENT ON TABLE CART IS '购物车表';
@@ -437,7 +438,8 @@ CREATE TABLE ORDER_ITEM (
     quantity           NUMBER(10) NOT NULL,
     subtotal           NUMBER(10,2) NOT NULL,
     CONSTRAINT fk_oi_order FOREIGN KEY (order_id) REFERENCES ORDER_MAIN(id),
-    CONSTRAINT fk_oi_sku FOREIGN KEY (sku_id) REFERENCES SKU(id)
+    CONSTRAINT fk_oi_sku FOREIGN KEY (sku_id) REFERENCES SKU(id),
+    CONSTRAINT ch_order_item_quantity CHECK (quantity > 0)
 );
 COMMENT ON TABLE ORDER_ITEM IS '订单明细表';
 COMMENT ON COLUMN ORDER_ITEM.id IS '明细ID，自增主键';

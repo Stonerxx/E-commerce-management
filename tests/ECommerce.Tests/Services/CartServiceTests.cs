@@ -90,6 +90,22 @@ public class CartServiceTests : ServiceTestBase
         ), It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task AddItemAsync_NonPositiveQuantity_ShouldThrow(int quantity)
+    {
+        var request = new CartItemRequest(SkuId: 100, Quantity: quantity);
+
+        var exception = await Assert.ThrowsAsync<BusinessException>(
+            () => _cartService.AddItemAsync(userId: 1, request));
+
+        Assert.Equal("INVALID_QUANTITY", exception.Code);
+        _skuServiceMock.Verify(x => x.GetByIdAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
+        _cartRepositoryMock.Verify(x => x.AddAsync(It.IsAny<Cart>(), It.IsAny<CancellationToken>()), Times.Never);
+        _cartRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<Cart>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Fact]
     public async Task AddItemAsync_ExistingItem_ShouldUpdateQuantity()
     {
