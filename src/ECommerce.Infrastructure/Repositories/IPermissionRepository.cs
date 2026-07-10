@@ -16,7 +16,7 @@ public interface IPermissionRepository
 
     Task ReplaceRolePermissionsAsync(int roleId, IReadOnlyList<int> permissionIds, CancellationToken cancellationToken = default);
 
-    Task<bool> PermissionRuleExistsAsync(string requestPath, string httpMethod, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PermissionDto>> GetPermissionRulesByActionAsync(string action, CancellationToken cancellationToken = default);
 
-    Task<bool> HasRolePermissionAsync(IReadOnlyList<string> roleNames, string requestPath, string httpMethod, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PermissionDto>> GetRolePermissionRulesByActionAsync(IReadOnlyList<string> roleNames, string action, CancellationToken cancellationToken = default);
 }

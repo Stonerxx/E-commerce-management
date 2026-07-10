@@ -1,6 +1,7 @@
 using ECommerce.Infrastructure;
 using ECommerce.Shared.Constants;
 using ECommerce.Web.Filters;
+using ECommerce.Web.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,7 @@ builder.Services.AddControllersWithViews(options =>
 });
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<RbacPermissionFilter>();
+builder.Services.AddScoped<RefreshUserPrincipalCookieEvents>();
 
 builder.Services
     .AddAuthentication(AuthConstants.AuthenticationScheme)
@@ -20,6 +22,7 @@ builder.Services
         options.LoginPath = "/account/login";
         options.AccessDeniedPath = "/account/access-denied";
         options.SlidingExpiration = true;
+        options.EventsType = typeof(RefreshUserPrincipalCookieEvents);
     });
 
 builder.Services.AddAuthorization(options =>
