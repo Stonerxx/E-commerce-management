@@ -53,7 +53,8 @@ public sealed record SkuSaveRequest(
     int Stock,
     int WarningStock,
     string? SkuImage,
-    int Status);
+    int Status,
+    long? SkuId = null);
 
 public sealed record ProductQuery : PageQuery
 {

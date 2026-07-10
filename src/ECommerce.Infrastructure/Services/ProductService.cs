@@ -163,10 +163,35 @@ public sealed class ProductService : IProductService
             await _productSpecRepository.CreateAsync(spec, cancellationToken);
         }
 
-        await _skuService.DeleteByProductAsync(productId, cancellationToken);
+        // 增量更新 SKU：保留已有 ID 的 SKU，新建没有 ID 的 SKU，禁用不再需要的 SKU
+        var existingSkus = await _skuService.GetByProductAsync(productId, cancellationToken);
+        var existingSkuIds = existingSkus.Select(s => s.SkuId).ToHashSet();
+
+        var requestSkuIds = request.Skus
+            .Where(s => s.SkuId.HasValue)
+            .Select(s => s.SkuId.Value)
+            .ToHashSet();
+
+        // 1. 更新已有 SKU 或创建新 SKU
         foreach (var skuRequest in request.Skus)
         {
-            await _skuService.CreateAsync(productId, skuRequest, operatorId, cancellationToken);
+            if (skuRequest.SkuId.HasValue && existingSkuIds.Contains(skuRequest.SkuId.Value))
+            {
+                await _skuService.UpdateAsync(skuRequest.SkuId.Value, skuRequest, operatorId, cancellationToken);
+            }
+            else
+            {
+                await _skuService.CreateAsync(productId, skuRequest, operatorId, cancellationToken);
+            }
+        }
+
+        // 2. 禁用不再需要的已有 SKU（避免硬删除导致关联数据不一致）
+        foreach (var existingSku in existingSkus)
+        {
+            if (!requestSkuIds.Contains(existingSku.SkuId))
+            {
+                await _skuService.SetStatusAsync(existingSku.SkuId, 0, operatorId, cancellationToken);
+            }
         }
     }
 

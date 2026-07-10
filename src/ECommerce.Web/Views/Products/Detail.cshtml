@@ -5,7 +5,12 @@
     var isCustomer = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.User);
 }
 
-<div id="productDetailApp" v-cloak>
+<div id="productDetailApp" v-cloak data-is-customer="@isCustomer" data-product-id="@productId">
+    <div id="vueInitError" class="text-center py-5" style="display:none;">
+        <i class="bi bi-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
+        <p class="text-muted mt-3">页面加载失败，请刷新页面重试</p>
+        <a href="/products" class="btn btn-outline-primary">返回商品列表</a>
+    </div>
     <div v-if="loading" class="text-center py-5">
         <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">加载中...</span>
@@ -109,7 +114,7 @@
                         </div>
 
                         <div class="d-flex gap-2">
-                            <template v-if="@isCustomer">
+                            <template v-if="isCustomer">
                                 <button type="button" class="btn btn-outline-primary flex-grow-1"
                                         v-on:click="addToCart"
                                         :disabled="!currentSku || currentSku.stock <= 0 || addingToCart">

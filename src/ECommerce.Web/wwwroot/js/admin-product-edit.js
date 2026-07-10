@@ -267,6 +267,7 @@
                                 sortOrder: i
                             })),
                             skus: skus.value.map(sku => ({
+                                skuId: sku.skuId || null,
                                 specSelections: Object.entries(sku.selections || {})
                                     .filter(([_, v]) => v)
                                     .map(([k, v]) => ({ specName: k, specValue: v })),
