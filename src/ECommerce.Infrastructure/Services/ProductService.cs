@@ -66,6 +66,7 @@ public sealed class ProductService : IProductService
     public async Task<long> CreateAsync(ProductSaveRequest request, long operatorId, CancellationToken cancellationToken = default)
     {
         ValidateRequest(request);
+        EnsureSkuRequestCombinationsAreUnique(request.Skus);
 
         var categoryExists = await _productRepository.CategoryExistsAsync(request.CategoryId, cancellationToken);
         if (!categoryExists)
@@ -150,6 +151,7 @@ public sealed class ProductService : IProductService
     public async Task UpdateAsync(long productId, ProductSaveRequest request, long operatorId, CancellationToken cancellationToken = default)
     {
         ValidateRequest(request);
+        EnsureSkuRequestCombinationsAreUnique(request.Skus);
 
         var product = await _productRepository.GetByIdAsync(productId, cancellationToken);
         if (product == null)
@@ -287,6 +289,24 @@ public sealed class ProductService : IProductService
         if (request.Status != 0 && request.Status != 1 && request.Status != 2)
         {
             throw new BusinessException("PRODUCT_STATUS_INVALID", "商品状态只能是0（下架）、1（上架）或2（预售）");
+        }
+    }
+
+    private static void EnsureSkuRequestCombinationsAreUnique(IReadOnlyList<SkuSaveRequest> skus)
+    {
+        var combinations = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var sku in skus)
+        {
+            var combination = string.Join(
+                "\u001f",
+                sku.SpecSelections
+                    .OrderBy(selection => selection.SpecName, StringComparer.Ordinal)
+                    .Select(selection => $"{selection.SpecName}\u001e{selection.SpecValue}"));
+
+            if (!combinations.Add(combination))
+            {
+                throw new BusinessException("SKU_SPEC_COMBINATION_DUPLICATE", "不能提交重复的 SKU 规格组合");
+            }
         }
     }
 

@@ -67,6 +67,28 @@ public sealed class RefreshUserPrincipalCookieEvents : CookieAuthenticationEvent
         }
     }
 
+    public override Task RedirectToLogin(RedirectContext<CookieAuthenticationOptions> context)
+    {
+        if (context.Request.Path.StartsWithSegments("/api"))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        }
+
+        return base.RedirectToLogin(context);
+    }
+
+    public override Task RedirectToAccessDenied(RedirectContext<CookieAuthenticationOptions> context)
+    {
+        if (context.Request.Path.StartsWithSegments("/api"))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Task.CompletedTask;
+        }
+
+        return base.RedirectToAccessDenied(context);
+    }
+
     private static async Task RejectAsync(CookieValidatePrincipalContext context)
     {
         context.RejectPrincipal();

@@ -39,33 +39,20 @@
                 loading.value = true;
                 try {
                     // 直接调用预警接口（后端返回已过滤的低库存数据）
-                    const resp = await fetch(`/api/v1/admin/inventory/warnings?page=${page}&pageSize=${pagination.value.pageSize}`, {
+                    const resp = await fetch(`/api/v1/admin/inventory/warnings?pageIndex=${page}&pageSize=${pagination.value.pageSize}`, {
                         headers: { 'Accept': 'application/json' }
                     });
                     const data = await resp.json();
 
                     if (data.success && data.data && data.data.items) {
-                        // 接口已返回预警数据，但需要补商品名称
-                        const productMap = {};
-                        let pPage = 1;
-                        while (true) {
-                            const pResp = await fetch(`/api/v1/admin/products?page=${pPage}&pageSize=100`, {
-                                headers: { 'Accept': 'application/json' }
-                            });
-                            const pData = await pResp.json();
-                            if (pData.success && pData.data && pData.data.items) {
-                                for (const p of pData.data.items) productMap[p.productId] = p.name;
-                                if (pPage >= pData.data.totalPages || pData.data.totalPages === 0) break;
-                                pPage++;
-                            } else break;
-                        }
-
                         let list = data.data.items.map(it => ({
                             skuId: it.skuId,
                             productId: it.productId,
-                            productName: productMap[it.productId] || '',
+                            productName: it.productName || '',
                             specDesc: formatSpec(it.specDescJson),
                             stock: it.stock,
+                            lockedStock: it.lockedStock,
+                            availableStock: Math.max(0, it.stock - it.lockedStock),
                             warningStock: it.warningStock
                         }));
 

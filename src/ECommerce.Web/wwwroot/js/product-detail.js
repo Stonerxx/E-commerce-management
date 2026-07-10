@@ -125,14 +125,22 @@
                             quantity: quantity.value
                         })
                     });
-                    const result = await response.json();
 
-                    if (result.success) {
-                        alert('已添加到购物车');
-                    } else if (response.status === 401) {
+                    if (response.status === 401) {
                         window.location.href = '/account/login';
+                        return;
+                    }
+                    if (response.status === 403) {
+                        alert('当前账号没有加入购物车权限');
+                        return;
+                    }
+
+                    const result = await response.json().catch(() => null);
+
+                    if (response.ok && result?.success) {
+                        alert('已添加到购物车');
                     } else {
-                        alert(result.message || '添加失败');
+                        alert(result?.message || '添加失败');
                     }
                 } catch (error) {
                     console.error('加入购物车失败:', error);
@@ -163,9 +171,14 @@
                         return;
                     }
 
-                    const addResult = await addResponse.json();
-                    if (!addResult.success) {
-                        alert(addResult.message || '操作失败');
+                    if (addResponse.status === 403) {
+                        alert('当前账号没有立即购买权限');
+                        return;
+                    }
+
+                    const addResult = await addResponse.json().catch(() => null);
+                    if (!addResponse.ok || !addResult?.success) {
+                        alert(addResult?.message || '操作失败');
                         return;
                     }
 

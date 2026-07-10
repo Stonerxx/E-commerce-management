@@ -69,7 +69,18 @@ public sealed class OrderTimeoutHostedService : IHostedService, IDisposable
         {
             while (await _timer.WaitForNextTickAsync(stoppingToken))
             {
-                await ProcessExpiredOrdersAsync(stoppingToken);
+                try
+                {
+                    await ProcessExpiredOrdersAsync(stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "本轮订单超时扫描失败，下轮继续执行");
+                }
             }
         }
         catch (OperationCanceledException)

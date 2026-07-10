@@ -7,9 +7,24 @@
 发布目录：/var/www/ecommerce
 服务名：ecommerce
 后端监听：127.0.0.1:5000
-Nginx：转发公网 80 -> 127.0.0.1:5000
+Nginx：公网 80 跳转到 HTTPS，公网 443 转发到 127.0.0.1:5000
 环境变量：/etc/ecommerce/ecommerce.env 或 ecommerce.service
 ```
+
+## HTTPS 前置条件
+
+Production 会启用 HTTPS 重定向，因此不能只按 HTTP 反向代理部署。先为实际域名申请证书，再复制 [nginx-ecommerce.conf.example](../deployment/linux/nginx-ecommerce.conf.example) 并替换其中的 `example.com`：
+
+```bash
+sudo systemctl stop nginx
+sudo certbot certonly --standalone -d example.com
+sudo cp deployment/linux/nginx-ecommerce.conf.example /etc/nginx/sites-available/ecommerce
+sudo ln -s /etc/nginx/sites-available/ecommerce /etc/nginx/sites-enabled/ecommerce
+sudo nginx -t
+sudo systemctl start nginx
+```
+
+示例中的 80 端口只跳转到 HTTPS；443 才会将请求转发给 Kestrel，并发送 `X-Forwarded-Proto: https`。
 
 ## 一、推荐发布流程：GitHub Actions 编译，服务器只部署
 

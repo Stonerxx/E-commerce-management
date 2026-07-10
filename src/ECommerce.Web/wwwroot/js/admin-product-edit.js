@@ -7,6 +7,7 @@
             const loading = ref(true);
             const categoryTree = ref([]);
             const skus = ref([]);
+            const images = ref([]);
 
             // 商品的规格定义列表（对应 ProductSpec 表）
             const specs = ref([]);
@@ -92,6 +93,11 @@
                             specValue: s.specValue,
                             sortOrder: s.sortOrder
                         }));
+                        // 当前页面暂不提供图库编辑控件；仍须回传已有图片，避免编辑其他字段时误删图库。
+                        images.value = (data.images || []).map(image => ({
+                            imageUrl: image.imageUrl,
+                            sortOrder: image.sortOrder
+                        }));
 
                         // 加载已有 SKU，将 specDescJson 解析回 selections
                         skus.value = (data.skus || []).map(sku => {
@@ -110,7 +116,7 @@
                                 originalPrice: sku.originalPrice,
                                 warningStock: sku.warningStock,
                                 skuImage: sku.skuImage,
-                                status: sku.status || 1
+                                status: sku.status ?? 1
                             };
                         });
                     }
@@ -238,7 +244,10 @@
                             description: form.value.description || null,
                             mainImage: form.value.mainImage,
                             status: form.value.status,
-                            images: [],
+                            images: images.value.map(image => ({
+                                imageUrl: image.imageUrl,
+                                sortOrder: image.sortOrder
+                            })),
                             specs: specs.value.map((s, i) => ({
                                 specName: s.specName,
                                 specValue: s.specValue,
@@ -254,7 +263,7 @@
                                 stock: sku.stock,
                                 warningStock: sku.warningStock,
                                 skuImage: sku.skuImage || null,
-                                status: sku.status || 1
+                                status: sku.status ?? 1
                             }))
                         })
                     });
@@ -285,6 +294,7 @@
                 categoryTree,
                 form,
                 skus,
+                images,
                 specs,
                 specForm,
                 specGroups,

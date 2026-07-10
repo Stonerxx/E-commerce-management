@@ -40,6 +40,7 @@ public sealed class SkuService : ISkuService
 
         // 校验规格选择必须对应商品已定义的 ProductSpec 记录
         var specDesc = await ValidateAndBuildSpecDescAsync(productId, request.SpecSelections, cancellationToken);
+        await EnsureSpecificationIsUniqueAsync(productId, specDesc, null, cancellationToken);
 
         var now = DateTime.Now;
         var sku = new Sku
@@ -79,6 +80,7 @@ public sealed class SkuService : ISkuService
 
         // 校验规格选择必须对应商品已定义的 ProductSpec 记录
         var specDesc = await ValidateAndBuildSpecDescAsync(sku.ProductId, request.SpecSelections, cancellationToken);
+        await EnsureSpecificationIsUniqueAsync(sku.ProductId, specDesc, skuId, cancellationToken);
 
         var now = DateTime.Now;
         sku.SpecDesc = specDesc;
@@ -150,6 +152,9 @@ public sealed class SkuService : ISkuService
         var definedSpecs = productSpecs
             .Select(s => (s.SpecName, s.SpecValue))
             .ToHashSet();
+        var definedSpecNames = productSpecs
+            .Select(s => s.SpecName)
+            .ToHashSet();
 
         // 校验每个选择项都存在于定义中
         foreach (var selection in selections)
@@ -170,12 +175,52 @@ public sealed class SkuService : ISkuService
             }
         }
 
+        var selectedSpecNames = selections.Select(selection => selection.SpecName).ToHashSet();
+        if (!selectedSpecNames.SetEquals(definedSpecNames))
+        {
+            var missing = definedSpecNames.Except(selectedSpecNames).OrderBy(name => name).ToArray();
+            throw new BusinessException(
+                "SKU_SPEC_INCOMPLETE",
+                missing.Length > 0
+                    ? $"SKU必须选择全部规格组，缺少：{string.Join("、", missing)}"
+                    : "SKU包含未定义的规格组");
+        }
+
         // 按 SpecName 排序后构建字典，确保同一组规格生成的 JSON 一致
         var specDict = selections
             .OrderBy(s => s.SpecName)
             .ToDictionary(s => s.SpecName, s => s.SpecValue);
 
         return JsonSerializer.Serialize(specDict);
+    }
+
+    private async Task EnsureSpecificationIsUniqueAsync(
+        long productId,
+        string specDesc,
+        long? excludedSkuId,
+        CancellationToken cancellationToken)
+    {
+        var expected = NormalizeSpecification(specDesc);
+        var skus = await _skuRepository.GetByProductAsync(productId, cancellationToken);
+        if (skus.Any(sku => sku.SkuId != excludedSkuId && NormalizeSpecification(sku.SpecDescJson) == expected))
+        {
+            throw new BusinessException("SKU_SPEC_COMBINATION_DUPLICATE", "该 SKU 规格组合已存在");
+        }
+    }
+
+    private static string NormalizeSpecification(string specDesc)
+    {
+        using var document = JsonDocument.Parse(specDesc);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            return specDesc;
+        }
+
+        var normalized = document.RootElement
+            .EnumerateObject()
+            .OrderBy(property => property.Name, StringComparer.Ordinal)
+            .ToDictionary(property => property.Name, property => property.Value.GetString() ?? string.Empty);
+        return JsonSerializer.Serialize(normalized);
     }
 
     private static void ValidateRequest(SkuSaveRequest request)

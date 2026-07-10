@@ -4,6 +4,7 @@ using ECommerce.Domain.Enums;
 using ECommerce.Shared.Abstractions;
 using Microsoft.Extensions.Logging;
 using Oracle.ManagedDataAccess.Client;
+using System.Data.Common;
 // using Dapper;
 
 namespace ECommerce.Infrastructure.Services;
@@ -20,8 +21,8 @@ public class StatisticsService : IStatisticsService
 
     public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(CancellationToken cancellationToken = default)
     {
-        var connection = await _unitOfWork.GetOpenConnectionAsync();
-        var today = DateTime.Today;
+        var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        var today = await GetDatabaseTodayAsync(connection, cancellationToken);
 
         // 1. 从快照表取今日订单数和销售额
         await using var cmd1 = connection.CreateCommand();
@@ -91,8 +92,8 @@ public class StatisticsService : IStatisticsService
         WHERE s.STAT_DATE >= :StartDate AND s.STAT_DATE <= :EndDate
         ORDER BY s.STAT_DATE ASC";
 
-        command.Parameters.Add(new OracleParameter(":StartDate", OracleDbType.Date) { Value = query.StartDate });
-        command.Parameters.Add(new OracleParameter(":EndDate", OracleDbType.Date) { Value = query.EndDate });
+        command.Parameters.Add(new OracleParameter(":StartDate", OracleDbType.Date) { Value = query.StartDate.Date });
+        command.Parameters.Add(new OracleParameter(":EndDate", OracleDbType.Date) { Value = query.EndDate.Date });
 
 
         if (_unitOfWork.CurrentTransaction != null)
@@ -170,8 +171,8 @@ public class StatisticsService : IStatisticsService
         command.Parameters.Add(new OracleParameter(":StatusPaid", OracleDbType.Int32) { Value = (int)OrderStatus.Paid });
         command.Parameters.Add(new OracleParameter(":StatusShipped", OracleDbType.Int32) { Value = (int)OrderStatus.Shipped });
         command.Parameters.Add(new OracleParameter(":StatusCompleted", OracleDbType.Int32) { Value = (int)OrderStatus.Completed });
-        command.Parameters.Add(new OracleParameter(":StartDate", OracleDbType.Date) { Value = query.StartDate });
-        command.Parameters.Add(new OracleParameter(":EndDate", OracleDbType.Date) { Value = query.EndDate });
+        command.Parameters.Add(new OracleParameter(":StartDate", OracleDbType.Date) { Value = query.StartDate.Date });
+        command.Parameters.Add(new OracleParameter(":EndDate", OracleDbType.Date) { Value = query.EndDate.Date.AddDays(1) });
 
         if (_unitOfWork.CurrentTransaction != null)
             command.Transaction = _unitOfWork.CurrentTransaction;
@@ -198,5 +199,13 @@ public class StatisticsService : IStatisticsService
         }
 
         return result.AsReadOnly();
+    }
+
+    private async Task<DateTime> GetDatabaseTodayAsync(DbConnection connection, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT TRUNC(SYSDATE) FROM DUAL";
+        command.Transaction = _unitOfWork.CurrentTransaction;
+        return Convert.ToDateTime(await command.ExecuteScalarAsync(cancellationToken)).Date;
     }
 }
