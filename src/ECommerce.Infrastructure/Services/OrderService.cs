@@ -20,7 +20,6 @@ public class OrderService : IOrderService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAddressService _addressService;
     private readonly IInventoryService _inventoryService;
-    private readonly ICouponService _couponService;
     private readonly IOperationLogService _operationLogService;
     private readonly ILogger<OrderService> _logger;
 
@@ -33,7 +32,6 @@ public class OrderService : IOrderService
         IUnitOfWork unitOfWork,
         IAddressService addressService,
         IInventoryService inventoryService,
-        ICouponService couponService,
         IOperationLogService operationLogService,
         ILogger<OrderService> logger)
     {
@@ -43,13 +41,14 @@ public class OrderService : IOrderService
         _unitOfWork = unitOfWork;
         _addressService = addressService;
         _inventoryService = inventoryService;
-        _couponService = couponService;
         _operationLogService = operationLogService;
         _logger = logger;
     }
 
     public async Task<OrderPreviewDto> PreviewAsync(long userId, CreateOrderRequest request, CancellationToken cancellationToken = default)
     {
+        EnsureCouponIsNotRequested(request.UserCouponId);
+
         // 1. 校验地址
         await ValidateAddressAsync(userId, request.AddressId, cancellationToken);
 
@@ -76,15 +75,6 @@ public class OrderService : IOrderService
         decimal totalAmount = cartItems.Sum(x => x.UnitPrice * x.Quantity);
         decimal discountAmount = 0;
 
-        // 5. 校验优惠券
-        if (request.UserCouponId.HasValue)
-        {
-            var validation = await _couponService.ValidateAsync(userId, request.UserCouponId.Value, totalAmount, cancellationToken);
-            if (!validation.Available)
-                throw new BusinessException("COUPON_INVALID", validation.Reason ?? "优惠券不可用");
-            discountAmount = validation.DiscountAmount;
-        }
-
         var payAmount = totalAmount - discountAmount;
         if (payAmount < 0) payAmount = 0;
 
@@ -105,6 +95,8 @@ public class OrderService : IOrderService
 
     public async Task<long> CreateAsync(long userId, CreateOrderRequest request, CancellationToken cancellationToken = default)
     {
+        EnsureCouponIsNotRequested(request.UserCouponId);
+
         string? orderNo = null;
 
         try
@@ -133,15 +125,6 @@ public class OrderService : IOrderService
             // 3. 计算金额
             decimal totalAmount = cartItems.Sum(x => x.UnitPrice * x.Quantity);
             decimal discountAmount = 0;
-            long? userCouponId = request.UserCouponId;
-
-            if (userCouponId.HasValue)
-            {
-                var validation = await _couponService.ValidateAsync(userId, userCouponId.Value, totalAmount, cancellationToken);
-                if (!validation.Available)
-                    throw new BusinessException("COUPON_INVALID", validation.Reason ?? "优惠券不可用");
-                discountAmount = validation.DiscountAmount;
-            }
 
             var payAmount = totalAmount - discountAmount;
             if (payAmount < 0) payAmount = 0;
@@ -158,7 +141,7 @@ public class OrderService : IOrderService
                 OrderNo = orderNo,
                 UserId = userId,
                 AddressId = request.AddressId,
-                UserCouponId = userCouponId,
+                UserCouponId = null,
                 Status = (int)OrderStatus.PendingPayment,  // 使用枚举
                 TotalAmount = totalAmount,
                 DiscountAmount = discountAmount,
@@ -409,6 +392,8 @@ public class OrderService : IOrderService
         if (order.Status != (int)OrderStatus.PendingPayment)
             throw new BusinessException("ORDER_STATUS_INVALID", $"当前订单状态（{order.Status}）不允许支付");
 
+        EnsureCouponIsNotRequested(order.UserCouponId);
+
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
@@ -429,12 +414,6 @@ public class OrderService : IOrderService
             // 扣减库存（实际库存，释放锁定库存）
             var skuQuantities = await _orderRepository.GetOrderSkuQuantitiesAsync(orderId, cancellationToken);
             await _inventoryService.DeductForPaidOrderAsync(orderId, skuQuantities, cancellationToken);
-
-            // 核销优惠券
-            if (order.UserCouponId.HasValue)
-            {
-                await _couponService.UseForOrderAsync(order.UserId, order.UserCouponId.Value, orderId, order.PayAmount, cancellationToken);
-            }
 
             await _unitOfWork.CommitAsync(cancellationToken);
         }
@@ -523,6 +502,14 @@ public class OrderService : IOrderService
         if (allSelected.Count == 0)
             throw new BusinessException("CART_EMPTY", "购物车中未选中任何商品");
         return allSelected;
+    }
+
+    private static void EnsureCouponIsNotRequested(long? userCouponId)
+    {
+        if (userCouponId.HasValue)
+        {
+            throw new BusinessException("COUPON_NOT_READY", "优惠券功能正在开发，当前暂不可使用");
+        }
     }
 
     private static string GenerateOrderNo()
