@@ -4,6 +4,7 @@ using ECommerce.Domain.Enums;
 using ECommerce.Shared.Abstractions;
 using Microsoft.Extensions.Logging;
 using Oracle.ManagedDataAccess.Client;
+using System.Text;
 // using Dapper;
 
 namespace ECommerce.Infrastructure.Services;
@@ -12,14 +13,62 @@ public class StatisticsService : IStatisticsService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<StatisticsService> _logger;
-    public StatisticsService(IUnitOfWork unitOfWork, ILogger<StatisticsService> logger)
+    private readonly IStatisticsSnapshotService _snapshotService;
+
+    // 静态字段：记录上次快照刷新时间（UTC）
+    private static DateTime _lastSnapshotRefreshUtc = DateTime.MinValue;
+    private static readonly object _refreshLock = new object();
+    public StatisticsService(
+        IUnitOfWork unitOfWork, 
+        ILogger<StatisticsService> logger, 
+        IStatisticsSnapshotService snapshotService)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _snapshotService = snapshotService;
+    }
+
+    private async Task RefreshSnapshotIfNeededAsync(CancellationToken cancellationToken)
+    {
+        var nowUtc = DateTime.UtcNow;
+
+        // 如果距离上次刷新不足 10 分钟，直接返回
+        if ((nowUtc - _lastSnapshotRefreshUtc).TotalMinutes < 10)
+            return;
+
+        // 加锁防止并发时重复刷新
+        lock (_refreshLock)
+        {
+            // 双重检查
+            if ((nowUtc - _lastSnapshotRefreshUtc).TotalMinutes < 10)
+                return;
+
+            // 先更新时间，防止其他线程再进入
+            _lastSnapshotRefreshUtc = nowUtc;
+        }
+
+        try
+        {
+            _logger.LogInformation("开始刷新订单统计快照（最近30天）...");
+            await _snapshotService.RefreshRecentDaysAsync(30, cancellationToken);
+            _logger.LogInformation("订单统计快照刷新完成。");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "刷新订单统计快照失败，将允许下次重试。");
+            // 刷新失败时重置时间，允许后续请求重试
+            lock (_refreshLock)
+            {
+                _lastSnapshotRefreshUtc = DateTime.MinValue;
+            }
+            // 不向上抛出异常，避免影响统计查询（可继续读旧快照）
+        }
     }
 
     public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(CancellationToken cancellationToken = default)
     {
+        await RefreshSnapshotIfNeededAsync(cancellationToken);
+
         var connection = await _unitOfWork.GetOpenConnectionAsync();
         var today = DateTime.Today;
 
@@ -77,72 +126,93 @@ public class StatisticsService : IStatisticsService
 
     public async Task<OrderStatisticsDto> GetOrderStatisticsAsync(StatisticsQuery query, CancellationToken cancellationToken = default)
     {
+        await RefreshSnapshotIfNeededAsync(cancellationToken);
+
         var connection = await _unitOfWork.GetOpenConnectionAsync();
 
-        await using var command = connection.CreateCommand();
-
-        command.CommandText = @"
-        SELECT 
-            s.STAT_DATE AS ""Date"", 
-            s.ORDER_COUNT AS OrderCount, 
-            s.PAID_COUNT AS PaidCount, 
-            s.SALES_AMOUNT AS SalesAmount
-        FROM ORDER_STAT_SNAPSHOT s
-        WHERE s.STAT_DATE >= :StartDate AND s.STAT_DATE <= :EndDate
-        ORDER BY s.STAT_DATE ASC";
-
-        command.Parameters.Add(new OracleParameter(":StartDate", OracleDbType.Date) { Value = query.StartDate });
-        command.Parameters.Add(new OracleParameter(":EndDate", OracleDbType.Date) { Value = query.EndDate });
-
-
-        if (_unitOfWork.CurrentTransaction != null)
+        // 1. 根据维度决定分组表达式
+        string groupByExpr = query.Dimension?.ToLower() switch
         {
-            command.Transaction = _unitOfWork.CurrentTransaction;
+            "month" => "TRUNC(CREATED_AT, 'MM')",
+            _ => "TRUNC(CREATED_AT)" // 默认按天
+        };
+
+        // 2. 构建 SQL（从 ORDER_MAIN 直接查询，保证灵活性）
+        var sqlBuilder = new StringBuilder();
+        sqlBuilder.AppendLine($@"
+        SELECT 
+            {groupByExpr} AS ""Date"",
+            COUNT(*) AS OrderCount,
+            COUNT(CASE WHEN STATUS = {(int)OrderStatus.Paid} THEN 1 END) AS PaidCount,
+            NVL(SUM(TOTAL_AMOUNT), 0) AS SalesAmount
+        FROM ORDER_MAIN
+        WHERE 1=1
+          AND CREATED_AT >= :StartDate
+          AND CREATED_AT < :EndDate");
+
+        // 3. 状态筛选（如果传了具体的 Status 值）
+        if (query.status.HasValue)
+        {
+            sqlBuilder.AppendLine("    AND STATUS = :Status");
         }
 
+        sqlBuilder.AppendLine($"GROUP BY {groupByExpr}");
+        sqlBuilder.AppendLine($"ORDER BY {groupByExpr} ASC");
+
+        var finalSql = sqlBuilder.ToString();
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = finalSql;
+        command.Parameters.Add(new OracleParameter(":StartDate", OracleDbType.Date) { Value = query.StartDate.Date });
+        command.Parameters.Add(new OracleParameter(":EndDate", OracleDbType.Date) { Value = query.EndDate.Date.AddDays(1) });
+
+        if (query.status.HasValue)
+        {
+            command.Parameters.Add(new OracleParameter(":Status", OracleDbType.Int32) { Value = (int)query.status.Value });
+        }
+
+        if (_unitOfWork.CurrentTransaction != null)
+            command.Transaction = _unitOfWork.CurrentTransaction;
+
+        // 4. 执行查询（后续代码和之前完全一样，保持不变）
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-        var points = new List<OrderStatisticPointDto>();
-        
-        int total_order = 0;
-        int total_paid_order = 0;
-        decimal total_sales_amount = 0;
-        decimal avg_order_amount = 0;
+        var dateOrd = reader.GetOrdinal("Date");
+        var orderCountOrd = reader.GetOrdinal("OrderCount");
+        var paidCountOrd = reader.GetOrdinal("PaidCount");
+        var salesAmountOrd = reader.GetOrdinal("SalesAmount");
 
-        var dateOrdinal = reader.GetOrdinal("Date");
-        var orderCountOrdinal = reader.GetOrdinal("OrderCount");
-        var paidCountOrdinal = reader.GetOrdinal("PaidCount");
-        var salesAmountOrdinal = reader.GetOrdinal("SalesAmount");
+        var points = new List<OrderStatisticPointDto>();
+        int totalOrder = 0;
+        int totalPaid = 0;
+        decimal totalSales = 0;
 
         while (await reader.ReadAsync(cancellationToken))
         {
             var point = new OrderStatisticPointDto(
-                Date: reader.GetDateTime(dateOrdinal),
-                OrderCount: reader.GetInt32(orderCountOrdinal),
-                PaidCount: reader.GetInt32(paidCountOrdinal),
-                SalesAmount: reader.GetDecimal(salesAmountOrdinal)
+                Date: reader.GetDateTime(dateOrd),
+                OrderCount: reader.GetInt32(orderCountOrd),
+                PaidCount: reader.GetInt32(paidCountOrd),
+                SalesAmount: reader.GetDecimal(salesAmountOrd)
             );
-        
             points.Add(point);
-            total_order += point.OrderCount;
-            total_paid_order += point.PaidCount;
-            total_sales_amount += point.SalesAmount;
+            totalOrder += point.OrderCount;
+            totalPaid += point.PaidCount;
+            totalSales += point.SalesAmount;
         }
 
-        avg_order_amount = total_order > 0
-            ? Math.Round(total_sales_amount / total_order, 2, MidpointRounding.AwayFromZero)
+        decimal avgOrderAmount = totalOrder > 0
+            ? Math.Round(totalSales / totalOrder, 2, MidpointRounding.AwayFromZero)
             : 0;
 
-        var result = new OrderStatisticsDto(
+        return new OrderStatisticsDto(
             Points: points,
-            OrderCount: total_order,
-            PaidCount: total_paid_order,
-            SalesAmount: total_sales_amount,
-            AvgOrderAmount: avg_order_amount);
-
-        return result;
+            OrderCount: totalOrder,
+            PaidCount: totalPaid,
+            SalesAmount: totalSales,
+            AvgOrderAmount: avgOrderAmount);
     }
-
+    
     public async Task<IReadOnlyList<TopProductDto>> GetTopProductsAsync(StatisticsQuery query, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync();

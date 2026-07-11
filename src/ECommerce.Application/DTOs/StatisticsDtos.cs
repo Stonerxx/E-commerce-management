@@ -1,9 +1,12 @@
+using ECommerce.Domain.Enums;
+
 namespace ECommerce.Application.DTOs;
 
 public sealed record StatisticsQuery(
     DateTime StartDate,
     DateTime EndDate,
-    string Dimension);
+    string Dimension,
+    OrderStatus? status = null);
 
 public sealed record DashboardSummaryDto(
     int TodayOrderCount,

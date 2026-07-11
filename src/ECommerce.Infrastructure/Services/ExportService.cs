@@ -26,6 +26,7 @@ class ExportService : IExportService
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync();
 
+
         // 1. 构建 SQL，左连接 PAYMENT 表获取支付时间和支付方式
         var sqlBuilder = new StringBuilder();
         sqlBuilder.AppendLine("SELECT");
@@ -33,7 +34,10 @@ class ExportService : IExportService
         sqlBuilder.AppendLine("    om.USER_ID AS UserId,");
         sqlBuilder.AppendLine("    om.STATUS AS Status,");
         sqlBuilder.AppendLine("    om.TOTAL_AMOUNT AS TotalAmount,");
-        sqlBuilder.AppendLine("    om.PAY_AMOUNT AS PayAmount,");
+        sqlBuilder.AppendLine("    CASE");
+        sqlBuilder.AppendLine("        WHEN om.STATUS IN (0, 4) THEN 0");
+        sqlBuilder.AppendLine("        ELSE NVL(om.PAY_AMOUNT, 0)");
+        sqlBuilder.AppendLine("    END AS PayAmount,");
         sqlBuilder.AppendLine("    om.CREATED_AT AS CreatedAt,");
         sqlBuilder.AppendLine("    p.PAID_AT AS PaymentTime,");
         sqlBuilder.AppendLine("    p.PAY_METHOD AS PayMethod");

@@ -3,10 +3,22 @@
 
     createApp({
         data() {
+            // 默认时间范围：最近30天
+            const now = new Date();
+            const thirtyDaysAgo = new Date(now);
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
             return {
                 loading: false,
                 errorMessage: "",
                 lastUpdated: "尚未加载",
+                // ===== 新增：筛选条件 =====
+                filters: {
+                    startDate: this.formatDateInput(thirtyDaysAgo),
+                    endDate: this.formatDateInput(now),
+                    dimension: "day",
+                    status: null // null 表示全部，数字对应 OrderStatus 枚举
+                },
                 summaryCards: [
                     {
                         key: "orders",
@@ -70,6 +82,7 @@
             }
         },
         methods: {
+            // ===== 刷新所有数据（使用当前筛选条件） =====
             async refreshAll() {
                 this.loading = true;
                 this.errorMessage = "";
@@ -88,6 +101,12 @@
                 }
             },
 
+            // ===== 点击“查询”按钮时调用 =====
+            async applyFilters() {
+                await this.refreshAll();
+            },
+
+            // ===== 通用 API 请求方法 =====
             async apiGet(url) {
                 const response = await fetch(url, { credentials: "same-origin" });
                 const payload = await response.json().catch(() => null);
@@ -99,6 +118,7 @@
                 return payload.data;
             },
 
+            // ===== 加载五个卡片（不变） =====
             async loadDashboardSummary() {
                 const data = await this.apiGet("/api/v1/admin/dashboard/summary");
                 this.summaryCards[0].value = String(data?.todayOrderCount ?? 0);
@@ -108,14 +128,16 @@
                 this.summaryCards[4].value = String(data?.pendingReviewCount ?? 0);
             },
 
+            // ===== 加载热销商品（使用筛选条件） =====
             async loadTopProducts() {
-                const params = this.buildRangeParams(30);
+                const params = this.buildFilterParams();
                 const data = await this.apiGet(`/api/v1/admin/statistics/top-products?${params}`);
                 this.topProducts = data || [];
             },
 
+            // ===== 加载趋势数据（使用筛选条件） =====
             async loadTrendData() {
-                const params = this.buildRangeParams(30);
+                const params = this.buildFilterParams();
                 const data = await this.apiGet(`/api/v1/admin/statistics/orders?${params}`);
                 const points = data?.points || [];
 
@@ -125,23 +147,67 @@
                 this.renderChart();
             },
 
-            buildRangeParams(days) {
-                const end = new Date();
-                const start = new Date();
-                start.setDate(start.getDate() - days);
-
-                return new URLSearchParams({
-                    startDate: this.formatDateInput(start),
-                    endDate: this.formatDateInput(end),
-                    dimension: "day"
-                });
+            // ===== 构建查询参数（核心：把 filters 转成 URL 参数） =====
+            buildFilterParams() {
+                const params = new URLSearchParams();
+                if (this.filters.startDate) {
+                    params.append("startDate", this.filters.startDate);
+                }
+                if (this.filters.endDate) {
+                    params.append("endDate", this.filters.endDate);
+                }
+                if (this.filters.dimension) {
+                    params.append("dimension", this.filters.dimension);
+                }
+                // 状态：如果选了具体状态，传数字；如果选了“全部”，不传（后端默认查全部）
+                if (this.filters.status !== null && this.filters.status !== undefined) {
+                    params.append("status", String(this.filters.status));
+                }
+                return params.toString();
             },
 
+            // ===== 导出订单（核心：使用当前筛选条件） =====
+            async exportOrders() {
+                try {
+                    const params = this.buildFilterParams();
+                    const response = await fetch(`/api/v1/admin/exports/orders?${params}`, {
+                        credentials: "same-origin"
+                    });
+                    const payload = await response.json();
+
+                    if (!payload.success) {
+                        this.errorMessage = payload.message || "导出失败";
+                        return;
+                    }
+
+                    // 从 FileExportDto 中取数据
+                    const fileData = payload.data;
+                    // 将 Base64 字符串转为字节数组
+                    const byteCharacters = atob(fileData.content);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: fileData.contentType });
+
+                    // 创建下载链接
+                    const link = document.createElement("a");
+                    link.href = URL.createObjectURL(blob);
+                    link.download = fileData.fileName;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(link.href);
+                } catch (error) {
+                    this.errorMessage = `导出失败：${error.message}`;
+                }
+            }, 
+
+            // ===== 渲染图表（不变） =====
             renderChart() {
                 const dom = document.getElementById("trendChart");
-                if (!dom) {
-                    return;
-                }
+                if (!dom) return;
 
                 if (!this.chartInstance) {
                     this.chartInstance = echarts.init(dom);
@@ -189,6 +255,7 @@
                 }
             },
 
+            // ===== 工具方法（不变） =====
             formatMoney(value) {
                 const amount = Number(value || 0);
                 return `¥${amount.toFixed(2)}`;
@@ -200,10 +267,7 @@
 
             formatShortDate(value) {
                 const date = new Date(value);
-                if (Number.isNaN(date.getTime())) {
-                    return "";
-                }
-
+                if (Number.isNaN(date.getTime())) return "";
                 return `${date.getMonth() + 1}/${date.getDate()}`;
             }
         }
