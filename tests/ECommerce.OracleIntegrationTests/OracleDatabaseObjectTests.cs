@@ -19,9 +19,12 @@ public class OracleDatabaseObjectTests
                   ('SP_REFRESH_ORDER_STAT_SNAPSHOT', 'PROCEDURE'),
                   ('V_PRODUCT_INVENTORY', 'VIEW'),
                   ('V_ORDER_REPORT', 'VIEW'),
+                  ('TRG_ORDER_ADDRESS_OWNER_GUARD', 'TRIGGER'),
+                  ('TRG_PAYMENT_AMOUNT_GUARD', 'TRIGGER'),
+                  ('TRG_ORDER_STATUS_FLOW_GUARD', 'TRIGGER'),
                   ('TRG_ORDER_PAID_UPDATE_SALES', 'TRIGGER'))");
 
-        Assert.Equal(5, Convert.ToInt32(await command.ExecuteScalarAsync()));
+        Assert.Equal(8, Convert.ToInt32(await command.ExecuteScalarAsync()));
     }
 
     [DevOracleFact]

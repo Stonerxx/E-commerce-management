@@ -144,7 +144,64 @@ LEFT JOIN LOGISTICS l ON l.order_id = om.id;
 /
 SHOW ERRORS VIEW V_ORDER_REPORT;
 
--- 5. 订单由待支付变为已支付时，按订单明细自动累计商品销量。
+-- 5. 订单必须引用其所属用户的有效地址，避免跨用户使用地址。
+CREATE OR REPLACE TRIGGER TRG_ORDER_ADDRESS_OWNER_GUARD
+BEFORE INSERT OR UPDATE OF user_id, address_id ON ORDER_MAIN
+FOR EACH ROW
+DECLARE
+    v_address_count NUMBER;
+BEGIN
+    SELECT COUNT(1)
+    INTO v_address_count
+    FROM ADDRESS
+    WHERE id = :NEW.address_id
+      AND user_id = :NEW.user_id
+      AND is_deleted = 0;
+
+    IF v_address_count = 0 THEN
+        RAISE_APPLICATION_ERROR(-20011, 'ORDER_MAIN address must belong to its user');
+    END IF;
+END;
+/
+SHOW ERRORS TRIGGER TRG_ORDER_ADDRESS_OWNER_GUARD;
+
+-- 6. 支付记录金额必须与订单的应付金额一致。
+CREATE OR REPLACE TRIGGER TRG_PAYMENT_AMOUNT_GUARD
+BEFORE INSERT OR UPDATE OF order_id, pay_amount ON PAYMENT
+FOR EACH ROW
+DECLARE
+    v_order_pay_amount ORDER_MAIN.pay_amount%TYPE;
+BEGIN
+    SELECT pay_amount
+    INTO v_order_pay_amount
+    FROM ORDER_MAIN
+    WHERE id = :NEW.order_id;
+
+    IF :NEW.pay_amount <> v_order_pay_amount THEN
+        RAISE_APPLICATION_ERROR(-20012, 'PAYMENT pay_amount must match ORDER_MAIN pay_amount');
+    END IF;
+END;
+/
+SHOW ERRORS TRIGGER TRG_PAYMENT_AMOUNT_GUARD;
+
+-- 7. 只允许项目定义的订单状态流转，阻止已取消订单被重新支付或发货。
+CREATE OR REPLACE TRIGGER TRG_ORDER_STATUS_FLOW_GUARD
+BEFORE UPDATE OF status ON ORDER_MAIN
+FOR EACH ROW
+BEGIN
+    IF :NEW.status <> :OLD.status
+       AND NOT (
+           (:OLD.status = 0 AND :NEW.status IN (1, 4))
+           OR (:OLD.status = 1 AND :NEW.status = 2)
+           OR (:OLD.status = 2 AND :NEW.status = 3)
+       ) THEN
+        RAISE_APPLICATION_ERROR(-20010, 'Invalid ORDER_MAIN status transition');
+    END IF;
+END;
+/
+SHOW ERRORS TRIGGER TRG_ORDER_STATUS_FLOW_GUARD;
+
+-- 8. 订单由待支付变为已支付时，按订单明细自动累计商品销量。
 CREATE OR REPLACE TRIGGER TRG_ORDER_PAID_UPDATE_SALES
 AFTER UPDATE OF status ON ORDER_MAIN
 FOR EACH ROW

@@ -7,7 +7,7 @@
 - [组员开工指南](docs/TEAM_GUIDE.md)：分支、运行、提交、PR 和日常协作流程。
 - [开发规范](docs/DEVELOPMENT_SPEC.md)：项目结构、接口规范、代码规范、API 格式、路由、事务和跨模块协作。
 - [Oracle 初始化脚本](migration/init_database.sql)：24 张业务表、约束和索引。
-- [Oracle 数据库对象脚本](migration/database_objects.sql)：库存函数、统计过程、报表视图和支付销量触发器。
+- [Oracle 数据库对象脚本](migration/database_objects.sql)：库存函数、统计过程、报表视图，以及订单一致性/销量触发器。
 
 ## 项目启动
 

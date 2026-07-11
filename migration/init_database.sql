@@ -420,6 +420,16 @@ CREATE TABLE ORDER_MAIN (
     CONSTRAINT fk_om_coupon FOREIGN KEY (user_coupon_id) REFERENCES USER_COUPON(id),
     CONSTRAINT uk_om_order_no UNIQUE (order_no),
     CONSTRAINT ch_om_status CHECK (status IN (0,1,2,3,4)),
+    CONSTRAINT ch_om_amount_consistency CHECK (
+        total_amount >= 0
+        AND discount_amount >= 0
+        AND discount_amount <= total_amount
+        AND pay_amount >= 0
+        AND (
+            (status = 4 AND pay_amount = 0)
+            OR (status IN (0,1,2,3) AND pay_amount = total_amount - discount_amount)
+        )
+    ),
     CONSTRAINT ch_om_receiver_json CHECK (receiver_snapshot IS JSON)
 );
 COMMENT ON TABLE ORDER_MAIN IS '订单主表';
@@ -431,7 +441,7 @@ COMMENT ON COLUMN ORDER_MAIN.user_coupon_id IS '优惠券领取ID，外键→use
 COMMENT ON COLUMN ORDER_MAIN.status IS '订单状态：0待支付，1已支付，2已发货，3已完成，4已取消';
 COMMENT ON COLUMN ORDER_MAIN.total_amount IS '商品总额';
 COMMENT ON COLUMN ORDER_MAIN.discount_amount IS '优惠金额';
-COMMENT ON COLUMN ORDER_MAIN.pay_amount IS '实付金额';
+COMMENT ON COLUMN ORDER_MAIN.pay_amount IS '待支付或实际支付金额；已取消订单必须为0';
 COMMENT ON COLUMN ORDER_MAIN.pay_expire_time IS '支付超时时间';
 COMMENT ON COLUMN ORDER_MAIN.receiver_snapshot IS '收货人快照，JSON格式';
 COMMENT ON COLUMN ORDER_MAIN.remark IS '买家备注';
@@ -451,7 +461,8 @@ CREATE TABLE ORDER_ITEM (
     subtotal           NUMBER(10,2) NOT NULL,
     CONSTRAINT fk_oi_order FOREIGN KEY (order_id) REFERENCES ORDER_MAIN(id),
     CONSTRAINT fk_oi_sku FOREIGN KEY (sku_id) REFERENCES SKU(id),
-    CONSTRAINT ch_order_item_quantity CHECK (quantity > 0)
+    CONSTRAINT ch_order_item_quantity CHECK (quantity > 0),
+    CONSTRAINT ch_order_item_amount CHECK (unit_price >= 0 AND subtotal = unit_price * quantity)
 );
 COMMENT ON TABLE ORDER_ITEM IS '订单明细表';
 COMMENT ON COLUMN ORDER_ITEM.id IS '明细ID，自增主键';
@@ -499,7 +510,15 @@ CREATE TABLE PAYMENT (
     callback_data   CLOB,
     CONSTRAINT fk_pay_order FOREIGN KEY (order_id) REFERENCES ORDER_MAIN(id),
     CONSTRAINT uk_pay_order UNIQUE (order_id),
-    CONSTRAINT ch_pay_status CHECK (status IN (0,1,2,3))
+    CONSTRAINT ch_pay_status CHECK (status IN (0,1,2,3)),
+    CONSTRAINT ch_pay_amount_nonnegative CHECK (pay_amount >= 0),
+    CONSTRAINT ch_pay_paid_at CHECK (
+        (status IN (0,2) AND paid_at IS NULL)
+        OR (status IN (1,3) AND paid_at IS NOT NULL)
+    ),
+    CONSTRAINT ch_pay_trade_no CHECK (
+        status IN (0,2) OR trade_no IS NOT NULL
+    )
 );
 COMMENT ON TABLE PAYMENT IS '支付记录表';
 COMMENT ON COLUMN PAYMENT.id IS '支付ID，自增主键';
