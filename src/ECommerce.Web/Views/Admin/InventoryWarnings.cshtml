@@ -22,15 +22,15 @@
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-12 col-lg-6">
-                    <input type="text" class="form-control" placeholder="搜索商品名称或 SKU..." v-model="keyword" v-on:keyup.enter="loadWarnings">
+                    <input type="text" class="form-control" placeholder="搜索商品名称或 SKU..." v-model="keyword" v-on:keyup.enter="loadWarnings()">
                 </div>
                 <div class="col-12 col-lg-3">
-                    <button class="btn btn-outline-primary w-100" v-on:click="loadWarnings">
+                    <button class="btn btn-outline-primary w-100" v-on:click="loadWarnings()">
                         <i class="bi bi-search"></i> 搜索
                     </button>
                 </div>
                 <div class="col-12 col-lg-3">
-                    <button class="btn btn-outline-secondary w-100" v-on:click="loadWarnings">
+                    <button class="btn btn-outline-secondary w-100" v-on:click="loadWarnings()">
                         <i class="bi bi-arrow-clockwise"></i> 刷新
                     </button>
                 </div>
@@ -55,7 +55,9 @@
                     <tr>
                         <th>商品</th>
                         <th>规格</th>
-                        <th>当前库存</th>
+                        <th>总库存</th>
+                        <th>锁定</th>
+                        <th>可用库存</th>
                         <th>预警阈值</th>
                         <th>状态</th>
                         <th style="width: 180px;">操作</th>
@@ -70,12 +72,14 @@
                         </td>
                         <td><code class="small">{{ row.specDesc }}</code></td>
                         <td>
-                            <span class="badge text-bg-danger">{{ row.stock }}</span>
+                            <span class="badge text-bg-secondary">{{ row.stock }}</span>
                         </td>
+                        <td>{{ row.lockedStock }}</td>
+                        <td><span class="badge text-bg-danger">{{ row.availableStock }}</span></td>
                         <td>{{ row.warningStock }}</td>
                         <td>
-                            <span class="badge" v-bind:class="row.stock === 0 ? 'text-bg-danger' : 'text-bg-warning'">
-                                {{ row.stock === 0 ? '缺货' : '库存不足' }}
+                            <span class="badge" v-bind:class="row.availableStock === 0 ? 'text-bg-danger' : 'text-bg-warning'">
+                                {{ row.availableStock === 0 ? '缺货' : '库存不足' }}
                             </span>
                         </td>
                         <td class="table-actions">

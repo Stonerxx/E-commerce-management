@@ -53,7 +53,8 @@ public sealed record SkuSaveRequest(
     int Stock,
     int WarningStock,
     string? SkuImage,
-    int Status);
+    int Status,
+    long? SkuId = null);
 
 public sealed record ProductQuery : PageQuery
 {
@@ -95,7 +96,8 @@ public sealed record SkuDto(
     int LockedStock,
     int WarningStock,
     string? SkuImage,
-    int Status);
+    int Status,
+    int ProductStatus = 1);
 
 public sealed record ProductDetailDto(
     long ProductId,

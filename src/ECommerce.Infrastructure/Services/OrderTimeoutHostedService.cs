@@ -69,7 +69,18 @@ public sealed class OrderTimeoutHostedService : IHostedService, IDisposable
         {
             while (await _timer.WaitForNextTickAsync(stoppingToken))
             {
-                await ProcessExpiredOrdersAsync(stoppingToken);
+                try
+                {
+                    await ProcessExpiredOrdersAsync(stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "本轮订单超时扫描失败，下轮继续执行");
+                }
             }
         }
         catch (OperationCanceledException)
@@ -120,13 +131,12 @@ public sealed class OrderTimeoutHostedService : IHostedService, IDisposable
 
                 // 调用 CancelAsync 取消订单
                 // userId: 订单归属者
-                // operatorId: 0 表示系统自动操作
-                // operatorName: "System" 表示系统
+                // 使用 init_database.sql 中的固定系统账号，保证 ORDER_LOG / OPERATION_LOG 外键有效。
                 await orderService.CancelAsync(
                     userId: order.UserId,
                     orderId: orderId,
-                    operatorId: 0,
-                    operatorName: "System",
+                    operatorId: 1,
+                    operatorName: "system",
                     reason: "支付超时自动取消",
                     ipAddress: "127.0.0.1",
                     cancellationToken: cancellationToken

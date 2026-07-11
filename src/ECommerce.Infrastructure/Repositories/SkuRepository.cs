@@ -17,7 +17,7 @@ public interface ISkuRepository
 
     Task<int> SetStatusAsync(long skuId, int status, CancellationToken cancellationToken = default);
 
-    Task<int> DeleteByProductAsync(long productId, CancellationToken cancellationToken = default);
+    Task<int> DeleteIfUnreferencedAsync(long skuId, CancellationToken cancellationToken = default);
 
     Task<int> LockStockAsync(long skuId, int quantity, string orderNo, CancellationToken cancellationToken = default);
 
@@ -38,7 +38,12 @@ public sealed class SkuRepository : ISkuRepository
     public async Task<Sku?> GetByIdAsync(long skuId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "SELECT \"ID\", \"PRODUCT_ID\", \"SPEC_DESC\", \"PRICE\", \"ORIGINAL_PRICE\", \"STOCK\", \"LOCKED_STOCK\", \"WARNING_STOCK\", \"SKU_IMAGE\", \"STATUS\", \"CREATED_AT\", \"UPDATED_AT\" FROM \"SKU\" WHERE \"ID\" = :skuId";
+        const string sql = """
+            SELECT s.\"ID\", s.\"PRODUCT_ID\", s.\"SPEC_DESC\", s.\"PRICE\", s.\"ORIGINAL_PRICE\", s.\"STOCK\", s.\"LOCKED_STOCK\", s.\"WARNING_STOCK\", s.\"SKU_IMAGE\", s.\"STATUS\", s.\"CREATED_AT\", s.\"UPDATED_AT\", p.\"STATUS\" AS \"PRODUCT_STATUS\"
+            FROM \"SKU\" s
+            INNER JOIN \"PRODUCT\" p ON p.\"ID\" = s.\"PRODUCT_ID\"
+            WHERE s.\"ID\" = :skuId
+            """;
 
         using var command = connection.CreateCommand();
         if (_unitOfWork.CurrentTransaction != null)
@@ -216,44 +221,15 @@ public sealed class SkuRepository : ISkuRepository
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    public async Task<int> DeleteByProductAsync(long productId, CancellationToken cancellationToken = default)
+    public async Task<int> DeleteIfUnreferencedAsync(long skuId, CancellationToken cancellationToken = default)
     {
-        // 安全删除：先禁用该商品下所有 SKU，对没有库存日志的 SKU 再硬删除
-        // 这样保留了有业务历史（INVENTORY_LOG 等子记录）的 SKU 记录
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        var now = DateTime.Now;
-
-        const string disableSql = """
-            UPDATE "SKU"
-            SET "STATUS" = 0, "UPDATED_AT" = :now
-            WHERE "PRODUCT_ID" = :productId
-            """;
-
-        using (var disableCmd = connection.CreateCommand())
-        {
-            if (_unitOfWork.CurrentTransaction != null)
-            {
-                disableCmd.Transaction = _unitOfWork.CurrentTransaction;
-            }
-            disableCmd.CommandText = disableSql;
-
-            var nowParam = disableCmd.CreateParameter();
-            nowParam.ParameterName = ":now";
-            nowParam.Value = now;
-            disableCmd.Parameters.Add(nowParam);
-
-            var productIdParam = disableCmd.CreateParameter();
-            productIdParam.ParameterName = ":productId";
-            productIdParam.Value = productId;
-            disableCmd.Parameters.Add(productIdParam);
-
-            await disableCmd.ExecuteNonQueryAsync(cancellationToken);
-        }
-
         const string deleteSql = """
             DELETE FROM "SKU"
-            WHERE "PRODUCT_ID" = :productId
+            WHERE "ID" = :skuId
               AND NOT EXISTS (SELECT 1 FROM "INVENTORY_LOG" WHERE "SKU_ID" = "SKU"."ID")
+              AND NOT EXISTS (SELECT 1 FROM "CART" WHERE "SKU_ID" = "SKU"."ID")
+              AND NOT EXISTS (SELECT 1 FROM "ORDER_ITEM" WHERE "SKU_ID" = "SKU"."ID")
             """;
 
         using var deleteCmd = connection.CreateCommand();
@@ -263,10 +239,10 @@ public sealed class SkuRepository : ISkuRepository
         }
         deleteCmd.CommandText = deleteSql;
 
-        var productIdParam2 = deleteCmd.CreateParameter();
-        productIdParam2.ParameterName = ":productId";
-        productIdParam2.Value = productId;
-        deleteCmd.Parameters.Add(productIdParam2);
+        var skuIdParam = deleteCmd.CreateParameter();
+        skuIdParam.ParameterName = ":skuId";
+        skuIdParam.Value = skuId;
+        deleteCmd.Parameters.Add(skuIdParam);
 
         return await deleteCmd.ExecuteNonQueryAsync(cancellationToken);
     }
@@ -433,6 +409,7 @@ public sealed class SkuRepository : ISkuRepository
             WarningStock = reader.GetInt32(reader.GetOrdinal("WARNING_STOCK")),
             SkuImage = reader.IsDBNull(reader.GetOrdinal("SKU_IMAGE")) ? null : reader.GetString(reader.GetOrdinal("SKU_IMAGE")),
             Status = reader.GetInt32(reader.GetOrdinal("STATUS")),
+            ProductStatus = reader.GetInt32(reader.GetOrdinal("PRODUCT_STATUS")),
             CreatedAt = reader.GetDateTime(reader.GetOrdinal("CREATED_AT")),
             UpdatedAt = reader.GetDateTime(reader.GetOrdinal("UPDATED_AT"))
         };

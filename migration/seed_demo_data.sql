@@ -61,13 +61,34 @@ INSERT INTO "ROLE" (id, role_name, description, created_at)
 VALUES (9003, 'USER', '演示普通用户', SYSDATE - 30);
 
 INSERT INTO "PERMISSION" (id, perm_name, resource_path, action, description)
-VALUES (9001, 'ADMIN_DASHBOARD_VIEW', '/admin/**', 'QUERY', '查看后台页面');
+VALUES (9001, 'ADMIN_UI_GET', '/admin/**', 'GET', '后台页面访问');
 
 INSERT INTO "PERMISSION" (id, perm_name, resource_path, action, description)
-VALUES (9002, 'ORDER_MANAGE', '/api/v1/admin/orders/**', 'UPDATE', '管理后台订单');
+VALUES (9002, 'ADMIN_API_GET', '/api/v1/admin/**', 'GET', '后台 API 查询兜底规则');
 
 INSERT INTO "PERMISSION" (id, perm_name, resource_path, action, description)
-VALUES (9003, 'CUSTOMER_ORDER', '/api/v1/orders/**', 'QUERY', '查看和操作本人订单');
+VALUES (9003, 'ADMIN_API_POST', '/api/v1/admin/**', 'POST', '后台 API 新增兜底规则');
+
+INSERT INTO "PERMISSION" (id, perm_name, resource_path, action, description)
+VALUES (9004, 'ADMIN_API_PUT', '/api/v1/admin/**', 'PUT', '后台 API 修改兜底规则');
+
+INSERT INTO "PERMISSION" (id, perm_name, resource_path, action, description)
+VALUES (9005, 'ADMIN_API_DELETE', '/api/v1/admin/**', 'DELETE', '后台 API 删除兜底规则');
+
+INSERT INTO "PERMISSION" (id, perm_name, resource_path, action, description)
+VALUES (9006, 'SERVICE_DASHBOARD_GET', '/api/v1/admin/dashboard/**', 'GET', '客服查看后台仪表盘');
+
+INSERT INTO "PERMISSION" (id, perm_name, resource_path, action, description)
+VALUES (9007, 'SERVICE_ORDERS_GET', '/api/v1/admin/orders/**', 'GET', '客服查看后台订单');
+
+INSERT INTO "PERMISSION" (id, perm_name, resource_path, action, description)
+VALUES (9008, 'SERVICE_SHIPMENT_POST', '/api/v1/admin/orders/*/shipments', 'POST', '客服发货');
+
+INSERT INTO "PERMISSION" (id, perm_name, resource_path, action, description)
+VALUES (9009, 'SERVICE_LOGISTICS_TRACK_POST', '/api/v1/admin/logistics/*/tracks', 'POST', '客服追加物流轨迹');
+
+INSERT INTO "PERMISSION" (id, perm_name, resource_path, action, description)
+VALUES (9010, 'CUSTOMER_ORDER_GET', '/api/v1/orders/**', 'GET', '用户查看本人订单');
 
 INSERT INTO USER_ROLE (id, user_id, role_id, assigned_at)
 VALUES (9001, 9001, 9001, SYSDATE - 30);
@@ -91,13 +112,40 @@ INSERT INTO ROLE_PERMISSION (id, role_id, permission_id, created_at)
 VALUES (9003, 9001, 9003, SYSDATE - 30);
 
 INSERT INTO ROLE_PERMISSION (id, role_id, permission_id, created_at)
-VALUES (9004, 9002, 9001, SYSDATE - 30);
+VALUES (9004, 9001, 9004, SYSDATE - 30);
 
 INSERT INTO ROLE_PERMISSION (id, role_id, permission_id, created_at)
-VALUES (9005, 9002, 9002, SYSDATE - 30);
+VALUES (9005, 9001, 9005, SYSDATE - 30);
 
 INSERT INTO ROLE_PERMISSION (id, role_id, permission_id, created_at)
-VALUES (9006, 9003, 9003, SYSDATE - 30);
+VALUES (9006, 9001, 9006, SYSDATE - 30);
+
+INSERT INTO ROLE_PERMISSION (id, role_id, permission_id, created_at)
+VALUES (9007, 9001, 9007, SYSDATE - 30);
+
+INSERT INTO ROLE_PERMISSION (id, role_id, permission_id, created_at)
+VALUES (9008, 9001, 9008, SYSDATE - 30);
+
+INSERT INTO ROLE_PERMISSION (id, role_id, permission_id, created_at)
+VALUES (9009, 9001, 9009, SYSDATE - 30);
+
+INSERT INTO ROLE_PERMISSION (id, role_id, permission_id, created_at)
+VALUES (9010, 9002, 9001, SYSDATE - 30);
+
+INSERT INTO ROLE_PERMISSION (id, role_id, permission_id, created_at)
+VALUES (9011, 9002, 9006, SYSDATE - 30);
+
+INSERT INTO ROLE_PERMISSION (id, role_id, permission_id, created_at)
+VALUES (9012, 9002, 9007, SYSDATE - 30);
+
+INSERT INTO ROLE_PERMISSION (id, role_id, permission_id, created_at)
+VALUES (9013, 9002, 9008, SYSDATE - 30);
+
+INSERT INTO ROLE_PERMISSION (id, role_id, permission_id, created_at)
+VALUES (9014, 9002, 9009, SYSDATE - 30);
+
+INSERT INTO ROLE_PERMISSION (id, role_id, permission_id, created_at)
+VALUES (9015, 9003, 9010, SYSDATE - 30);
 
 PROMPT Insert addresses...
 

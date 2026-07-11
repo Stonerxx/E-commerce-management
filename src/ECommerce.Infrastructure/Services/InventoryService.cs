@@ -2,20 +2,13 @@ using System.Data.Common;
 using ECommerce.Application.DTOs;
 using ECommerce.Application.Services;
 using ECommerce.Domain.Entities;
+using ECommerce.Domain.Enums;
 using ECommerce.Infrastructure.Repositories;
 using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Contracts;
 using ECommerce.Shared.Exceptions;
 
 namespace ECommerce.Infrastructure.Services;
-
-public static class InventoryChangeTypes
-{
-    public const string AdminAdjust = "ADJUST";
-    public const string OrderLock = "ADJUST";
-    public const string OrderRelease = "CANCEL";
-    public const string OrderDeduct = "SALE";
-}
 
 public sealed class InventoryService : IInventoryService
 {
@@ -52,9 +45,9 @@ public sealed class InventoryService : IInventoryService
             var beforeStock = sku.Stock;
             var afterStock = sku.Stock + request.ChangeQty;
 
-            if (afterStock < 0)
+            if (afterStock < 0 || afterStock < sku.LockedStock)
             {
-                throw new BusinessException("INVENTORY_INSUFFICIENT", "库存不足，调整后库存不能为负数");
+                throw new BusinessException("INVENTORY_INSUFFICIENT", "库存不足，调整后库存不能小于锁定库存");
             }
 
             sku.Stock = afterStock;
@@ -64,7 +57,7 @@ public sealed class InventoryService : IInventoryService
             var log = new InventoryLog
             {
                 SkuId = skuId,
-                ChangeType = InventoryChangeTypes.AdminAdjust,
+                ChangeType = InventoryChangeType.Adjust,
                 ChangeQty = request.ChangeQty,
                 BeforeStock = beforeStock,
                 AfterStock = afterStock,
@@ -91,35 +84,35 @@ public sealed class InventoryService : IInventoryService
             return;
         }
 
-        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        var ownsTransaction = _unitOfWork.CurrentTransaction is null;
+        if (ownsTransaction)
+        {
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        }
+
         try
         {
             foreach (var item in items)
             {
-                var sku = await _skuRepository.GetByIdAsync(item.SkuId, cancellationToken);
-                if (sku == null)
+                var affectedRows = await _skuRepository.LockStockAsync(
+                    item.SkuId,
+                    item.Quantity,
+                    orderId.ToString(),
+                    cancellationToken);
+                if (affectedRows != 1)
                 {
-                    throw new BusinessException("SKU_NOT_FOUND", $"SKU {item.SkuId} 不存在");
+                    throw new BusinessException("INVENTORY_INSUFFICIENT", $"SKU {item.SkuId} 库存不足或状态已变化");
                 }
 
-                var availableStock = sku.Stock - sku.LockedStock;
-                if (availableStock < item.Quantity)
-                {
-                    throw new BusinessException("INVENTORY_INSUFFICIENT", $"SKU {sku.Id} 库存不足，可用库存: {availableStock}，需要: {item.Quantity}");
-                }
-
-                var beforeStock = sku.Stock;
-                sku.LockedStock += item.Quantity;
-                sku.UpdatedAt = DateTime.Now;
-                await _skuRepository.UpdateAsync(sku, cancellationToken);
+                var sku = await GetUpdatedSkuAsync(item.SkuId, cancellationToken);
 
                 var log = new InventoryLog
                 {
                     SkuId = item.SkuId,
-                    ChangeType = InventoryChangeTypes.OrderLock,
+                    ChangeType = InventoryChangeType.OrderLock,
                     ChangeQty = item.Quantity,
-                    BeforeStock = beforeStock,
-                    AfterStock = beforeStock,
+                    BeforeStock = sku.Stock,
+                    AfterStock = sku.Stock,
                     OperatorId = null,
                     RefOrderId = orderId,
                     Remark = $"订单锁定库存: {orderId}",
@@ -128,11 +121,18 @@ public sealed class InventoryService : IInventoryService
                 await _inventoryLogRepository.CreateAsync(log, cancellationToken);
             }
 
-            await _unitOfWork.CommitAsync(cancellationToken);
+            if (ownsTransaction)
+            {
+                await _unitOfWork.CommitAsync(cancellationToken);
+            }
         }
         catch
         {
-            await _unitOfWork.RollbackAsync(cancellationToken);
+            if (ownsTransaction)
+            {
+                await _unitOfWork.RollbackAsync(cancellationToken);
+            }
+
             throw;
         }
     }
@@ -144,34 +144,31 @@ public sealed class InventoryService : IInventoryService
             return;
         }
 
-        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        var ownsTransaction = _unitOfWork.CurrentTransaction is null;
+        if (ownsTransaction)
+        {
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        }
+
         try
         {
             foreach (var item in items)
             {
-                var sku = await _skuRepository.GetByIdAsync(item.SkuId, cancellationToken);
-                if (sku == null)
+                var affectedRows = await _skuRepository.ReleaseStockAsync(item.SkuId, item.Quantity, cancellationToken);
+                if (affectedRows != 1)
                 {
-                    throw new BusinessException("SKU_NOT_FOUND", $"SKU {item.SkuId} 不存在");
+                    throw new BusinessException("INVENTORY_LOCKED_INSUFFICIENT", $"SKU {item.SkuId} 锁定库存不足或状态已变化");
                 }
 
-                if (sku.LockedStock < item.Quantity)
-                {
-                    throw new BusinessException("INVENTORY_LOCKED_INSUFFICIENT", $"SKU {sku.Id} 锁定库存不足，锁定库存: {sku.LockedStock}，需要释放: {item.Quantity}");
-                }
-
-                var beforeStock = sku.Stock;
-                sku.LockedStock -= item.Quantity;
-                sku.UpdatedAt = DateTime.Now;
-                await _skuRepository.UpdateAsync(sku, cancellationToken);
+                var sku = await GetUpdatedSkuAsync(item.SkuId, cancellationToken);
 
                 var log = new InventoryLog
                 {
                     SkuId = item.SkuId,
-                    ChangeType = InventoryChangeTypes.OrderRelease,
+                    ChangeType = InventoryChangeType.OrderRelease,
                     ChangeQty = -item.Quantity,
-                    BeforeStock = beforeStock,
-                    AfterStock = beforeStock,
+                    BeforeStock = sku.Stock,
+                    AfterStock = sku.Stock,
                     OperatorId = null,
                     RefOrderId = orderId,
                     Remark = $"订单取消释放库存: {orderId}",
@@ -180,11 +177,18 @@ public sealed class InventoryService : IInventoryService
                 await _inventoryLogRepository.CreateAsync(log, cancellationToken);
             }
 
-            await _unitOfWork.CommitAsync(cancellationToken);
+            if (ownsTransaction)
+            {
+                await _unitOfWork.CommitAsync(cancellationToken);
+            }
         }
         catch
         {
-            await _unitOfWork.RollbackAsync(cancellationToken);
+            if (ownsTransaction)
+            {
+                await _unitOfWork.RollbackAsync(cancellationToken);
+            }
+
             throw;
         }
     }
@@ -196,34 +200,30 @@ public sealed class InventoryService : IInventoryService
             return;
         }
 
-        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        var ownsTransaction = _unitOfWork.CurrentTransaction is null;
+        if (ownsTransaction)
+        {
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        }
+
         try
         {
             foreach (var item in items)
             {
-                var sku = await _skuRepository.GetByIdAsync(item.SkuId, cancellationToken);
-                if (sku == null)
+                var affectedRows = await _skuRepository.DeductStockAsync(item.SkuId, item.Quantity, cancellationToken);
+                if (affectedRows != 1)
                 {
-                    throw new BusinessException("SKU_NOT_FOUND", $"SKU {item.SkuId} 不存在");
+                    throw new BusinessException("INVENTORY_LOCKED_INSUFFICIENT", $"SKU {item.SkuId} 锁定库存不足或状态已变化");
                 }
 
-                if (sku.LockedStock < item.Quantity)
-                {
-                    throw new BusinessException("INVENTORY_LOCKED_INSUFFICIENT", $"SKU {sku.Id} 锁定库存不足，锁定库存: {sku.LockedStock}，需要扣减: {item.Quantity}");
-                }
-
-                var beforeStock = sku.Stock;
-                sku.Stock -= item.Quantity;
-                sku.LockedStock -= item.Quantity;
-                sku.UpdatedAt = DateTime.Now;
-                await _skuRepository.UpdateAsync(sku, cancellationToken);
+                var sku = await GetUpdatedSkuAsync(item.SkuId, cancellationToken);
 
                 var log = new InventoryLog
                 {
                     SkuId = item.SkuId,
-                    ChangeType = InventoryChangeTypes.OrderDeduct,
+                    ChangeType = InventoryChangeType.OrderDeduct,
                     ChangeQty = -item.Quantity,
-                    BeforeStock = beforeStock,
+                    BeforeStock = sku.Stock + item.Quantity,
                     AfterStock = sku.Stock,
                     OperatorId = null,
                     RefOrderId = orderId,
@@ -233,11 +233,18 @@ public sealed class InventoryService : IInventoryService
                 await _inventoryLogRepository.CreateAsync(log, cancellationToken);
             }
 
-            await _unitOfWork.CommitAsync(cancellationToken);
+            if (ownsTransaction)
+            {
+                await _unitOfWork.CommitAsync(cancellationToken);
+            }
         }
         catch
         {
-            await _unitOfWork.RollbackAsync(cancellationToken);
+            if (ownsTransaction)
+            {
+                await _unitOfWork.RollbackAsync(cancellationToken);
+            }
+
             throw;
         }
     }
@@ -255,16 +262,23 @@ public sealed class InventoryService : IInventoryService
         sql.Append("SELECT s.id, s.product_id, p.name as product_name, s.spec_desc, s.stock, s.locked_stock, s.warning_stock ");
         sql.Append("FROM SKU s ");
         sql.Append("INNER JOIN PRODUCT p ON s.product_id = p.id ");
-        sql.Append("WHERE s.stock <= s.warning_stock AND s.status = 1 ");
-        sql.Append("ORDER BY s.stock ASC ");
+        sql.Append("WHERE s.stock - s.locked_stock <= s.warning_stock AND s.status = 1 AND p.status = 1 ");
+        sql.Append("ORDER BY s.stock - s.locked_stock ASC ");
 
-        const string countSql = "SELECT COUNT(*) FROM SKU WHERE stock <= warning_stock AND status = 1";
+        const string countSql = """
+            SELECT COUNT(*)
+            FROM SKU s
+            INNER JOIN PRODUCT p ON s.product_id = p.id
+            WHERE s.stock - s.locked_stock <= s.warning_stock
+              AND s.status = 1
+              AND p.status = 1
+            """;
 
         using var countCommand = connection.CreateCommand();
         countCommand.CommandText = countSql;
         var totalCount = Convert.ToInt32(await countCommand.ExecuteScalarAsync(cancellationToken));
 
-        var offset = (query.PageIndex - 1) * query.PageSize;
+        var offset = (query.SafePageIndex - 1) * query.SafePageSize;
         sql.Append("OFFSET :offset ROWS FETCH NEXT :pageSize ROWS ONLY");
 
         using var command = connection.CreateCommand();
@@ -277,7 +291,7 @@ public sealed class InventoryService : IInventoryService
 
         var pageSizeParam = command.CreateParameter();
         pageSizeParam.ParameterName = ":pageSize";
-        pageSizeParam.Value = query.PageSize;
+        pageSizeParam.Value = query.SafePageSize;
         command.Parameters.Add(pageSizeParam);
 
         var items = new List<InventoryWarningDto>();
@@ -287,7 +301,7 @@ public sealed class InventoryService : IInventoryService
             items.Add(MapToWarningDto(reader));
         }
 
-        return new PagedResult<InventoryWarningDto>(items, query.PageIndex, query.PageSize, totalCount);
+        return new PagedResult<InventoryWarningDto>(items, query.SafePageIndex, query.SafePageSize, totalCount);
     }
 
     private static InventoryWarningDto MapToWarningDto(DbDataReader reader)
@@ -301,5 +315,11 @@ public sealed class InventoryService : IInventoryService
             LockedStock: reader.GetInt32(reader.GetOrdinal("locked_stock")),
             WarningStock: reader.GetInt32(reader.GetOrdinal("warning_stock"))
         );
+    }
+
+    private async Task<Sku> GetUpdatedSkuAsync(long skuId, CancellationToken cancellationToken)
+    {
+        return await _skuRepository.GetByIdAsync(skuId, cancellationToken)
+            ?? throw new BusinessException("SKU_NOT_FOUND", $"SKU {skuId} 不存在");
     }
 }

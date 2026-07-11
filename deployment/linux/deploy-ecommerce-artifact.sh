@@ -11,7 +11,7 @@ PUBLISH_BAD="${PUBLISH_BAD:-/var/www/ecommerce-bad}"
 APP_OWNER="${APP_OWNER:-www-data:www-data}"
 
 HOME_URL="${HOME_URL:-http://127.0.0.1:5000/}"
-HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:5000/health}"
+HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:5000/health/ready}"
 
 usage() {
   cat <<'EOF'
@@ -49,9 +49,11 @@ show_service_tail() {
 }
 
 wait_for_health() {
-  local attempt
+  local attempt body
   for attempt in {1..15}; do
-    if curl -fsS "$HEALTH_URL" >/dev/null; then
+    if body="$(curl -fsSL --max-time 10 "$HEALTH_URL")" \
+      && grep -Eq '"success"[[:space:]]*:[[:space:]]*true' <<<"$body" \
+      && grep -Eq '"connected"[[:space:]]*:[[:space:]]*true' <<<"$body"; then
       return 0
     fi
     sleep 2

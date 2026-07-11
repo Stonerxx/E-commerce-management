@@ -1,6 +1,7 @@
 using ECommerce.Shared.Contracts;
 using ECommerce.Shared.Errors;
 using ECommerce.Shared.Exceptions;
+using ECommerce.Web.Errors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Oracle.ManagedDataAccess.Client;
@@ -25,8 +26,11 @@ public sealed class ApiExceptionFilter : IExceptionFilter
 
         if (context.Exception is BusinessException businessException)
         {
-            context.Result = new BadRequestObjectResult(
-                ApiResponse<object?>.Fail(businessException.Code, businessException.Message, traceId));
+            context.Result = new ObjectResult(
+                ApiResponse<object?>.Fail(businessException.Code, businessException.Message, traceId))
+            {
+                StatusCode = BusinessExceptionStatusMapper.GetStatusCode(businessException.Code)
+            };
             context.ExceptionHandled = true;
             return;
         }
@@ -38,6 +42,17 @@ public sealed class ApiExceptionFilter : IExceptionFilter
                 ApiResponse<object?>.Fail("ORACLE_DATABASE_ERROR", "数据库访问失败，请检查网络、环境变量或SQL语句", traceId))
             {
                 StatusCode = StatusCodes.Status500InternalServerError
+            };
+            context.ExceptionHandled = true;
+            return;
+        }
+
+        if (context.Exception is UnauthorizedAccessException)
+        {
+            context.Result = new ObjectResult(
+                ApiResponse<object?>.Fail("UNAUTHORIZED", "登录状态无效或已失效", traceId))
+            {
+                StatusCode = StatusCodes.Status401Unauthorized
             };
             context.ExceptionHandled = true;
             return;

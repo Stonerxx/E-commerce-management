@@ -26,18 +26,15 @@ public class CouponRepository : ICouponRepository
         await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         
         var whereBuilder = new StringBuilder("WHERE 1=1");
-        var parameters = new List<DbParameter>();
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             whereBuilder.Append(" AND name LIKE :Keyword");
-            parameters.Add(CreateParameter("Keyword", $"%{keyword}%"));
         }
 
         if (status.HasValue)
         {
             whereBuilder.Append(" AND status = :Status");
-            parameters.Add(CreateParameter("Status", status.Value));
         }
 
         string where = whereBuilder.ToString();
@@ -47,7 +44,7 @@ public class CouponRepository : ICouponRepository
         await using var cmdCount = Connection.CreateCommand();
         cmdCount.CommandText = countSql;
         cmdCount.Transaction = Transaction;
-        foreach (var p in parameters) cmdCount.Parameters.Add(p);
+        AddTemplateQueryParameters(cmdCount, keyword, status);
 
         long totalCount = Convert.ToInt64(await cmdCount.ExecuteScalarAsync(cancellationToken));
         if (totalCount == 0)
@@ -73,14 +70,12 @@ public class CouponRepository : ICouponRepository
             ORDER BY id DESC
             OFFSET :Offset ROWS FETCH NEXT :PageSize ROWS ONLY";
 
-        var dataParams = new List<DbParameter>(parameters);
-        dataParams.Add(CreateParameter("Offset", offset));
-        dataParams.Add(CreateParameter("PageSize", pageSize));
-
         await using var cmdData = Connection.CreateCommand();
         cmdData.CommandText = dataSql;
         cmdData.Transaction = Transaction;
-        foreach (var p in dataParams) cmdData.Parameters.Add(p);
+        AddTemplateQueryParameters(cmdData, keyword, status);
+        cmdData.Parameters.Add(CreateParameter("Offset", offset));
+        cmdData.Parameters.Add(CreateParameter("PageSize", pageSize));
 
         var items = new List<CouponTemplate>();
         await using var reader = await cmdData.ExecuteReaderAsync(cancellationToken);
@@ -217,6 +212,18 @@ public class CouponRepository : ICouponRepository
             ValidEndTime = reader.GetDateTime(reader.GetOrdinal("valid_end_time")),
             Status = reader.GetInt32(reader.GetOrdinal("status"))
         };
+    }
+
+    private static void AddTemplateQueryParameters(DbCommand command, string? keyword, int? status)
+    {
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            command.Parameters.Add(CreateParameter("Keyword", $"%{keyword}%"));
+        }
+        if (status.HasValue)
+        {
+            command.Parameters.Add(CreateParameter("Status", status.Value));
+        }
     }
 
     private static DbParameter CreateParameter(string name, object? value)

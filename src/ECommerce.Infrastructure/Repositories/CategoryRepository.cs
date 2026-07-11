@@ -121,7 +121,7 @@ public sealed class CategoryRepository : ICategoryRepository
         const string sql = """
             UPDATE "CATEGORY" 
             SET "PARENT_ID" = :parentId, "NAME" = :name, "TREE_LEVEL" = :treeLevel, "SORT_ORDER" = :sortOrder, 
-                "STATUS" = :status, "ICON_URL" = :iconUrl, "CREATED_AT" = :createdAt
+                "STATUS" = :status, "ICON_URL" = :iconUrl
             WHERE "ID" = :categoryId
             """;
 
@@ -132,7 +132,7 @@ public sealed class CategoryRepository : ICategoryRepository
         }
         command.CommandText = sql;
 
-        AddParameters(command, category);
+        AddParameters(command, category, includeCreatedAt: false);
 
         var idParam = command.CreateParameter();
         idParam.ParameterName = ":categoryId";
@@ -204,7 +204,7 @@ public sealed class CategoryRepository : ICategoryRepository
         return count > 0;
     }
 
-    private static void AddParameters(DbCommand command, Category category)
+    private static void AddParameters(DbCommand command, Category category, bool includeCreatedAt = true)
     {
         var parentIdParam = command.CreateParameter();
         parentIdParam.ParameterName = ":parentId";
@@ -236,10 +236,13 @@ public sealed class CategoryRepository : ICategoryRepository
         iconUrlParam.Value = string.IsNullOrEmpty(category.IconUrl) ? DBNull.Value : (object)category.IconUrl;
         command.Parameters.Add(iconUrlParam);
 
-        var createdAtParam = command.CreateParameter();
-        createdAtParam.ParameterName = ":createdAt";
-        createdAtParam.Value = category.CreatedAt;
-        command.Parameters.Add(createdAtParam);
+        if (includeCreatedAt)
+        {
+            var createdAtParam = command.CreateParameter();
+            createdAtParam.ParameterName = ":createdAt";
+            createdAtParam.Value = category.CreatedAt;
+            command.Parameters.Add(createdAtParam);
+        }
     }
 
     private static Category MapFromReader(DbDataReader reader)

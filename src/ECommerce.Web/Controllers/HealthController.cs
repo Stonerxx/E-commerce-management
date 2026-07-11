@@ -17,8 +17,9 @@ public sealed class HealthController : ControllerBase
     }
 
     [HttpGet("/health")]
+    [HttpGet("/health/live")]
     [AllowAnonymous]
-    public ActionResult<ApiResponse<object>> Health()
+    public ActionResult<ApiResponse<object>> Live()
     {
         var payload = new
         {
@@ -28,6 +29,25 @@ public sealed class HealthController : ControllerBase
         };
 
         return Ok(ApiResponse<object>.Ok(payload, HttpContext.TraceIdentifier));
+    }
+
+    [HttpGet("/health/ready")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApiResponse<DatabaseCheckResult>>> Ready(CancellationToken cancellationToken)
+    {
+        var result = await _databaseHealthCheck.CheckAsync(cancellationToken);
+        if (result.Configured && result.Connected)
+        {
+            return Ok(ApiResponse<DatabaseCheckResult>.Ok(result, HttpContext.TraceIdentifier));
+        }
+
+        return StatusCode(
+            StatusCodes.Status503ServiceUnavailable,
+            ApiResponse<DatabaseCheckResult>.Fail(
+                "DATABASE_UNAVAILABLE",
+                "数据库未就绪",
+                HttpContext.TraceIdentifier,
+                result));
     }
 
     [HttpGet("/api/v1/system/version")]

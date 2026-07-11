@@ -15,7 +15,7 @@
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-12 col-lg-4">
-                    <input type="text" class="form-control" placeholder="搜索商品名称或 SKU..." v-model="keyword" v-on:keyup.enter="loadSkus">
+                    <input type="text" class="form-control" placeholder="搜索商品名称或 SKU..." v-model="keyword" v-on:keyup.enter="loadSkus()">
                 </div>
                 <div class="col-12 col-lg-3">
                     <select class="form-select" v-model.number="status">
@@ -31,7 +31,7 @@
                     </select>
                 </div>
                 <div class="col-12 col-lg-3">
-                    <button class="btn btn-outline-primary w-100" v-on:click="loadSkus">
+                    <button class="btn btn-outline-primary w-100" v-on:click="loadSkus()">
                         <i class="bi bi-search"></i> 搜索
                     </button>
                 </div>
@@ -134,7 +134,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">调整类型</label>
-                        <select class="form-select" v-model="adjustForm.changeType">
+                        <select class="form-select" v-model.number="adjustForm.changeType">
                             <option value="1">入库（增加）</option>
                             <option value="2">出库（减少）</option>
                             <option value="3">盘点（设置）</option>

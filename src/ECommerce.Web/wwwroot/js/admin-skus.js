@@ -51,14 +51,15 @@
             }
 
             async function loadSkus(page = 1) {
-                pagination.value.currentPage = page;
+                const pageNum = typeof page === 'number' && !isNaN(page) && page > 0 ? page : 1;
+                pagination.value.currentPage = pageNum;
                 loading.value = true;
                 try {
                     // 1. 加载所有商品用于展示名称
                     const productList = [];
                     let productPage = 1;
                     while (true) {
-                        const resp = await fetch(`/api/v1/admin/products?page=${productPage}&pageSize=100`, {
+                        const resp = await fetch(`/api/v1/admin/products?pageIndex=${productPage}&pageSize=100`, {
                             headers: { 'Accept': 'application/json' }
                         });
                         const data = await resp.json();
@@ -104,15 +105,28 @@
                         );
                     }
                     if (status.value != null) filtered = filtered.filter(r => r.status === status.value);
-                    if (lowStock.value === 1) filtered = filtered.filter(r => r.stock <= r.warningStock);
+                    if (lowStock.value === 1) filtered = filtered.filter(
+                        r => r.stock - r.lockedStock <= r.warningStock);
 
-                    // 4. 分页
+                    // 4. 分页（搜索或筛选后重置到第1页）
                     const total = filtered.length;
                     const totalPages = Math.max(1, Math.ceil(total / pagination.value.pageSize));
-                    const start = (page - 1) * pagination.value.pageSize;
+                    const targetPage = Math.min(pageNum, totalPages);
+                    const start = (targetPage - 1) * pagination.value.pageSize;
                     rows.value = filtered.slice(start, start + pagination.value.pageSize);
                     pagination.value.total = total;
                     pagination.value.totalPages = totalPages;
+                    pagination.value.currentPage = targetPage;
+
+                    const hashMatch = /^#adjust-(\d+)$/.exec(window.location.hash);
+                    if (hashMatch) {
+                        const targetSkuId = Number(hashMatch[1]);
+                        const targetSku = allSkus.find(sku => sku.skuId === targetSkuId);
+                        if (targetSku) {
+                            openAdjustModal(targetSku);
+                            history.replaceState(null, '', window.location.pathname);
+                        }
+                    }
                 } catch (err) {
                     console.error('加载SKU失败:', err);
                     alert('加载SKU失败：' + err.message);

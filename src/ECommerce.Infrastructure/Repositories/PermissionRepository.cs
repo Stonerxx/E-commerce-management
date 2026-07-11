@@ -201,26 +201,32 @@ public sealed class PermissionRepository : IPermissionRepository
         }
     }
 
-    public async Task<bool> PermissionRuleExistsAsync(string requestPath, string httpMethod, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<PermissionDto>> GetPermissionRulesByActionAsync(string action, CancellationToken cancellationToken = default)
     {
+        var permissions = new List<Permission>();
         var connection = await GetConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.BindByName = true;
         AttachTransaction(command);
-        command.CommandText = $"""
-            SELECT COUNT(1)
-            FROM PERMISSION p
-            WHERE {BuildPermissionMatchCondition("p")}
+        command.CommandText = """
+            SELECT id, perm_name, resource_path, action, description
+            FROM PERMISSION
+            WHERE UPPER(action) = UPPER(:action)
             """;
-        AddPermissionMatchParameters(command, requestPath, httpMethod);
+        command.Parameters.Add(new OracleParameter("action", action));
 
-        return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)) > 0;
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            permissions.Add(MapPermission(reader));
+        }
+
+        return permissions.Select(ToDto).ToArray();
     }
 
-    public async Task<bool> HasRolePermissionAsync(
+    public async Task<IReadOnlyList<PermissionDto>> GetRolePermissionRulesByActionAsync(
         IReadOnlyList<string> roleNames,
-        string requestPath,
-        string httpMethod,
+        string action,
         CancellationToken cancellationToken = default)
     {
         var normalizedRoles = roleNames
@@ -231,21 +237,22 @@ public sealed class PermissionRepository : IPermissionRepository
 
         if (normalizedRoles.Length == 0)
         {
-            return false;
+            return Array.Empty<PermissionDto>();
         }
 
+        var permissions = new List<Permission>();
         var roleParameters = normalizedRoles.Select((_, index) => $":role{index}").ToArray();
         var connection = await GetConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.BindByName = true;
         AttachTransaction(command);
         command.CommandText = $"""
-            SELECT COUNT(1)
+            SELECT p.id, p.perm_name, p.resource_path, p.action, p.description
             FROM "ROLE" r
             JOIN ROLE_PERMISSION rp ON rp.role_id = r.id
             JOIN PERMISSION p ON p.id = rp.permission_id
             WHERE r.role_name IN ({string.Join(", ", roleParameters)})
-              AND {BuildPermissionMatchCondition("p")}
+              AND UPPER(p.action) = UPPER(:action)
             """;
 
         for (var i = 0; i < normalizedRoles.Length; i++)
@@ -253,8 +260,14 @@ public sealed class PermissionRepository : IPermissionRepository
             command.Parameters.Add(new OracleParameter($"role{i}", normalizedRoles[i]));
         }
 
-        AddPermissionMatchParameters(command, requestPath, httpMethod);
-        return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)) > 0;
+        command.Parameters.Add(new OracleParameter("action", action));
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            permissions.Add(MapPermission(reader));
+        }
+
+        return permissions.Select(ToDto).ToArray();
     }
 
     private async Task<OracleConnection> GetConnectionAsync(CancellationToken cancellationToken)
@@ -308,39 +321,10 @@ public sealed class PermissionRepository : IPermissionRepository
         return false;
     }
 
-    private static string BuildPermissionMatchCondition(string alias)
-    {
-        return $"""
-               (
-                   LOWER(:request_path) = LOWER({alias}.resource_path)
-                   OR ({alias}.resource_path LIKE '%/**' AND LOWER(:request_path) LIKE LOWER(REPLACE({alias}.resource_path, '/**', '%')))
-                   OR ({alias}.resource_path LIKE '%/*' AND LOWER(:request_path) LIKE LOWER(REPLACE({alias}.resource_path, '/*', '/%')))
-               )
-               AND (
-                   {alias}.action IS NULL
-                   OR UPPER({alias}.action) = UPPER(:http_method)
-                   OR {alias}.action = :action_name
-               )
-               """;
-    }
-
-    private static void AddPermissionMatchParameters(OracleCommand command, string requestPath, string httpMethod)
-    {
-        command.Parameters.Add(new OracleParameter("request_path", requestPath));
-        command.Parameters.Add(new OracleParameter("http_method", httpMethod));
-        command.Parameters.Add(new OracleParameter("action_name", ToActionName(httpMethod)));
-    }
-
-    private static string ToActionName(string httpMethod)
-    {
-        return httpMethod.ToUpperInvariant() switch
-        {
-            "GET" => "查询",
-            "POST" => "新增",
-            "PUT" => "修改",
-            "PATCH" => "修改",
-            "DELETE" => "删除",
-            _ => httpMethod
-        };
-    }
+    private static PermissionDto ToDto(Permission permission) => new(
+        permission.Id,
+        permission.PermName,
+        permission.ResourcePath,
+        permission.Action,
+        permission.Description);
 }

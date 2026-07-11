@@ -92,7 +92,7 @@
                 loading.value = true;
                 try {
                     const params = new URLSearchParams();
-                    params.set('page', page);
+                    params.set('pageIndex', page);
                     params.set('pageSize', pagination.value.pageSize);
                     if (keyword.value) params.set('keyword', keyword.value);
                     if (categoryId.value != null) params.set('categoryId', categoryId.value);

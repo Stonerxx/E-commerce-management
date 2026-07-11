@@ -7,9 +7,24 @@
 发布目录：/var/www/ecommerce
 服务名：ecommerce
 后端监听：127.0.0.1:5000
-Nginx：转发公网 80 -> 127.0.0.1:5000
+Nginx：公网 80 跳转到 HTTPS，公网 443 转发到 127.0.0.1:5000
 环境变量：/etc/ecommerce/ecommerce.env 或 ecommerce.service
 ```
+
+## HTTPS 前置条件
+
+Production 会启用 HTTPS 重定向，因此不能只按 HTTP 反向代理部署。先为实际域名申请证书，再复制 [nginx-ecommerce.conf.example](../deployment/linux/nginx-ecommerce.conf.example) 并替换其中的 `example.com`：
+
+```bash
+sudo systemctl stop nginx
+sudo certbot certonly --standalone -d example.com
+sudo cp deployment/linux/nginx-ecommerce.conf.example /etc/nginx/sites-available/ecommerce
+sudo ln -s /etc/nginx/sites-available/ecommerce /etc/nginx/sites-enabled/ecommerce
+sudo nginx -t
+sudo systemctl start nginx
+```
+
+示例中的 80 端口只跳转到 HTTPS；443 才会将请求转发给 Kestrel，并发送 `X-Forwarded-Proto: https`。
 
 ## 一、推荐发布流程：GitHub Actions 编译，服务器只部署
 
@@ -21,7 +36,7 @@ GitHub Actions restore/build/publish
 -> 通过 SSH 上传到服务器 /tmp
 -> 服务器解压到 /var/www/ecommerce
 -> 重启 ecommerce systemd 服务
--> 检查 /health
+-> 检查 /health/ready
 ```
 
 服务器不再执行 `dotnet restore`、`dotnet build` 或 `dotnet publish`，只负责运行发布好的文件。
@@ -72,7 +87,7 @@ bash /root/E-commerce-management/deployment/linux/deploy-ecommerce-artifact.sh /
 5. 把旧版移动到 `/var/www/ecommerce-old`。
 6. 把新版移动到 `/var/www/ecommerce`。
 7. `chown -R www-data:www-data /var/www/ecommerce`。
-8. 重启服务并检查 `/health`。
+8. 重启服务并检查 `/health/ready`。
 9. 如果启动或健康检查失败，自动回滚上一版。
 
 如果服务器路径以后变了，可以用环境变量覆盖：
@@ -80,7 +95,7 @@ bash /root/E-commerce-management/deployment/linux/deploy-ecommerce-artifact.sh /
 ```bash
 SERVICE_NAME=ecommerce \
 PUBLISH_CURRENT=/var/www/ecommerce \
-HEALTH_URL=http://127.0.0.1:5000/health \
+HEALTH_URL=http://127.0.0.1:5000/health/ready \
 bash /root/E-commerce-management/deployment/linux/deploy-ecommerce-artifact.sh /tmp/ecommerce-release.tar.gz
 ```
 
@@ -137,8 +152,22 @@ GitHub Actions 只上传编译后的代码文件，不需要数据库密码。
 示例：
 
 ```bash
-Oracle__ConnectionString=User Id=ECOMMERCE_DEV;Password=change_me;Data Source=127.0.0.1:1521/FREEPDB1;
+Oracle__ConnectionString="User Id=ECOMMERCE_DEV;Password=change_me;Data Source=127.0.0.1:1521/FREEPDB1"
 ```
+
+持久写入环境变量的推荐方式：
+
+```bash
+sudo install -d -m 0750 /etc/ecommerce
+sudo install -m 0640 -o root -g www-data \
+  /root/E-commerce-management/deployment/env.example \
+  /etc/ecommerce/ecommerce.env
+sudo nano /etc/ecommerce/ecommerce.env
+sudo systemctl daemon-reload
+sudo systemctl restart ecommerce
+```
+
+`ecommerce.service` 通过 `EnvironmentFile=/etc/ecommerce/ecommerce.env` 读取该文件；不要把真实密码提交到仓库。
 
 答辩前如果要切 DEMO，只改服务器环境变量，然后重启服务：
 
@@ -213,7 +242,8 @@ journalctl -u ecommerce -f
 
 ```bash
 curl -i http://127.0.0.1:5000/
-curl -i http://127.0.0.1:5000/health
+curl -i http://127.0.0.1:5000/health/live
+curl -i http://127.0.0.1:5000/health/ready
 curl -i http://127.0.0.1:5000/api/v1/system/db-check
 ```
 

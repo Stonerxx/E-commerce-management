@@ -1,9 +1,10 @@
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "数据概览";
+    var isAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
 }
 
-<div id="dashboardApp" v-cloak>
+<div id="dashboardApp" v-cloak data-is-admin="@isAdmin.ToString().ToLowerInvariant()">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
         <div>
             <h1 class="h3 mb-1">数据概览</h1>
@@ -39,7 +40,7 @@
         </div>
     </div>
 
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-4" v-if="isAdmin">
         <div class="col-12 col-xl-8">
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -87,13 +88,13 @@
             <a href="/admin/orders" class="btn btn-outline-primary">
                 <i class="fa-solid fa-receipt"></i> 订单管理
             </a>
-            <a href="/admin/products" class="btn btn-outline-primary">
+            <a v-if="isAdmin" href="/admin/products" class="btn btn-outline-primary">
                 <i class="fa-solid fa-box"></i> 商品管理
             </a>
-            <a href="/admin/inventory/warnings" class="btn btn-outline-warning">
+            <a v-if="isAdmin" href="/admin/inventory/warnings" class="btn btn-outline-warning">
                 <i class="fa-solid fa-triangle-exclamation"></i> 库存预警
             </a>
-            <a href="/admin/inventory/logs" class="btn btn-outline-secondary">
+            <a v-if="isAdmin" href="/admin/inventory/logs" class="btn btn-outline-secondary">
                 <i class="fa-solid fa-clock-rotate-left"></i> 库存日志
             </a>
         </div>

@@ -18,7 +18,7 @@ public class CouponService : ICouponService
 
     public async Task<PagedResult<CouponTemplateDto>> SearchTemplatesAsync(CouponTemplateQuery query, CancellationToken cancellationToken = default)
     {
-        var result = await _couponRepository.GetTemplatesAsync(query.Keyword, query.Status, query.PageIndex, query.PageSize, cancellationToken);
+        var result = await _couponRepository.GetTemplatesAsync(query.Keyword, query.Status, query.SafePageIndex, query.SafePageSize, cancellationToken);
         
         var dtos = result.Items.Select(t => new CouponTemplateDto(
             t.Id,

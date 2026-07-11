@@ -38,12 +38,12 @@ public class MockInventoryService : IInventoryService
     public Task<PagedResult<InventoryLogDto>> SearchLogsAsync(InventoryLogQuery query, CancellationToken cancellationToken = default)
     {
         // 返回空结果
-        return Task.FromResult(PagedResult<InventoryLogDto>.Empty(query.PageIndex, query.PageSize));
+        return Task.FromResult(PagedResult<InventoryLogDto>.Empty(query.SafePageIndex, query.SafePageSize));
     }
 
     public Task<PagedResult<InventoryWarningDto>> SearchWarningsAsync(PageQuery query, CancellationToken cancellationToken = default)
     {
         // 返回空结果
-        return Task.FromResult(PagedResult<InventoryWarningDto>.Empty(query.PageIndex, query.PageSize));
+        return Task.FromResult(PagedResult<InventoryWarningDto>.Empty(query.SafePageIndex, query.SafePageSize));
     }
 }

@@ -78,9 +78,8 @@ class ExportService : IExportService
 
         sqlBuilder.AppendLine("ORDER BY om.CREATED_AT DESC");
 
-        // 导出数量限制（默认 5000）
-        int pageSize = query.PageSize > 0 ? query.PageSize : 5000;
-        if (pageSize > 5000) pageSize = 5000;
+        // 导出不使用普通列表的默认分页值（20），未显式指定时导出最多 5000 行。
+        var pageSize = GetExportLimit(query.PageSize);
 
         var finalSql = $@"
         SELECT OrderNo, UserId, Status, TotalAmount, PayAmount, CreatedAt, PaymentTime, PayMethod
@@ -217,9 +216,8 @@ class ExportService : IExportService
 
         sqlBuilder.AppendLine("ORDER BY l.CREATED_AT DESC");
 
-        // 导出行数限制（忽略 PageIndex）
-        int pageSize = query.PageSize > 0 ? query.PageSize : 5000;
-        if (pageSize > 5000) pageSize = 5000;
+        // 导出不使用普通列表的默认分页值（20），未显式指定时导出最多 5000 行。
+        var pageSize = GetExportLimit(query.PageSize);
 
         var finalSql = $@"
         SELECT LogId, ProductName, SpecDesc, ChangeType, ChangeQty, BeforeStock, AfterStock, OperatorId, RefOrderId, Remark, CreatedAt
@@ -287,5 +285,12 @@ class ExportService : IExportService
             ContentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             Content: fileBytes
         );
+    }
+
+    private static int GetExportLimit(int requestedPageSize)
+    {
+        return requestedPageSize == PageQuery.DefaultPageSize
+            ? 5_000
+            : Math.Clamp(requestedPageSize, 1, 5_000);
     }
 }

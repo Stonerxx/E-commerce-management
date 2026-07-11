@@ -57,9 +57,8 @@ public class MockSkuService : ISkuService
         return Task.CompletedTask;
     }
 
-    public Task DeleteByProductAsync(long productId, CancellationToken cancellationToken = default)
+    public Task RemoveIfUnreferencedOrDisableAsync(long skuId, long operatorId, CancellationToken cancellationToken = default)
     {
-        // TEMP_DEMO_SKU: 预先兼容 member3 新增的 ISkuService.DeleteByProductAsync。
         return Task.CompletedTask;
     }
 }

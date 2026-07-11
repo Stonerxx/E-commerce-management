@@ -49,21 +49,21 @@ public sealed class AdminStatisticsApiController : ApiControllerBase
 
     [HttpGet("exports/orders")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
-    public async Task<ActionResult<ApiResponse<FileExportDto>>> ExportOrders(
+    public async Task<IActionResult> ExportOrders(
         [FromQuery] AdminOrderQuery query,
         CancellationToken cancellationToken)
     {
         var result = await _exportService.ExportOrdersAsync(query, cancellationToken);
-        return ApiResponse<FileExportDto>.Ok(result, HttpContext.TraceIdentifier);
+        return File(result.Content, result.ContentType, result.FileName);
     }
 
     [HttpGet("exports/inventory")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
-    public async Task<ActionResult<ApiResponse<FileExportDto>>> ExportInventory(
+    public async Task<IActionResult> ExportInventory(
         [FromQuery] InventoryLogQuery query,
         CancellationToken cancellationToken)
     {
         var result = await _exportService.ExportInventoryAsync(query, cancellationToken);
-        return ApiResponse<FileExportDto>.Ok(result, HttpContext.TraceIdentifier);
+        return File(result.Content, result.ContentType, result.FileName);
     }
 }

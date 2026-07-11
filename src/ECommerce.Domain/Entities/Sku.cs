@@ -12,6 +12,7 @@ public class Sku
     public int WarningStock { get; set; }
     public string? SkuImage { get; set; }
     public int Status { get; set; }
+    public int ProductStatus { get; set; } = 1;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

@@ -28,25 +28,25 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
 
         var sql = new StringBuilder();
-        sql.Append("SELECT \"ID\", \"SKU_ID\", \"CHANGE_TYPE\", \"CHANGE_QTY\", \"BEFORE_STOCK\", \"AFTER_STOCK\", \"OPERATOR_ID\", \"REF_ORDER_ID\", \"REMARK\", \"CREATED_AT\" ");
-        sql.Append("FROM \"INVENTORY_LOG\" ");
+        sql.Append("SELECT l.\"ID\", l.\"SKU_ID\", l.\"CHANGE_TYPE\", l.\"CHANGE_QTY\", l.\"BEFORE_STOCK\", l.\"AFTER_STOCK\", l.\"OPERATOR_ID\", l.\"REF_ORDER_ID\", l.\"REMARK\", l.\"CREATED_AT\", s.\"PRODUCT_ID\" AS \"ProductId\", p.\"NAME\" AS \"ProductName\", u.\"USERNAME\" AS \"OperatorName\" ");
+        sql.Append("FROM \"INVENTORY_LOG\" l INNER JOIN \"SKU\" s ON s.\"ID\" = l.\"SKU_ID\" INNER JOIN \"PRODUCT\" p ON p.\"ID\" = s.\"PRODUCT_ID\" LEFT JOIN \"USER\" u ON u.\"ID\" = l.\"OPERATOR_ID\" ");
 
         var conditions = new List<string>();
         if (query.SkuId.HasValue)
         {
-            conditions.Add("\"SKU_ID\" = :skuId");
+            conditions.Add("l.\"SKU_ID\" = :skuId");
         }
         if (!string.IsNullOrWhiteSpace(query.ChangeType))
         {
-            conditions.Add("\"CHANGE_TYPE\" = :changeType");
+            conditions.Add("l.\"CHANGE_TYPE\" = :changeType");
         }
         if (query.StartTime.HasValue)
         {
-            conditions.Add("\"CREATED_AT\" >= :startTime");
+            conditions.Add("l.\"CREATED_AT\" >= :startTime");
         }
         if (query.EndTime.HasValue)
         {
-            conditions.Add("\"CREATED_AT\" <= :endTime");
+            conditions.Add("l.\"CREATED_AT\" <= :endTime");
         }
 
         if (conditions.Count > 0)
@@ -54,10 +54,10 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
             sql.Append("WHERE " + string.Join(" AND ", conditions));
         }
 
-        sql.Append(" ORDER BY \"CREATED_AT\" DESC");
+        sql.Append(" ORDER BY l.\"CREATED_AT\" DESC");
         
         var countSql = new StringBuilder();
-        countSql.Append("SELECT COUNT(*) FROM \"INVENTORY_LOG\"");
+        countSql.Append("SELECT COUNT(*) FROM \"INVENTORY_LOG\" l");
         if (conditions.Count > 0)
         {
             countSql.Append(" WHERE " + string.Join(" AND ", conditions));
@@ -73,7 +73,7 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
 
         var totalCount = Convert.ToInt32(await countCommand.ExecuteScalarAsync(cancellationToken));
 
-        var offset = (query.PageIndex - 1) * query.PageSize;
+        var offset = (query.SafePageIndex - 1) * query.SafePageSize;
         sql.Append(" OFFSET :offset ROWS FETCH NEXT :pageSize ROWS ONLY");
 
         using var command = connection.CreateCommand();
@@ -91,7 +91,7 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
 
         var pageSizeParam = command.CreateParameter();
         pageSizeParam.ParameterName = ":pageSize";
-        pageSizeParam.Value = query.PageSize;
+        pageSizeParam.Value = query.SafePageSize;
         command.Parameters.Add(pageSizeParam);
 
         var items = new List<InventoryLogDto>();
@@ -101,7 +101,7 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
             items.Add(MapToDto(reader));
         }
 
-        return new PagedResult<InventoryLogDto>(items, query.PageIndex, query.PageSize, totalCount);
+        return new PagedResult<InventoryLogDto>(items, query.SafePageIndex, query.SafePageSize, totalCount);
     }
 
     public async Task<long> CreateAsync(InventoryLog log, CancellationToken cancellationToken = default)
@@ -223,7 +223,10 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
             OperatorId: reader.IsDBNull(reader.GetOrdinal("OPERATOR_ID")) ? null : reader.GetInt64(reader.GetOrdinal("OPERATOR_ID")),
             RefOrderId: reader.IsDBNull(reader.GetOrdinal("REF_ORDER_ID")) ? null : reader.GetInt64(reader.GetOrdinal("REF_ORDER_ID")),
             Remark: reader.IsDBNull(reader.GetOrdinal("REMARK")) ? null : reader.GetString(reader.GetOrdinal("REMARK")),
-            CreatedAt: reader.GetDateTime(reader.GetOrdinal("CREATED_AT"))
+            CreatedAt: reader.GetDateTime(reader.GetOrdinal("CREATED_AT")),
+            ProductId: reader.GetInt64(reader.GetOrdinal("ProductId")),
+            ProductName: reader.IsDBNull(reader.GetOrdinal("ProductName")) ? null : reader.GetString(reader.GetOrdinal("ProductName")),
+            OperatorName: reader.IsDBNull(reader.GetOrdinal("OperatorName")) ? null : reader.GetString(reader.GetOrdinal("OperatorName"))
         );
     }
 }
