@@ -77,8 +77,8 @@ public class OracleSchemaTests
         await using var command = OracleTestEnvironment.CreateCommand(connection, @"
             SELECT
                 (SELECT COUNT(*) FROM ""USER"" WHERE id BETWEEN 9001 AND 9010) AS user_count,
-                (SELECT COUNT(*) FROM PRODUCT WHERE id BETWEEN 9001 AND 9010) AS product_count,
-                (SELECT COUNT(*) FROM SKU WHERE id BETWEEN 9001 AND 9016) AS sku_count,
+                (SELECT COUNT(*) FROM PRODUCT WHERE id BETWEEN 9001 AND 9240) AS product_count,
+                (SELECT COUNT(*) FROM SKU WHERE id BETWEEN 9001 AND 9240) AS sku_count,
                 (SELECT COUNT(*) FROM ORDER_MAIN WHERE id BETWEEN 9000 AND 9999) AS order_count,
                 (SELECT COUNT(*) FROM ORDER_MAIN
                  WHERE id BETWEEN 9000 AND 9999
@@ -96,8 +96,8 @@ public class OracleSchemaTests
         await using var reader = await command.ExecuteReaderAsync();
         Assert.True(await reader.ReadAsync());
         Assert.Equal(10, reader.GetInt32(0));
-        Assert.Equal(10, reader.GetInt32(1));
-        Assert.Equal(16, reader.GetInt32(2));
+        Assert.Equal(150, reader.GetInt32(1));
+        Assert.Equal(156, reader.GetInt32(2));
         Assert.Equal(48, reader.GetInt32(3));
         Assert.Equal(0, reader.GetInt32(4));
         Assert.Equal(0, reader.GetInt32(5));

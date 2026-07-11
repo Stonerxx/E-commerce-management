@@ -242,10 +242,72 @@ INSERT ALL
     VALUES (9016, 9010, '{"颜色":"曜石黑","连接":"蓝牙"}', 199.00, 239.00, 20, 0, 5, '/images/demo-mouse-black.jpg', 0)
 SELECT 1 FROM DUAL;
 
+-- 额外生成 140 个可见商品，配合上方 10 个重点演示商品，正好覆盖三页 50 条的商品流。
+DECLARE
+    v_product_id  NUMBER(19);
+    v_category_id NUMBER(10);
+    v_price       NUMBER(10,2);
+    v_stock       NUMBER(10);
+    v_warning     NUMBER(10);
+    v_status      NUMBER(1);
+    v_name        VARCHAR2(200);
+BEGIN
+    FOR i IN 1..140 LOOP
+        v_product_id := 9100 + i;
+        v_category_id := CASE MOD(i, 5)
+            WHEN 0 THEN 9002
+            WHEN 1 THEN 9003
+            WHEN 2 THEN 9005
+            WHEN 3 THEN 9007
+            ELSE 9008
+        END;
+        v_price := 49 + MOD(i * 17, 240) + 0.90;
+        v_stock := CASE WHEN MOD(i, 25) = 0 THEN 8 ELSE 40 + MOD(i * 7, 60) END;
+        v_warning := CASE WHEN MOD(i, 25) = 0 THEN 15 ELSE 5 + MOD(i, 10) END;
+        v_status := CASE WHEN MOD(i, 20) = 0 THEN 2 ELSE 1 END;
+        v_name := CASE MOD(i, 5)
+            WHEN 0 THEN '灵感数码配件'
+            WHEN 1 THEN '桌面效率好物'
+            WHEN 2 THEN '轻享咖啡茶饮'
+            WHEN 3 THEN '品质家居日用'
+            ELSE '通勤收纳出行'
+        END || ' ' || LPAD(i, 3, '0');
+
+        INSERT INTO PRODUCT (
+            id, category_id, name, description, main_image, status,
+            price_min, sales_count, view_count, avg_rating, created_at, updated_at)
+        VALUES (
+            v_product_id, v_category_id, v_name,
+            '批量演示商品，用于商品列表、筛选、分页和无限滚动测试。',
+            '/images/demo-bulk-product-' || LPAD(i, 3, '0') || '.jpg',
+            v_status, v_price, 0, 30 + i * 3, 0,
+            SYSDATE - MOD(i, 45), SYSDATE - MOD(i, 20));
+
+        INSERT INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at)
+        VALUES (
+            v_product_id, v_product_id,
+            '/images/demo-bulk-product-' || LPAD(i, 3, '0') || '.jpg',
+            1, SYSDATE - MOD(i, 45));
+
+        INSERT INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order)
+        VALUES (v_product_id, v_product_id, '演示款式', '标准版' || LPAD(i, 3, '0'), 1);
+
+        INSERT INTO SKU (
+            id, product_id, spec_desc, price, original_price, stock,
+            locked_stock, warning_stock, sku_image, status)
+        VALUES (
+            v_product_id, v_product_id,
+            '{"款式":"演示' || LPAD(i, 3, '0') || '","版本":"标准"}',
+            v_price, v_price + 30, v_stock, 0, v_warning,
+            '/images/demo-bulk-product-' || LPAD(i, 3, '0') || '.jpg', 1);
+    END LOOP;
+END;
+/
+
 INSERT INTO INVENTORY_LOG (id, sku_id, change_type, change_qty, before_stock, after_stock, operator_id, ref_order_id, remark, created_at)
 SELECT 9000 + s.id - 9000, s.id, 'RESTOCK', s.stock, 0, s.stock, 9001, NULL, '演示数据初始化入库', SYSDATE - 30
 FROM SKU s
-WHERE s.id BETWEEN 9001 AND 9016;
+WHERE s.id BETWEEN 9001 AND 9240;
 
 INSERT ALL
     INTO CART (id, user_id, sku_id, quantity, selected, created_at, updated_at) VALUES (9001, 9003, 9001, 1, 1, SYSDATE - 2, SYSDATE - 1)
@@ -521,7 +583,7 @@ SET locked_stock = (
     WHERE oi.sku_id = s.id
       AND om.status = 0
 )
-WHERE s.id BETWEEN 9001 AND 9016;
+WHERE s.id BETWEEN 9001 AND 9240;
 
 -- 商品销量、最低价和均分均由当前演示数据推导，保证列表与订单明细一致。
 UPDATE PRODUCT p
@@ -540,7 +602,7 @@ SET price_min = (SELECT MIN(s.price) FROM SKU s WHERE s.product_id = p.id),
         WHERE r.product_id = p.id
           AND r.status = 1
     )
-WHERE p.id BETWEEN 9001 AND 9010;
+WHERE p.id BETWEEN 9001 AND 9240;
 
 PROMPT Insert statistics snapshots...
 
@@ -687,7 +749,7 @@ BEGIN
     SELECT COUNT(1)
     INTO v_count
     FROM SKU s
-    WHERE s.id BETWEEN 9001 AND 9016
+    WHERE s.id BETWEEN 9001 AND 9240
       AND s.locked_stock <> (
           SELECT NVL(SUM(oi.quantity), 0)
           FROM ORDER_ITEM oi
@@ -700,7 +762,7 @@ BEGIN
     SELECT COUNT(1)
     INTO v_count
     FROM PRODUCT p
-    WHERE p.id BETWEEN 9001 AND 9010
+    WHERE p.id BETWEEN 9001 AND 9240
       AND p.sales_count <> (
           SELECT NVL(SUM(oi.quantity), 0)
           FROM ORDER_ITEM oi
