@@ -20,7 +20,6 @@ public class OrderServiceTests : ServiceTestBase
     private readonly Mock<IOrderRepository> _orderRepositoryMock;
     private readonly Mock<ICartRepository> _cartRepositoryMock;
     private readonly Mock<ISkuService> _skuServiceMock;
-    private readonly Mock<IProductRepository> _productRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IAddressService> _addressServiceMock;
     private readonly Mock<IInventoryService> _inventoryServiceMock;
@@ -45,7 +44,6 @@ public class OrderServiceTests : ServiceTestBase
             .ReturnsAsync(true);
         _cartRepositoryMock = new Mock<ICartRepository>();
         _skuServiceMock = new Mock<ISkuService>();
-        _productRepositoryMock = new Mock<IProductRepository>();
         _unitOfWorkMock = CreateUnitOfWorkMock();
         _addressServiceMock = new Mock<IAddressService>();
         _inventoryServiceMock = new Mock<IInventoryService>();
@@ -56,7 +54,6 @@ public class OrderServiceTests : ServiceTestBase
             _orderRepositoryMock.Object,
             _cartRepositoryMock.Object,
             _skuServiceMock.Object,
-            _productRepositoryMock.Object,
             _unitOfWorkMock.Object,
             _addressServiceMock.Object,
             _inventoryServiceMock.Object,
@@ -666,12 +663,6 @@ public class OrderServiceTests : ServiceTestBase
         _inventoryServiceMock
             .Setup(x => x.DeductForPaidOrderAsync(TestOrderId, skuQuantities, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        _skuServiceMock
-            .Setup(x => x.GetByIdAsync(TestSkuId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CreateSkuDto(TestSkuId));
-        _productRepositoryMock
-            .Setup(x => x.IncrementSalesCountAsync(10, 2, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
 
         // Act
         await _orderService.MarkPaidAsync(TestOrderId, 5001);
@@ -690,8 +681,6 @@ public class OrderServiceTests : ServiceTestBase
             skuQuantities,
             It.IsAny<CancellationToken>()
         ), Times.Once);
-        _productRepositoryMock.Verify(x => x.IncrementSalesCountAsync(10, 2, It.IsAny<CancellationToken>()), Times.Once);
-
         _unitOfWorkMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

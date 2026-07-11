@@ -23,8 +23,6 @@ public interface IProductRepository
 
     Task<bool> CategoryExistsAsync(int categoryId, CancellationToken cancellationToken = default);
 
-    Task<int> IncrementSalesCountAsync(long productId, int quantity, CancellationToken cancellationToken = default);
-
     Task<int> IncrementViewCountAsync(long productId, CancellationToken cancellationToken = default);
 
     Task<bool> HasSkusAsync(long productId, CancellationToken cancellationToken = default);
@@ -262,36 +260,6 @@ public sealed class ProductRepository : IProductRepository
 
         var count = Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken));
         return count > 0;
-    }
-
-    public async Task<int> IncrementSalesCountAsync(long productId, int quantity, CancellationToken cancellationToken = default)
-    {
-        var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "UPDATE \"PRODUCT\" SET \"SALES_COUNT\" = \"SALES_COUNT\" + :quantity, \"UPDATED_AT\" = :updatedAt WHERE \"ID\" = :productId";
-
-        using var command = connection.CreateCommand();
-        if (_unitOfWork.CurrentTransaction != null)
-        {
-            command.Transaction = _unitOfWork.CurrentTransaction;
-        }
-        command.CommandText = sql;
-
-        var quantityParam = command.CreateParameter();
-        quantityParam.ParameterName = ":quantity";
-        quantityParam.Value = quantity;
-        command.Parameters.Add(quantityParam);
-
-        var updatedAtParam = command.CreateParameter();
-        updatedAtParam.ParameterName = ":updatedAt";
-        updatedAtParam.Value = DateTime.Now;
-        command.Parameters.Add(updatedAtParam);
-
-        var idParam = command.CreateParameter();
-        idParam.ParameterName = ":productId";
-        idParam.Value = productId;
-        command.Parameters.Add(idParam);
-
-        return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     public async Task<int> IncrementViewCountAsync(long productId, CancellationToken cancellationToken = default)

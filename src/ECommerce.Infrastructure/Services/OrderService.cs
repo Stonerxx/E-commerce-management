@@ -17,7 +17,6 @@ public class OrderService : IOrderService
     private readonly IOrderRepository _orderRepository;
     private readonly ICartRepository _cartRepository;
     private readonly ISkuService _skuService;
-    private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAddressService _addressService;
     private readonly IInventoryService _inventoryService;
@@ -30,7 +29,6 @@ public class OrderService : IOrderService
         IOrderRepository orderRepository,
         ICartRepository cartRepository,
         ISkuService skuService,
-        IProductRepository productRepository,
         IUnitOfWork unitOfWork,
         IAddressService addressService,
         IInventoryService inventoryService,
@@ -40,7 +38,6 @@ public class OrderService : IOrderService
         _orderRepository = orderRepository;
         _cartRepository = cartRepository;
         _skuService = skuService;
-        _productRepository = productRepository;
         _unitOfWork = unitOfWork;
         _addressService = addressService;
         _inventoryService = inventoryService;
@@ -436,13 +433,7 @@ public class OrderService : IOrderService
             var skuQuantities = await _orderRepository.GetOrderSkuQuantitiesAsync(orderId, cancellationToken);
             await _inventoryService.DeductForPaidOrderAsync(orderId, skuQuantities, cancellationToken);
 
-            // 支付成功后累计商品销量；使用订单明细数量，且与库存扣减处于同一事务。
-            foreach (var item in skuQuantities)
-            {
-                var sku = await _skuService.GetByIdAsync(item.SkuId, cancellationToken)
-                    ?? throw new BusinessException("SKU_NOT_FOUND", $"SKU {item.SkuId} 不存在");
-                await _productRepository.IncrementSalesCountAsync(sku.ProductId, item.Quantity, cancellationToken);
-            }
+            // 商品销量由 TRG_ORDER_PAID_UPDATE_SALES 在订单状态成功更新后维护。
 
             await _unitOfWork.CommitAsync(cancellationToken);
         }
