@@ -254,22 +254,22 @@ DECLARE
 BEGIN
     FOR i IN 1..140 LOOP
         v_product_id := 9100 + i;
-        v_category_id := CASE MOD(i, 5)
-            WHEN 0 THEN 9002
-            WHEN 1 THEN 9003
-            WHEN 2 THEN 9005
-            WHEN 3 THEN 9007
+        v_category_id := CASE
+            WHEN MOD(i, 5) = 0 THEN 9002
+            WHEN MOD(i, 5) = 1 THEN 9003
+            WHEN MOD(i, 5) = 2 THEN 9005
+            WHEN MOD(i, 5) = 3 THEN 9007
             ELSE 9008
         END;
         v_price := 49 + MOD(i * 17, 240) + 0.90;
         v_stock := CASE WHEN MOD(i, 25) = 0 THEN 8 ELSE 40 + MOD(i * 7, 60) END;
         v_warning := CASE WHEN MOD(i, 25) = 0 THEN 15 ELSE 5 + MOD(i, 10) END;
         v_status := CASE WHEN MOD(i, 20) = 0 THEN 2 ELSE 1 END;
-        v_name := CASE MOD(i, 5)
-            WHEN 0 THEN '灵感数码配件'
-            WHEN 1 THEN '桌面效率好物'
-            WHEN 2 THEN '轻享咖啡茶饮'
-            WHEN 3 THEN '品质家居日用'
+        v_name := CASE
+            WHEN MOD(i, 5) = 0 THEN '灵感数码配件'
+            WHEN MOD(i, 5) = 1 THEN '桌面效率好物'
+            WHEN MOD(i, 5) = 2 THEN '轻享咖啡茶饮'
+            WHEN MOD(i, 5) = 3 THEN '品质家居日用'
             ELSE '通勤收纳出行'
         END || ' ' || LPAD(i, 3, '0');
 
@@ -409,12 +409,12 @@ BEGIN
         v_user_id := 9003 + MOD(i, 8);
         v_address_id := 9020 + MOD(i, 8);
         v_quantity := 1 + MOD(i, 3);
-        v_status := CASE MOD(i, 6)
-            WHEN 0 THEN 0
-            WHEN 1 THEN 1
-            WHEN 2 THEN 2
-            WHEN 3 THEN 3
-            WHEN 4 THEN 4
+        v_status := CASE
+            WHEN MOD(i, 6) = 0 THEN 0
+            WHEN MOD(i, 6) = 1 THEN 1
+            WHEN MOD(i, 6) = 2 THEN 2
+            WHEN MOD(i, 6) = 3 THEN 3
+            WHEN MOD(i, 6) = 4 THEN 4
             ELSE 3
         END;
 
