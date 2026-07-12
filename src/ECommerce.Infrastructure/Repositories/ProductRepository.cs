@@ -11,6 +11,8 @@ public interface IProductRepository
 {
     Task<PagedResult<ProductListItemDto>> SearchAsync(ProductQuery query, CancellationToken cancellationToken = default);
 
+    Task<PagedResult<ProductListItemDto>> SearchPublicAsync(ProductQuery query, CancellationToken cancellationToken = default);
+
     Task<Product?> GetByIdAsync(long productId, CancellationToken cancellationToken = default);
 
     Task<long> CreateAsync(Product product, CancellationToken cancellationToken = default);
@@ -20,8 +22,6 @@ public interface IProductRepository
     Task<int> SetStatusAsync(long productId, int status, CancellationToken cancellationToken = default);
 
     Task<bool> CategoryExistsAsync(int categoryId, CancellationToken cancellationToken = default);
-
-    Task<int> IncrementSalesCountAsync(long productId, int quantity, CancellationToken cancellationToken = default);
 
     Task<int> IncrementViewCountAsync(long productId, CancellationToken cancellationToken = default);
 
@@ -39,6 +39,19 @@ public sealed class ProductRepository : IProductRepository
 
     public async Task<PagedResult<ProductListItemDto>> SearchAsync(ProductQuery query, CancellationToken cancellationToken = default)
     {
+        return await SearchCoreAsync(query, null, cancellationToken);
+    }
+
+    public async Task<PagedResult<ProductListItemDto>> SearchPublicAsync(ProductQuery query, CancellationToken cancellationToken = default)
+    {
+        return await SearchCoreAsync(query, new[] { 1, 2 }, cancellationToken);
+    }
+
+    private async Task<PagedResult<ProductListItemDto>> SearchCoreAsync(
+        ProductQuery query,
+        IReadOnlyList<int>? fixedStatuses,
+        CancellationToken cancellationToken)
+    {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         
         var sql = new StringBuilder();
@@ -54,7 +67,11 @@ public sealed class ProductRepository : IProductRepository
         {
             conditions.Add("p.\"NAME\" LIKE :keyword");
         }
-        if (query.Status.HasValue)
+        if (fixedStatuses is not null)
+        {
+            conditions.Add($"p.\"STATUS\" IN ({string.Join(", ", fixedStatuses)})");
+        }
+        else if (query.Status.HasValue)
         {
             conditions.Add("p.\"STATUS\" = :status");
         }
@@ -79,11 +96,11 @@ public sealed class ProductRepository : IProductRepository
             countCommand.Transaction = _unitOfWork.CurrentTransaction;
         }
         countCommand.CommandText = countSql.ToString();
-        AddSearchParameters(countCommand, query);
+        AddSearchParameters(countCommand, query, fixedStatuses is null);
         
         var totalCount = Convert.ToInt32(await countCommand.ExecuteScalarAsync(cancellationToken));
 
-        var offset = (query.PageIndex - 1) * query.PageSize;
+        var offset = (query.SafePageIndex - 1) * query.SafePageSize;
         sql.Append(" OFFSET :offset ROWS FETCH NEXT :pageSize ROWS ONLY");
 
         using var command = connection.CreateCommand();
@@ -92,7 +109,7 @@ public sealed class ProductRepository : IProductRepository
             command.Transaction = _unitOfWork.CurrentTransaction;
         }
         command.CommandText = sql.ToString();
-        AddSearchParameters(command, query);
+        AddSearchParameters(command, query, fixedStatuses is null);
         
         var offsetParam = command.CreateParameter();
         offsetParam.ParameterName = ":offset";
@@ -101,7 +118,7 @@ public sealed class ProductRepository : IProductRepository
         
         var pageSizeParam = command.CreateParameter();
         pageSizeParam.ParameterName = ":pageSize";
-        pageSizeParam.Value = query.PageSize;
+        pageSizeParam.Value = query.SafePageSize;
         command.Parameters.Add(pageSizeParam);
 
         var items = new List<ProductListItemDto>();
@@ -111,7 +128,7 @@ public sealed class ProductRepository : IProductRepository
             items.Add(MapToListItemDto(reader));
         }
 
-        return new PagedResult<ProductListItemDto>(items, query.PageIndex, query.PageSize, totalCount);
+        return new PagedResult<ProductListItemDto>(items, query.SafePageIndex, query.SafePageSize, totalCount);
     }
 
     public async Task<Product?> GetByIdAsync(long productId, CancellationToken cancellationToken = default)
@@ -245,36 +262,6 @@ public sealed class ProductRepository : IProductRepository
         return count > 0;
     }
 
-    public async Task<int> IncrementSalesCountAsync(long productId, int quantity, CancellationToken cancellationToken = default)
-    {
-        var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        const string sql = "UPDATE \"PRODUCT\" SET \"SALES_COUNT\" = \"SALES_COUNT\" + :quantity, \"UPDATED_AT\" = :updatedAt WHERE \"ID\" = :productId";
-
-        using var command = connection.CreateCommand();
-        if (_unitOfWork.CurrentTransaction != null)
-        {
-            command.Transaction = _unitOfWork.CurrentTransaction;
-        }
-        command.CommandText = sql;
-
-        var quantityParam = command.CreateParameter();
-        quantityParam.ParameterName = ":quantity";
-        quantityParam.Value = quantity;
-        command.Parameters.Add(quantityParam);
-
-        var updatedAtParam = command.CreateParameter();
-        updatedAtParam.ParameterName = ":updatedAt";
-        updatedAtParam.Value = DateTime.Now;
-        command.Parameters.Add(updatedAtParam);
-
-        var idParam = command.CreateParameter();
-        idParam.ParameterName = ":productId";
-        idParam.Value = productId;
-        command.Parameters.Add(idParam);
-
-        return await command.ExecuteNonQueryAsync(cancellationToken);
-    }
-
     public async Task<int> IncrementViewCountAsync(long productId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
@@ -321,7 +308,7 @@ public sealed class ProductRepository : IProductRepository
         return count > 0;
     }
 
-    private static void AddSearchParameters(DbCommand command, ProductQuery query)
+    private static void AddSearchParameters(DbCommand command, ProductQuery query, bool includeStatus)
     {
         if (query.CategoryId.HasValue)
         {
@@ -337,7 +324,7 @@ public sealed class ProductRepository : IProductRepository
             param.Value = $"%{query.Keyword}%";
             command.Parameters.Add(param);
         }
-        if (query.Status.HasValue)
+        if (includeStatus && query.Status.HasValue)
         {
             var param = command.CreateParameter();
             param.ParameterName = ":status";

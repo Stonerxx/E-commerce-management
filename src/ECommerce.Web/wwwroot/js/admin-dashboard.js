@@ -1,10 +1,13 @@
 (function () {
     const { createApp } = Vue;
+    const dashboardElement = document.getElementById("dashboardApp");
+    const isAdmin = dashboardElement?.dataset.isAdmin === "true";
 
     createApp({
         data() {
             return {
                 loading: false,
+                isAdmin,
                 errorMessage: "",
                 lastUpdated: "尚未加载",
                 summaryCards: [
@@ -75,11 +78,11 @@
                 this.errorMessage = "";
 
                 try {
-                    await Promise.all([
-                        this.loadDashboardSummary(),
-                        this.loadTopProducts(),
-                        this.loadTrendData()
-                    ]);
+                    const requests = [this.loadDashboardSummary()];
+                    if (this.isAdmin) {
+                        requests.push(this.loadTopProducts(), this.loadTrendData());
+                    }
+                    await Promise.all(requests);
                     this.lastUpdated = new Date().toLocaleString();
                 } catch (error) {
                     this.errorMessage = error.message || "加载统计数据失败";

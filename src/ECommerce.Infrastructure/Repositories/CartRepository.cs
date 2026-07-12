@@ -157,6 +157,34 @@ public class CartRepository : ICartRepository
         cart.Id = Convert.ToInt64(pId.Value);
     }
 
+    public async Task<int> TryIncreaseQuantityAsync(
+        long userId,
+        long skuId,
+        int quantity,
+        int maximumQuantity,
+        DateTime updatedAt,
+        CancellationToken cancellationToken = default)
+    {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        const string sql = """
+            UPDATE CART
+            SET quantity = quantity + :Quantity, updated_at = :UpdatedAt
+            WHERE user_id = :UserId
+              AND sku_id = :SkuId
+              AND quantity + :Quantity <= :MaximumQuantity
+            """;
+
+        await using var command = Connection.CreateCommand();
+        command.CommandText = sql;
+        command.Transaction = Transaction;
+        command.Parameters.Add(CreateParameter("Quantity", quantity));
+        command.Parameters.Add(CreateParameter("UpdatedAt", updatedAt));
+        command.Parameters.Add(CreateParameter("UserId", userId));
+        command.Parameters.Add(CreateParameter("SkuId", skuId));
+        command.Parameters.Add(CreateParameter("MaximumQuantity", maximumQuantity));
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     public async Task UpdateAsync(Cart cart, CancellationToken cancellationToken = default)
     {
         await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
@@ -196,6 +224,30 @@ public class CartRepository : ICartRepository
         cmd.CommandText = sql;
         cmd.Transaction = Transaction;
         cmd.Parameters.Add(CreateParameter("UserId", userId));
+        await cmd.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task ClearByIdsAsync(long userId, IReadOnlyList<long> cartItemIds, CancellationToken cancellationToken = default)
+    {
+        if (cartItemIds.Count == 0)
+        {
+            return;
+        }
+
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        var itemIds = cartItemIds.Distinct().ToArray();
+        var parameterNames = string.Join(", ", itemIds.Select((_, index) => $":CartItemId{index}"));
+        var sql = $"DELETE FROM cart WHERE user_id = :UserId AND id IN ({parameterNames})";
+
+        await using var cmd = Connection.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Transaction = Transaction;
+        cmd.Parameters.Add(CreateParameter("UserId", userId));
+        for (var index = 0; index < itemIds.Length; index++)
+        {
+            cmd.Parameters.Add(CreateParameter($"CartItemId{index}", itemIds[index]));
+        }
+
         await cmd.ExecuteNonQueryAsync(cancellationToken);
     }
 

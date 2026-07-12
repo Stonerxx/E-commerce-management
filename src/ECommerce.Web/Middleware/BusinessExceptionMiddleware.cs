@@ -1,5 +1,6 @@
 using ECommerce.Shared.Contracts;
 using ECommerce.Shared.Exceptions;
+using ECommerce.Web.Errors;
 using System.Text.Json;
 
 namespace ECommerce.Web.Middleware;
@@ -34,7 +35,7 @@ public sealed class BusinessExceptionMiddleware
     private Task HandleBusinessExceptionAsync(HttpContext context, BusinessException ex)
     {
         context.Response.ContentType = "application/json";
-        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        context.Response.StatusCode = BusinessExceptionStatusMapper.GetStatusCode(ex.Code);
 
         var response = ApiResponse<object?>.Fail(ex.Code, ex.Message, context.TraceIdentifier);
         var json = JsonSerializer.Serialize(response, _jsonOptions);

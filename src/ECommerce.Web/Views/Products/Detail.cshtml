@@ -97,8 +97,8 @@
                             </div>
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="text-muted">库存：</span>
-                                <span :class="currentSku.stock > 0 ? 'text-success' : 'text-danger'">
-                                    {{ currentSku.stock > 0 ? '有货 (' + currentSku.stock + '件)' : '无货' }}
+                                <span :class="availableStock > 0 ? 'text-success' : 'text-danger'">
+                                    {{ availableStock > 0 ? '有货 (' + availableStock + '件)' : '无货' }}
                                 </span>
                             </div>
                         </div>
@@ -109,7 +109,7 @@
                                 <button class="btn btn-outline-secondary" type="button" v-on:click="quantity--" :disabled="quantity <= 1">-</button>
                                 <input type="number" class="form-control text-center" v-model.number="quantity" min="1">
                                 <button class="btn btn-outline-secondary" type="button" v-on:click="quantity++"
-                                        :disabled="currentSku && quantity >= currentSku.stock">+</button>
+                                        :disabled="currentSku && quantity >= availableStock">+</button>
                             </div>
                         </div>
 
@@ -117,14 +117,14 @@
                             <template v-if="isCustomer">
                                 <button type="button" class="btn btn-outline-primary flex-grow-1"
                                         v-on:click="addToCart"
-                                        :disabled="!currentSku || currentSku.stock <= 0 || addingToCart">
+                                        :disabled="!currentSku || availableStock <= 0 || addingToCart">
                                     <i class="bi bi-cart-plus"></i>
                                     <span v-if="addingToCart">添加中...</span>
                                     <span v-else>加入购物车</span>
                                 </button>
                                 <button type="button" class="btn btn-danger flex-grow-1"
                                         v-on:click="buyNow"
-                                        :disabled="!currentSku || currentSku.stock <= 0">
+                                        :disabled="!currentSku || availableStock <= 0">
                                     <i class="bi bi-bag-check"></i> 立即购买
                                 </button>
                             </template>

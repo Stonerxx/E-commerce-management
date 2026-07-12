@@ -17,21 +17,24 @@
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-12 col-lg-3">
-                    <input type="text" class="form-control" placeholder="搜索商品名称或 SKU..." v-model="keyword" v-on:keyup.enter="loadLogs">
+                    <input type="text" class="form-control" placeholder="搜索商品名称或 SKU..." v-model="keyword" v-on:keyup.enter="loadLogs()">
                 </div>
                 <div class="col-12 col-lg-2">
-                    <select class="form-select" v-model.number="changeType">
+                    <select class="form-select" v-model="changeType">
                         <option :value="null">全部类型</option>
-                        <option :value="1">入库</option>
-                        <option :value="2">出库</option>
-                        <option :value="3">盘点</option>
+                        <option value="ADJUST">人工调整</option>
+                        <option value="ORDER_LOCK">订单锁定</option>
+                        <option value="ORDER_RELEASE">订单释放</option>
+                        <option value="ORDER_DEDUCT">订单扣减</option>
+                        <option value="RESTOCK">入库</option>
+                        <option value="SALE">销售出库</option>
                     </select>
                 </div>
                 <div class="col-12 col-lg-3">
-                    <input type="text" class="form-control" placeholder="SKU ID（可选）" v-model="skuId" v-on:keyup.enter="loadLogs">
+                    <input type="text" class="form-control" placeholder="SKU ID（可选）" v-model="skuId" v-on:keyup.enter="loadLogs()">
                 </div>
                 <div class="col-12 col-lg-2">
-                    <button class="btn btn-outline-primary w-100" v-on:click="loadLogs">
+                    <button class="btn btn-outline-primary w-100" v-on:click="loadLogs()">
                         <i class="bi bi-search"></i> 搜索
                     </button>
                 </div>
@@ -92,7 +95,7 @@
                         </td>
                         <td>{{ row.stockBefore }}</td>
                         <td>{{ row.stockAfter }}</td>
-                        <td>{{ row.operatorName || ('用户#' + row.operatorId) }}</td>
+                        <td>{{ row.operatorName || (row.operatorId ? ('用户#' + row.operatorId) : '系统') }}</td>
                         <td><span class="small text-muted">{{ formatTime(row.createdAt) }}</span></td>
                         <td><span class="small">{{ row.remark || '-' }}</span></td>
                     </tr>

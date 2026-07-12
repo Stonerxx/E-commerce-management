@@ -76,14 +76,18 @@ public sealed class PermissionService : IPermissionService
             return true;
         }
 
-        var hasRule = await _permissionRepository.PermissionRuleExistsAsync(requestPath, httpMethod, cancellationToken);
-        if (!hasRule)
+        var action = httpMethod.ToUpperInvariant();
+        var matchingRules = (await _permissionRepository.GetPermissionRulesByActionAsync(action, cancellationToken))
+            .Where(rule => PermissionPathMatcher.IsMatch(rule.ResourcePath, requestPath))
+            .ToArray();
+
+        if (matchingRules.Length == 0)
         {
-            // 未配置到 PERMISSION 表的路由继续交给 ASP.NET Core Policy 控制，避免初始化阶段锁死系统。
-            return true;
+            return !IsStrictBackendPath(requestPath);
         }
 
-        return await _permissionRepository.HasRolePermissionAsync(roleNames, requestPath, httpMethod, cancellationToken);
+        var roleRules = await _permissionRepository.GetRolePermissionRulesByActionAsync(roleNames, action, cancellationToken);
+        return roleRules.Any(rule => PermissionPathMatcher.IsMatch(rule.ResourcePath, requestPath));
     }
 
     private async Task EnsureRoleExistsAsync(int roleId, CancellationToken cancellationToken)
@@ -97,5 +101,14 @@ public sealed class PermissionService : IPermissionService
         {
             throw new BusinessException(ErrorCodes.ResourceNotFound, "角色不存在");
         }
+    }
+
+    private static bool IsStrictBackendPath(string requestPath)
+    {
+        var normalizedPath = PermissionPathMatcher.NormalizePath(requestPath);
+        return normalizedPath.Equals("/admin", StringComparison.OrdinalIgnoreCase)
+            || normalizedPath.StartsWith("/admin/", StringComparison.OrdinalIgnoreCase)
+            || normalizedPath.Equals("/api/v1/admin", StringComparison.OrdinalIgnoreCase)
+            || normalizedPath.StartsWith("/api/v1/admin/", StringComparison.OrdinalIgnoreCase);
     }
 }

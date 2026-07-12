@@ -4,6 +4,7 @@
 
 ```sql
 @migration/init_database.sql
+@migration/database_objects.sql
 @migration/seed_demo_data.sql
 ```
 
@@ -58,6 +59,7 @@ demo123
 9. 返回“我的订单”，确认新订单状态变为“已支付”。
 
 说明：`/payment/{orderId}` 当前是 `TEMP_DEMO_PAYMENT` 临时页，只负责在 member5 合入前打通演示闭环。
+结算页暂不展示优惠券；手工携带 `UserCouponId` 提交预览或订单会返回 `COUPON_NOT_READY`，不会绑定未校验的用户券。
 
 ## 4. 历史订单演示
 
@@ -96,7 +98,7 @@ demo123
 | `TEMP_DEMO_ADDRESS` | `src/ECommerce.Infrastructure/Services/Mocks/MockAddressService.cs` | member2 地址服务 |
 | `TEMP_DEMO_SKU` | `src/ECommerce.Infrastructure/Services/Mocks/MockSkuService.cs` | member3 SKU 服务 |
 | `TEMP_DEMO_INVENTORY` | `src/ECommerce.Infrastructure/Services/Mocks/MockInventoryService.cs` | member3 库存服务 |
-| `TEMP_DEMO_COUPON` | `src/ECommerce.Infrastructure/Services/Mocks/MockCouponService.cs` | member5 优惠券服务 |
+| `COUPON_NOT_READY` | `src/ECommerce.Infrastructure/Services/OrderService.cs` | member5 用户优惠券与核销服务 |
 | `TEMP_DEMO_PAYMENT` | `src/ECommerce.Web/Controllers/PaymentController.cs` | member5 支付服务 |
 
 最终统合前可以运行：

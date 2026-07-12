@@ -7,6 +7,7 @@
 - [组员开工指南](docs/TEAM_GUIDE.md)：分支、运行、提交、PR 和日常协作流程。
 - [开发规范](docs/DEVELOPMENT_SPEC.md)：项目结构、接口规范、代码规范、API 格式、路由、事务和跨模块协作。
 - [Oracle 初始化脚本](migration/init_database.sql)：24 张业务表、约束和索引。
+- [Oracle 数据库对象脚本](migration/database_objects.sql)：库存函数、统计过程、报表视图，以及订单一致性/销量触发器。
 
 ## 项目启动
 
@@ -64,7 +65,7 @@ demo_buyer    USER，已完成订单和评价演示
 当前项目状态：
 
 - 已接入：真实登录注册、地址、权限、日志、商品分类、SKU、库存、购物车、订单、优惠券模板、统计 Dashboard 和导出基础。
-- 仍需注意：支付演示仍使用 `TEMP_DEMO_PAYMENT` 临时页；用户领券、物流和评价接口仍有占位实现。
+- 仍需注意：支付演示仍使用 `TEMP_DEMO_PAYMENT` 临时页；用户领券与核销、物流和评价接口仍未完成。结算页面已暂时禁用优惠券，携带 `UserCouponId` 的请求会返回 `COUPON_NOT_READY`。
 - 现阶段目标：在 `merging` 分支完成最终联调，`main` 负责正式服务器部署。
 
 Oracle 连接默认是占位配置，不要提交真实密码。本项目现在约定两个服务器数据库用户：
@@ -100,6 +101,14 @@ Invoke-RestMethod http://localhost:5052/api/v1/system/db-check
 - `deployment/` 下已提供发布脚本、环境变量样例、systemd 服务样例和 Nginx 反向代理样例。
 - 服务器最终验收还需要填真实 `Oracle__ConnectionString`，运行初始化脚本，截图证明服务器公网地址能访问。
 
+数据库首次初始化或重建时，按下面顺序执行：
+
+```powershell
+sqlplus 用户名/密码@//数据库地址:1521/服务名 @migration/init_database.sql
+sqlplus 用户名/密码@//数据库地址:1521/服务名 @migration/database_objects.sql
+sqlplus 用户名/密码@//数据库地址:1521/服务名 @migration/seed_demo_data.sql
+```
+
 发布推荐走 GitHub Actions：
 
 ```text
@@ -125,11 +134,11 @@ powershell -ExecutionPolicy Bypass -File deployment/publish.ps1
 6. 订单创建、取消、确认
 7. 订单状态流转（待支付→已支付→发货→完成）
 8. 多地址管理与默认地址
-9. 支付模拟与支付状态同步
-10. 物流信息录入与查询
+9. 临时模拟支付与订单状态同步（`TEMP_DEMO_PAYMENT`）
+10. 物流信息录入与查询（待实现）
 11. 订单分页查询、条件搜索
 12. 订单统计（日/月销量、销售额）
-13. 优惠券发放与使用核销
+13. 优惠券发放与使用核销（待实现）
 14. 商品热度排行与推荐
 15. 数据导出（Excel订单报表）
 16. 管理员操作日志审计

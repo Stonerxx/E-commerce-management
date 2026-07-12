@@ -96,6 +96,22 @@
                 return options;
             });
 
+            const flatTreeData = computed(() => {
+                const nodes = [];
+
+                function appendVisibleNodes(items) {
+                    for (const item of items) {
+                        nodes.push(item);
+                        if (item.expanded !== false && item.children && item.children.length > 0) {
+                            appendVisibleNodes(item.children);
+                        }
+                    }
+                }
+
+                appendVisibleNodes(treeData.value);
+                return nodes;
+            });
+
             function findParentLevel(parentId) {
                 if (!parentId) return 0;
                 for (const node of parentOptions.value) {

@@ -28,18 +28,23 @@
 
             function getTypeText(t) {
                 switch (t) {
-                    case 1: return '入库';
-                    case 2: return '出库';
-                    case 3: return '盘点';
-                    default: return '其他';
+                    case 'ADJUST': return '人工调整';
+                    case 'ORDER_LOCK': return '订单锁定';
+                    case 'ORDER_RELEASE': return '订单释放';
+                    case 'ORDER_DEDUCT': return '订单扣减';
+                    case 'RESTOCK': return '入库';
+                    case 'SALE': return '销售出库';
+                    default: return t || '其他';
                 }
             }
 
             function getTypeClass(t) {
                 switch (t) {
-                    case 1: return 'text-bg-success';
-                    case 2: return 'text-bg-danger';
-                    case 3: return 'text-bg-info';
+                    case 'RESTOCK': return 'text-bg-success';
+                    case 'SALE':
+                    case 'ORDER_DEDUCT': return 'text-bg-danger';
+                    case 'ORDER_LOCK': return 'text-bg-warning';
+                    case 'ORDER_RELEASE': return 'text-bg-info';
                     default: return 'text-bg-secondary';
                 }
             }
@@ -59,7 +64,7 @@
                 loading.value = true;
                 try {
                     const params = new URLSearchParams();
-                    params.set('page', page);
+                    params.set('pageIndex', page);
                     params.set('pageSize', pagination.value.pageSize);
                     if (changeType.value != null) params.set('changeType', changeType.value);
                     if (skuId.value) params.set('skuId', skuId.value);
@@ -70,30 +75,15 @@
                     const data = await resp.json();
 
                     if (data.success && data.data) {
-                        // 加载商品映射，补充商品名称
-                        const productMap = {};
-                        let pPage = 1;
-                        while (true) {
-                            const pResp = await fetch(`/api/v1/admin/products?page=${pPage}&pageSize=100`, {
-                                headers: { 'Accept': 'application/json' }
-                            });
-                            const pData = await pResp.json();
-                            if (pData.success && pData.data && pData.data.items) {
-                                for (const p of pData.data.items) productMap[p.productId] = p.name;
-                                if (pPage >= pData.data.totalPages || pData.data.totalPages === 0) break;
-                                pPage++;
-                            } else break;
-                        }
-
                         let list = (data.data.items || []).map(it => ({
                             logId: it.logId,
                             skuId: it.skuId,
                             productId: it.productId,
-                            productName: productMap[it.productId] || '',
+                            productName: it.productName || '',
                             changeType: it.changeType,
-                            quantity: it.quantity,
-                            stockBefore: it.stockBefore,
-                            stockAfter: it.stockAfter,
+                            quantity: it.changeQty,
+                            stockBefore: it.beforeStock,
+                            stockAfter: it.afterStock,
                             operatorId: it.operatorId,
                             operatorName: it.operatorName,
                             createdAt: it.createdAt,

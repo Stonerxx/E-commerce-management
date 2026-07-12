@@ -96,7 +96,8 @@ public sealed record SkuDto(
     int LockedStock,
     int WarningStock,
     string? SkuImage,
-    int Status);
+    int Status,
+    int ProductStatus = 1);
 
 public sealed record ProductDetailDto(
     long ProductId,

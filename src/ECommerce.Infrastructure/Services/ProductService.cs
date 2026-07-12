@@ -1,7 +1,9 @@
 using ECommerce.Application.DTOs;
 using ECommerce.Application.Services;
 using ECommerce.Domain.Entities;
+using ECommerce.Domain.Enums;
 using ECommerce.Infrastructure.Repositories;
+using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Contracts;
 using ECommerce.Shared.Exceptions;
 
@@ -13,22 +15,30 @@ public sealed class ProductService : IProductService
     private readonly IProductImageRepository _productImageRepository;
     private readonly IProductSpecRepository _productSpecRepository;
     private readonly ISkuService _skuService;
+    private readonly IUnitOfWork _unitOfWork;
 
     public ProductService(
         IProductRepository productRepository,
         IProductImageRepository productImageRepository,
         IProductSpecRepository productSpecRepository,
-        ISkuService skuService)
+        ISkuService skuService,
+        IUnitOfWork unitOfWork)
     {
         _productRepository = productRepository;
         _productImageRepository = productImageRepository;
         _productSpecRepository = productSpecRepository;
         _skuService = skuService;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<PagedResult<ProductListItemDto>> SearchAsync(ProductQuery query, CancellationToken cancellationToken = default)
     {
         return await _productRepository.SearchAsync(query, cancellationToken);
+    }
+
+    public async Task<PagedResult<ProductListItemDto>> SearchPublicAsync(ProductQuery query, CancellationToken cancellationToken = default)
+    {
+        return await _productRepository.SearchPublicAsync(query, cancellationToken);
     }
 
     public async Task<ProductDetailDto> GetDetailAsync(long productId, CancellationToken cancellationToken = default)
@@ -39,8 +49,6 @@ public sealed class ProductService : IProductService
             throw new BusinessException("PRODUCT_NOT_FOUND", "商品不存在");
         }
 
-        await _productRepository.IncrementViewCountAsync(productId, cancellationToken);
-
         var images = await _productImageRepository.GetByProductAsync(productId, cancellationToken);
         var specs = await _productSpecRepository.GetByProductAsync(productId, cancellationToken);
         var skus = await _skuService.GetByProductAsync(productId, cancellationToken);
@@ -48,9 +56,22 @@ public sealed class ProductService : IProductService
         return MapToDetailDto(product, images, specs, skus);
     }
 
+    public async Task<ProductDetailDto> GetPublicDetailAndTrackAsync(long productId, CancellationToken cancellationToken = default)
+    {
+        var detail = await GetDetailAsync(productId, cancellationToken);
+        if (detail.Status is not ((int)ProductStatus.OnShelf or (int)ProductStatus.Presale))
+        {
+            throw new BusinessException("PRODUCT_NOT_FOUND", "商品不存在");
+        }
+
+        await _productRepository.IncrementViewCountAsync(productId, cancellationToken);
+        return detail with { ViewCount = detail.ViewCount + 1 };
+    }
+
     public async Task<long> CreateAsync(ProductSaveRequest request, long operatorId, CancellationToken cancellationToken = default)
     {
         ValidateRequest(request);
+        EnsureSkuRequestCombinationsAreUnique(request.Skus);
 
         var categoryExists = await _productRepository.CategoryExistsAsync(request.CategoryId, cancellationToken);
         if (!categoryExists)
@@ -74,44 +95,68 @@ public sealed class ProductService : IProductService
             UpdatedAt = now
         };
 
-        var productId = await _productRepository.CreateAsync(product, cancellationToken);
-
-        foreach (var imageRequest in request.Images)
+        var ownsTransaction = _unitOfWork.CurrentTransaction is null;
+        if (ownsTransaction)
         {
-            var image = new ProductImage
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        }
+
+        try
+        {
+            var productId = await _productRepository.CreateAsync(product, cancellationToken);
+
+            foreach (var imageRequest in request.Images)
             {
-                ProductId = productId,
-                ImageUrl = imageRequest.ImageUrl,
-                SortOrder = imageRequest.SortOrder,
-                CreatedAt = now
-            };
-            await _productImageRepository.CreateAsync(image, cancellationToken);
-        }
+                var image = new ProductImage
+                {
+                    ProductId = productId,
+                    ImageUrl = imageRequest.ImageUrl,
+                    SortOrder = imageRequest.SortOrder,
+                    CreatedAt = now
+                };
+                await _productImageRepository.CreateAsync(image, cancellationToken);
+            }
 
-        foreach (var specRequest in request.Specs)
-        {
-            var spec = new ProductSpec
+            foreach (var specRequest in request.Specs)
             {
-                ProductId = productId,
-                SpecName = specRequest.SpecName,
-                SpecValue = specRequest.SpecValue,
-                SortOrder = specRequest.SortOrder,
-                CreatedAt = now
-            };
-            await _productSpecRepository.CreateAsync(spec, cancellationToken);
-        }
+                var spec = new ProductSpec
+                {
+                    ProductId = productId,
+                    SpecName = specRequest.SpecName,
+                    SpecValue = specRequest.SpecValue,
+                    SortOrder = specRequest.SortOrder,
+                    CreatedAt = now
+                };
+                await _productSpecRepository.CreateAsync(spec, cancellationToken);
+            }
 
-        foreach (var skuRequest in request.Skus)
+            foreach (var skuRequest in request.Skus)
+            {
+                await _skuService.CreateAsync(productId, skuRequest, operatorId, cancellationToken);
+            }
+
+            if (ownsTransaction)
+            {
+                await _unitOfWork.CommitAsync(cancellationToken);
+            }
+
+            return productId;
+        }
+        catch
         {
-            await _skuService.CreateAsync(productId, skuRequest, operatorId, cancellationToken);
-        }
+            if (ownsTransaction)
+            {
+                await _unitOfWork.RollbackAsync(cancellationToken);
+            }
 
-        return productId;
+            throw;
+        }
     }
 
     public async Task UpdateAsync(long productId, ProductSaveRequest request, long operatorId, CancellationToken cancellationToken = default)
     {
         ValidateRequest(request);
+        EnsureSkuRequestCombinationsAreUnique(request.Skus);
 
         var product = await _productRepository.GetByIdAsync(productId, cancellationToken);
         if (product == null)
@@ -134,64 +179,85 @@ public sealed class ProductService : IProductService
         product.PriceMin = request.Skus.Any() ? request.Skus.Min(s => s.Price) : 0;
         product.UpdatedAt = now;
 
-        await _productRepository.UpdateAsync(product, cancellationToken);
-
-        await _productImageRepository.DeleteByProductAsync(productId, cancellationToken);
-        foreach (var imageRequest in request.Images)
+        var ownsTransaction = _unitOfWork.CurrentTransaction is null;
+        if (ownsTransaction)
         {
-            var image = new ProductImage
-            {
-                ProductId = productId,
-                ImageUrl = imageRequest.ImageUrl,
-                SortOrder = imageRequest.SortOrder,
-                CreatedAt = now
-            };
-            await _productImageRepository.CreateAsync(image, cancellationToken);
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
         }
 
-        await _productSpecRepository.DeleteByProductAsync(productId, cancellationToken);
-        foreach (var specRequest in request.Specs)
+        try
         {
-            var spec = new ProductSpec
+            await _productRepository.UpdateAsync(product, cancellationToken);
+
+            await _productImageRepository.DeleteByProductAsync(productId, cancellationToken);
+            foreach (var imageRequest in request.Images)
             {
-                ProductId = productId,
-                SpecName = specRequest.SpecName,
-                SpecValue = specRequest.SpecValue,
-                SortOrder = specRequest.SortOrder,
-                CreatedAt = now
-            };
-            await _productSpecRepository.CreateAsync(spec, cancellationToken);
+                var image = new ProductImage
+                {
+                    ProductId = productId,
+                    ImageUrl = imageRequest.ImageUrl,
+                    SortOrder = imageRequest.SortOrder,
+                    CreatedAt = now
+                };
+                await _productImageRepository.CreateAsync(image, cancellationToken);
+            }
+
+            await _productSpecRepository.DeleteByProductAsync(productId, cancellationToken);
+            foreach (var specRequest in request.Specs)
+            {
+                var spec = new ProductSpec
+                {
+                    ProductId = productId,
+                    SpecName = specRequest.SpecName,
+                    SpecValue = specRequest.SpecValue,
+                    SortOrder = specRequest.SortOrder,
+                    CreatedAt = now
+                };
+                await _productSpecRepository.CreateAsync(spec, cancellationToken);
+            }
+
+            var existingSkus = await _skuService.GetByProductAsync(productId, cancellationToken);
+            var existingSkuIds = existingSkus.Select(sku => sku.SkuId).ToHashSet();
+            var retainedSkuIds = new HashSet<long>();
+            foreach (var skuRequest in request.Skus)
+            {
+                if (skuRequest.SkuId is { } skuId)
+                {
+                    if (!existingSkuIds.Contains(skuId))
+                    {
+                        throw new BusinessException("SKU_NOT_FOUND", $"SKU {skuId} 不属于当前商品");
+                    }
+                    if (!retainedSkuIds.Add(skuId))
+                    {
+                        throw new BusinessException("SKU_DUPLICATE", $"SKU {skuId} 被重复提交");
+                    }
+
+                    await _skuService.UpdateAsync(skuId, skuRequest, operatorId, cancellationToken);
+                }
+                else
+                {
+                    await _skuService.CreateAsync(productId, skuRequest, operatorId, cancellationToken);
+                }
+            }
+
+            foreach (var existingSkuId in existingSkuIds.Except(retainedSkuIds))
+            {
+                await _skuService.RemoveIfUnreferencedOrDisableAsync(existingSkuId, operatorId, cancellationToken);
+            }
+
+            if (ownsTransaction)
+            {
+                await _unitOfWork.CommitAsync(cancellationToken);
+            }
         }
-
-        // 增量更新 SKU：保留已有 ID 的 SKU，新建没有 ID 的 SKU，禁用不再需要的 SKU
-        var existingSkus = await _skuService.GetByProductAsync(productId, cancellationToken);
-        var existingSkuIds = existingSkus.Select(s => s.SkuId).ToHashSet();
-
-        var requestSkuIds = request.Skus
-            .Where(s => s.SkuId.HasValue)
-            .Select(s => s.SkuId.Value)
-            .ToHashSet();
-
-        // 1. 更新已有 SKU 或创建新 SKU
-        foreach (var skuRequest in request.Skus)
+        catch
         {
-            if (skuRequest.SkuId.HasValue && existingSkuIds.Contains(skuRequest.SkuId.Value))
+            if (ownsTransaction)
             {
-                await _skuService.UpdateAsync(skuRequest.SkuId.Value, skuRequest, operatorId, cancellationToken);
+                await _unitOfWork.RollbackAsync(cancellationToken);
             }
-            else
-            {
-                await _skuService.CreateAsync(productId, skuRequest, operatorId, cancellationToken);
-            }
-        }
 
-        // 2. 禁用不再需要的已有 SKU（避免硬删除导致关联数据不一致）
-        foreach (var existingSku in existingSkus)
-        {
-            if (!requestSkuIds.Contains(existingSku.SkuId))
-            {
-                await _skuService.SetStatusAsync(existingSku.SkuId, 0, operatorId, cancellationToken);
-            }
+            throw;
         }
     }
 
@@ -228,6 +294,24 @@ public sealed class ProductService : IProductService
         if (request.Status != 0 && request.Status != 1 && request.Status != 2)
         {
             throw new BusinessException("PRODUCT_STATUS_INVALID", "商品状态只能是0（下架）、1（上架）或2（预售）");
+        }
+    }
+
+    private static void EnsureSkuRequestCombinationsAreUnique(IReadOnlyList<SkuSaveRequest> skus)
+    {
+        var combinations = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var sku in skus)
+        {
+            var combination = string.Join(
+                "\u001f",
+                sku.SpecSelections
+                    .OrderBy(selection => selection.SpecName, StringComparer.Ordinal)
+                    .Select(selection => $"{selection.SpecName}\u001e{selection.SpecValue}"));
+
+            if (!combinations.Add(combination))
+            {
+                throw new BusinessException("SKU_SPEC_COMBINATION_DUPLICATE", "不能提交重复的 SKU 规格组合");
+            }
         }
     }
 

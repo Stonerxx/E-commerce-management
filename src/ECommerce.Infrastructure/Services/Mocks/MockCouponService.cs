@@ -14,7 +14,7 @@ public class MockCouponService : ICouponService
     public Task<PagedResult<CouponTemplateDto>> SearchTemplatesAsync(CouponTemplateQuery query, CancellationToken cancellationToken = default)
     {
         // 返回空结果
-        return Task.FromResult(PagedResult<CouponTemplateDto>.Empty(query.PageIndex, query.PageSize));
+        return Task.FromResult(PagedResult<CouponTemplateDto>.Empty(query.SafePageIndex, query.SafePageSize));
     }
 
     public Task<int> CreateTemplateAsync(CouponTemplateRequest request, long operatorId, CancellationToken cancellationToken = default)

@@ -6,7 +6,7 @@
 
 - 模式：B/S。
 - 后端：ASP.NET Core MVC，目标框架 `net8.0`。
-- 数据库：Oracle，建表脚本在 `migration/init_database.sql`。
+- 数据库：Oracle；建表脚本在 `migration/init_database.sql`，函数、过程、视图和触发器在 `migration/database_objects.sql`。
 - 前端页面：Razor Views + Bootstrap。
 - JSON API：统一使用 `/api/v1/...` 前缀。
 
@@ -207,15 +207,17 @@ Invoke-RestMethod http://localhost:5052/api/v1/system/db-check
 
 ```text
 migration/init_database.sql
+migration/database_objects.sql
 ```
 
 第 1 人做 Oracle 时按这个顺序验收：
 
 1. 本地 Oracle 建库或确认服务器 Oracle 可连。
 2. 执行 `migration/init_database.sql`。
-3. 设置 `Oracle__ConnectionString` 环境变量。
-4. 启动 Web 项目。
-5. 访问 `/api/v1/system/db-check`，截图保留 `connected: true`。
+3. 执行 `migration/database_objects.sql`。
+4. 设置 `Oracle__ConnectionString` 环境变量。
+5. 启动 Web 项目。
+6. 访问 `/api/v1/system/db-check`，截图保留 `connected: true`。
 
 ## 5.1 部署怎么准备
 

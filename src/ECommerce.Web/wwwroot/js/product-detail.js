@@ -34,11 +34,12 @@
 
                 const currentSku = computed(() => {
                     if (!product.value || !product.value.skus) return null;
+                    const enabledSkus = product.value.skus.filter(sku => sku.status === 1);
                     const selectedEntries = Object.entries(selectedSpecs.value)
                         .filter(([_, v]) => v);
-                    if (selectedEntries.length === 0) return product.value.skus[0] || null;
+                    if (selectedEntries.length === 0) return enabledSkus[0] || null;
 
-                    for (const sku of product.value.skus) {
+                    for (const sku of enabledSkus) {
                         let specObj = {};
                         try {
                             specObj = JSON.parse(sku.specDescJson);
@@ -55,6 +56,11 @@
                         if (match) return sku;
                     }
                     return null;
+                });
+
+                const availableStock = computed(() => {
+                    if (!currentSku.value) return 0;
+                    return Math.max(0, Number(currentSku.value.stock || 0) - Number(currentSku.value.lockedStock || 0));
                 });
 
                 const currentSkuSpecText = computed(() => {
@@ -132,14 +138,22 @@
                                 quantity: quantity.value
                             })
                         });
-                        const result = await response.json();
 
-                        if (result.success) {
-                            alert('已添加到购物车');
-                        } else if (response.status === 401) {
+                        if (response.status === 401) {
                             window.location.href = '/account/login';
+                            return;
+                        }
+                        if (response.status === 403) {
+                            alert('当前账号没有加入购物车权限');
+                            return;
+                        }
+
+                        const result = await response.json().catch(() => null);
+
+                        if (response.ok && result?.success) {
+                            alert('已添加到购物车');
                         } else {
-                            alert(result.message || '添加失败');
+                            alert(result?.message || '添加失败');
                         }
                     } catch (error) {
                         console.error('加入购物车失败:', error);
@@ -170,9 +184,14 @@
                             return;
                         }
 
-                        const addResult = await addResponse.json();
-                        if (!addResult.success) {
-                            alert(addResult.message || '操作失败');
+                        if (addResponse.status === 403) {
+                            alert('当前账号没有立即购买权限');
+                            return;
+                        }
+
+                        const addResult = await addResponse.json().catch(() => null);
+                        if (!addResponse.ok || !addResult?.success) {
+                            alert(addResult?.message || '操作失败');
                             return;
                         }
 
@@ -203,7 +222,7 @@
                     if (appEl) {
                         const isCustomerAttr = appEl.getAttribute('data-is-customer');
                         isCustomer.value = isCustomerAttr === 'True';
-                        
+
                         const productIdAttr = appEl.getAttribute('data-product-id');
                         if (productIdAttr) {
                             productId = parseInt(productIdAttr);
@@ -223,6 +242,7 @@
                     isCustomer,
                     specGroups,
                     currentSku,
+                    availableStock,
                     currentSkuSpecText,
                     selectSpec,
                     addToCart,

@@ -15,6 +15,7 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         services.Configure<OracleOptions>(configuration.GetSection(OracleOptions.SectionName));
+        services.Configure<StatisticsSnapshotOptions>(configuration.GetSection(StatisticsSnapshotOptions.SectionName));
         services.AddScoped<IOracleConnectionFactory, OracleConnectionFactory>();
         services.AddScoped<IDatabaseHealthCheck, DatabaseHealthCheck>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -47,9 +48,13 @@ public static class DependencyInjection
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<ICouponService, CouponService>();
 
+        services.AddHostedService<OrderTimeoutHostedService>();
+
         // Member6
         services.AddScoped<IStatisticsService, StatisticsService>();
         services.AddScoped<IExportService, ExportService>();
+        services.AddScoped<IStatisticsSnapshotService, StatisticsSnapshotService>();
+        services.AddHostedService<OrderStatisticsSnapshotHostedService>();
 
 
         return services;
