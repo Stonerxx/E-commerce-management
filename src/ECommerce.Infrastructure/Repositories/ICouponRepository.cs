@@ -11,4 +11,11 @@ public interface ICouponRepository
     Task<int> InsertTemplateAsync(CouponTemplate template, CancellationToken cancellationToken = default);
     Task<bool> UpdateTemplateAsync(CouponTemplate template, CancellationToken cancellationToken = default);
     Task<bool> UpdateTemplateStatusAsync(int id, int status, CancellationToken cancellationToken = default);
+    
+    // User Coupon methods
+    Task<long> InsertUserCouponAsync(UserCoupon userCoupon, CancellationToken cancellationToken = default);
+    Task<bool> IncrementTemplateReceivedCountAsync(int templateId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<UserCoupon>> GetUserCouponsAsync(long userId, CancellationToken cancellationToken = default);
+    Task<UserCoupon?> GetUserCouponByIdAsync(long userCouponId, CancellationToken cancellationToken = default);
+    Task<bool> UpdateUserCouponStatusAsync(long userCouponId, int status, long? orderId, DateTime? usedAt, CancellationToken cancellationToken = default);
 }

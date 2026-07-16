@@ -2,6 +2,7 @@ using ECommerce.Application.DTOs;
 using ECommerce.Domain.Entities;
 using ECommerce.Infrastructure.Repositories;
 using ECommerce.Infrastructure.Services;
+using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Contracts;
 using ECommerce.Shared.Exceptions;
 using Moq;
@@ -12,12 +13,14 @@ namespace ECommerce.Tests.Services;
 public class CouponServiceTests
 {
     private readonly Mock<ICouponRepository> _mockRepo;
+    private readonly Mock<IUnitOfWork> _mockUow;
     private readonly CouponService _sut;
 
     public CouponServiceTests()
     {
         _mockRepo = new Mock<ICouponRepository>();
-        _sut = new CouponService(_mockRepo.Object);
+        _mockUow = new Mock<IUnitOfWork>();
+        _sut = new CouponService(_mockRepo.Object, _mockUow.Object);
     }
 
     [Fact]
@@ -120,5 +123,47 @@ public class CouponServiceTests
         // Assert
         Assert.Null(exception);
         _mockRepo.Verify(x => x.UpdateTemplateStatusAsync(1, 0, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReceiveAsync_ShouldThrowIfTemplateNotFound()
+    {
+        _mockRepo.Setup(x => x.GetTemplateByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((CouponTemplate?)null);
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => _sut.ReceiveAsync(1, 1));
+        Assert.Equal("NOT_FOUND", ex.Code);
+    }
+
+    [Fact]
+    public async Task ReceiveAsync_ShouldSucceedAndCommitTransaction()
+    {
+        var template = new CouponTemplate { Id = 1, Status = 1, StartTime = DateTime.Now.AddDays(-1), EndTime = DateTime.Now.AddDays(1) };
+        _mockRepo.Setup(x => x.GetTemplateByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(template);
+        _mockRepo.Setup(x => x.IncrementTemplateReceivedCountAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _mockRepo.Setup(x => x.InsertUserCouponAsync(It.IsAny<UserCoupon>(), It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        await _sut.ReceiveAsync(1, 1);
+
+        _mockUow.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepo.Verify(x => x.IncrementTemplateReceivedCountAsync(1, It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepo.Verify(x => x.InsertUserCouponAsync(It.Is<UserCoupon>(u => u.UserId == 1 && u.CouponTemplateId == 1 && u.Status == 0), It.IsAny<CancellationToken>()), Times.Once);
+        _mockUow.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ShouldCalculateDiscountCorrectly()
+    {
+        // Test discount calculation (Type 2, 85%)
+        var uc = new UserCoupon { Id = 1, UserId = 1, CouponTemplateId = 1, Status = 0 };
+        var template = new CouponTemplate { Id = 1, Type = 2, Amount = 0.85m, MinAmount = 100m, StartTime = DateTime.Now.AddDays(-1), EndTime = DateTime.Now.AddDays(1) };
+        
+        _mockRepo.Setup(x => x.GetUserCouponByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(uc);
+        _mockRepo.Setup(x => x.GetTemplateByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(template);
+
+        var result = await _sut.ValidateAsync(1, 1, 200m);
+
+        Assert.True(result.Available);
+        Assert.Equal(30m, result.DiscountAmount); // 200 * (1 - 0.85) = 30
     }
 }

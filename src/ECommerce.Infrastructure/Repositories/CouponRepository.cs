@@ -201,4 +201,137 @@ public class CouponRepository : ICouponRepository
     {
         return new OracleParameter(name, value ?? DBNull.Value);
     }
+
+    // --- User Coupon Methods ---
+
+    public async Task<long> InsertUserCouponAsync(UserCoupon userCoupon, CancellationToken cancellationToken = default)
+    {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        const string sql = @"
+            INSERT INTO user_coupon 
+                (user_id, coupon_template_id, status)
+            VALUES 
+                (:UserId, :TemplateId, :Status)
+            RETURNING id INTO :Id";
+
+        await using var cmd = Connection.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Transaction = Transaction;
+
+        cmd.Parameters.Add(CreateParameter("UserId", userCoupon.UserId));
+        cmd.Parameters.Add(CreateParameter("TemplateId", userCoupon.CouponTemplateId));
+        cmd.Parameters.Add(CreateParameter("Status", userCoupon.Status));
+
+        var pId = cmd.CreateParameter();
+        pId.ParameterName = "Id";
+        pId.DbType = DbType.Int64;
+        pId.Direction = ParameterDirection.Output;
+        cmd.Parameters.Add(pId);
+
+        await cmd.ExecuteNonQueryAsync(cancellationToken);
+        userCoupon.Id = Convert.ToInt64(pId.Value);
+        return userCoupon.Id;
+    }
+
+    public async Task<bool> IncrementTemplateReceivedCountAsync(int templateId, CancellationToken cancellationToken = default)
+    {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        // Ensure we only increment if we haven't reached total_count, or if total_count == -1
+        const string sql = @"
+            UPDATE coupon_template 
+            SET received_count = received_count + 1 
+            WHERE id = :Id AND (total_count = -1 OR received_count < total_count)";
+
+        await using var cmd = Connection.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Transaction = Transaction;
+        cmd.Parameters.Add(CreateParameter("Id", templateId));
+
+        return await cmd.ExecuteNonQueryAsync(cancellationToken) > 0;
+    }
+
+    public async Task<IReadOnlyList<UserCoupon>> GetUserCouponsAsync(long userId, CancellationToken cancellationToken = default)
+    {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        const string sql = @"
+            SELECT uc.id, uc.user_id, uc.coupon_template_id, uc.status, uc.received_at, uc.used_at, uc.order_id,
+                   ct.name AS coupon_name
+            FROM user_coupon uc
+            JOIN coupon_template ct ON uc.coupon_template_id = ct.id
+            WHERE uc.user_id = :UserId
+            ORDER BY uc.received_at DESC";
+
+        await using var cmd = Connection.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Transaction = Transaction;
+        cmd.Parameters.Add(CreateParameter("UserId", userId));
+
+        var items = new List<UserCoupon>();
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            items.Add(new UserCoupon
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("id")),
+                UserId = reader.GetInt64(reader.GetOrdinal("user_id")),
+                CouponTemplateId = reader.GetInt32(reader.GetOrdinal("coupon_template_id")),
+                Status = reader.GetInt32(reader.GetOrdinal("status")),
+                ReceivedAt = reader.GetDateTime(reader.GetOrdinal("received_at")),
+                UsedAt = reader.IsDBNull(reader.GetOrdinal("used_at")) ? null : reader.GetDateTime(reader.GetOrdinal("used_at")),
+                OrderId = reader.IsDBNull(reader.GetOrdinal("order_id")) ? null : reader.GetInt64(reader.GetOrdinal("order_id")),
+                CouponName = reader.GetString(reader.GetOrdinal("coupon_name"))
+            });
+        }
+        return items;
+    }
+
+    public async Task<UserCoupon?> GetUserCouponByIdAsync(long userCouponId, CancellationToken cancellationToken = default)
+    {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        const string sql = @"
+            SELECT id, user_id, coupon_template_id, status, received_at, used_at, order_id
+            FROM user_coupon 
+            WHERE id = :Id";
+
+        await using var cmd = Connection.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Transaction = Transaction;
+        cmd.Parameters.Add(CreateParameter("Id", userCouponId));
+
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        if (await reader.ReadAsync(cancellationToken))
+        {
+            return new UserCoupon
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("id")),
+                UserId = reader.GetInt64(reader.GetOrdinal("user_id")),
+                CouponTemplateId = reader.GetInt32(reader.GetOrdinal("coupon_template_id")),
+                Status = reader.GetInt32(reader.GetOrdinal("status")),
+                ReceivedAt = reader.GetDateTime(reader.GetOrdinal("received_at")),
+                UsedAt = reader.IsDBNull(reader.GetOrdinal("used_at")) ? null : reader.GetDateTime(reader.GetOrdinal("used_at")),
+                OrderId = reader.IsDBNull(reader.GetOrdinal("order_id")) ? null : reader.GetInt64(reader.GetOrdinal("order_id")),
+            };
+        }
+        return null;
+    }
+
+    public async Task<bool> UpdateUserCouponStatusAsync(long userCouponId, int status, long? orderId, DateTime? usedAt, CancellationToken cancellationToken = default)
+    {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        const string sql = @"
+            UPDATE user_coupon 
+            SET status = :Status, order_id = :OrderId, used_at = :UsedAt
+            WHERE id = :Id";
+
+        await using var cmd = Connection.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Transaction = Transaction;
+
+        cmd.Parameters.Add(CreateParameter("Status", status));
+        cmd.Parameters.Add(CreateParameter("OrderId", orderId));
+        cmd.Parameters.Add(CreateParameter("UsedAt", usedAt));
+        cmd.Parameters.Add(CreateParameter("Id", userCouponId));
+
+        return await cmd.ExecuteNonQueryAsync(cancellationToken) > 0;
+    }
 }

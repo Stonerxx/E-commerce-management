@@ -22,6 +22,10 @@ public static class DependencyInjection
         // Member 5
         services.AddScoped<ICouponRepository, CouponRepository>();
         services.AddScoped<ICouponService, CouponService>();
+        services.AddScoped<IReviewRepository, ReviewRepository>();
+        services.AddScoped<IReviewService, ReviewService>();
+        services.AddScoped<ILogisticsRepository, LogisticsRepository>();
+        services.AddScoped<ILogisticsService, LogisticsService>();
 
         return services;
     }
