@@ -1,96 +1,127 @@
 @{
     ViewData["Title"] = "首页";
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var isCustomer = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.User);
+    var isAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
+    var canUseAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Service) || isAdmin;
 }
 
-<section class="py-4">
-    <div class="p-4 p-lg-5 bg-white border rounded shadow-sm mb-4">
+<div class="home-page py-4">
+    <section class="border rounded bg-light p-4 p-lg-5 mb-4">
         <div class="row align-items-center g-4">
-            <div class="col-12 col-lg-7">
-                <p class="text-primary fw-semibold mb-2">E-Commerce Management</p>
-                <h1 class="display-6 fw-semibold mb-3">电商购物与后台管理系统</h1>
-                <p class="lead text-muted mb-4">
-                    系统已接入用户认证、角色权限、收货地址和管理员操作日志，可继续与商品、订单、支付、物流等模块协同集成。
+            <div class="col-lg-8">
+                <p class="text-uppercase text-muted small fw-semibold mb-2">ECommerce Management</p>
+                <h1 class="display-6 fw-semibold mb-3">电商购物平台</h1>
+                <p class="lead text-muted mb-0">
+                    服务器部署成功后可以从这里进入当前账号可用的页面。
+                    普通用户看到购物流程和地址管理，客服和管理员看到后台入口。
                 </p>
-                <div class="d-flex flex-wrap gap-2">
-                    <a class="btn btn-primary" href="/account/login">立即登录</a>
-                    <a class="btn btn-outline-primary" href="/account/register">创建账号</a>
-                    <a class="btn btn-outline-secondary" href="/addresses">管理收货地址</a>
-                    <a class="btn btn-outline-dark" href="/admin">进入后台</a>
-                </div>
             </div>
-            <div class="col-12 col-lg-5">
-                <div class="row g-3">
-                    <div class="col-6">
-                        <div class="border rounded p-3 h-100">
-                            <div class="fs-4 fw-semibold">RBAC</div>
-                            <div class="text-muted small">角色权限控制</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="border rounded p-3 h-100">
-                            <div class="fs-4 fw-semibold">API</div>
-                            <div class="text-muted small">统一 JSON 接口</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="border rounded p-3 h-100">
-                            <div class="fs-4 fw-semibold">Oracle</div>
-                            <div class="text-muted small">远程数据库</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="border rounded p-3 h-100">
-                            <div class="fs-4 fw-semibold">Audit</div>
-                            <div class="text-muted small">后台操作日志</div>
-                        </div>
-                    </div>
+            <div class="col-lg-4">
+                <div class="d-grid gap-2">
+                    @if (!isAuthenticated)
+                    {
+                        <a class="btn btn-primary btn-lg" href="/account/login">登录演示账号</a>
+                        <a class="btn btn-outline-success btn-lg" href="/account/register">注册</a>
+                    }
+                    @if (isCustomer)
+                    {
+                        <a class="btn btn-primary btn-lg" href="/cart">进入购物车</a>
+                        <a class="btn btn-outline-primary btn-lg" href="/orders">查看我的订单</a>
+                        <a class="btn btn-outline-primary btn-lg" href="/addresses">管理收货地址</a>
+                    }
+                    @if (canUseAdmin)
+                    {
+                        <a class="btn btn-primary btn-lg" href="/admin/orders">后台订单管理</a>
+                        <a class="btn btn-outline-secondary btn-lg" href="/admin">后台首页</a>
+                    }
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <div class="row g-3 mb-4">
-        <div class="col-12 col-md-6 col-xl-3">
-            <div class="border rounded bg-white p-3 h-100 shadow-sm">
-                <h2 class="h5">账号中心</h2>
-                <p class="text-muted">注册、登录、退出登录，登录后根据角色自动进入对应页面。</p>
-                <a class="btn btn-sm btn-outline-primary" href="/account/login">登录账号</a>
+        @if (isCustomer)
+        {
+            <div class="col-md-6 col-xl-3">
+                <div class="border rounded p-3 h-100 bg-white">
+                    <h2 class="h5">前台用户</h2>
+                    <p class="text-muted small">面向普通用户的购物、结算、地址和订单页面。</p>
+                    <div class="d-grid gap-2">
+                        <a class="btn btn-outline-primary" href="/cart">购物车</a>
+                        <a class="btn btn-outline-primary" href="/orders">我的订单</a>
+                        <a class="btn btn-outline-primary" href="/addresses">我的地址</a>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="col-12 col-md-6 col-xl-3">
-            <div class="border rounded bg-white p-3 h-100 shadow-sm">
-                <h2 class="h5">收货地址</h2>
-                <p class="text-muted">维护个人收货地址，支持新增、修改、删除和设置默认地址。</p>
-                <a class="btn btn-sm btn-outline-primary" href="/addresses">地址管理</a>
+        }
+
+        @if (canUseAdmin)
+        {
+            <div class="col-md-6 col-xl-3">
+                <div class="border rounded p-3 h-100 bg-white">
+                    <h2 class="h5">后台管理</h2>
+                    <p class="text-muted small">面向客服和管理员的后台入口。</p>
+                    <div class="d-grid gap-2">
+                        <a class="btn btn-outline-secondary" href="/admin">后台首页</a>
+                        <a class="btn btn-outline-secondary" href="/admin/orders">订单管理</a>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="col-12 col-md-6 col-xl-3">
-            <div class="border rounded bg-white p-3 h-100 shadow-sm">
-                <h2 class="h5">用户与角色</h2>
-                <p class="text-muted">管理员可查询用户、启用禁用账号，并分配 USER、SERVICE、ADMIN 角色。</p>
-                <a class="btn btn-sm btn-outline-primary" href="/admin/users">用户管理</a>
+        }
+
+        @if (isAdmin)
+        {
+            <div class="col-md-6 col-xl-3">
+                <div class="border rounded p-3 h-100 bg-white">
+                    <h2 class="h5">权限审计</h2>
+                    <p class="text-muted small">member2 提供的用户、角色、权限和操作日志入口。</p>
+                    <div class="d-grid gap-2">
+                        <a class="btn btn-outline-secondary" href="/admin/users">用户管理</a>
+                        <a class="btn btn-outline-secondary" href="/admin/permissions">权限管理</a>
+                        <a class="btn btn-outline-secondary" href="/admin/operation-logs">操作日志</a>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="col-12 col-md-6 col-xl-3">
-            <div class="border rounded bg-white p-3 h-100 shadow-sm">
-                <h2 class="h5">权限与日志</h2>
-                <p class="text-muted">绑定角色权限并查看关键后台写操作日志。</p>
-                <a class="btn btn-sm btn-outline-primary" href="/admin/permissions">权限管理</a>
-                <a class="btn btn-sm btn-outline-secondary ms-1" href="/admin/operation-logs">日志</a>
+        }
+
+        @if (!isAuthenticated)
+        {
+            <div class="col-md-6 col-xl-3">
+                <div class="border rounded p-3 h-100 bg-white">
+                    <h2 class="h5">账号入口</h2>
+                    <p class="text-muted small">登录和注册页面仍保留统一入口。</p>
+                    <div class="d-grid gap-2">
+                        <a class="btn btn-outline-success" href="/account/login">登录</a>
+                        <a class="btn btn-outline-success" href="/account/register">注册</a>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="col-md-6 col-xl-3">
+            <div class="border rounded p-3 h-100 bg-white">
+                <h2 class="h5">系统检查</h2>
+                <p class="text-muted small">部署后优先确认服务和数据库连接。</p>
+                <div class="d-grid gap-2">
+                    <a class="btn btn-outline-dark" href="/health">健康检查</a>
+                    <a class="btn btn-outline-dark" href="/api/v1/system/db-check">数据库检查</a>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="border rounded bg-white p-3 shadow-sm">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <section class="border rounded p-3 mb-4">
+        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
             <div>
-                <h2 class="h5 mb-1">系统检查</h2>
-                <p class="text-muted mb-0">用于确认应用和数据库连接状态。</p>
+                <h2 class="h5 mb-1">开发文档</h2>
+                <p class="text-muted mb-0">需要确认分支、接口、权限和页面路由时，可以直接打开这些文档。</p>
             </div>
-            <div class="d-flex flex-wrap gap-2">
-                <a class="btn btn-outline-secondary" href="/health">应用健康检查</a>
-                <a class="btn btn-outline-secondary" href="/api/v1/system/db-check">数据库连接检查</a>
+            <div class="d-flex flex-wrap gap-2 align-items-start">
+                <a class="btn btn-sm btn-outline-secondary" href="/docs/team-guide">组员开工指南</a>
+                <a class="btn btn-sm btn-outline-secondary" href="/docs/development-spec">开发规范</a>
+                <a class="btn btn-sm btn-outline-secondary" href="/docs/demo-flow">演示流程</a>
             </div>
         </div>
-    </div>
-</section>
+    </section>
+</div>

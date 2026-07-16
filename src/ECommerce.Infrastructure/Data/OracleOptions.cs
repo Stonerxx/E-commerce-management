@@ -6,9 +6,9 @@ public sealed class OracleOptions
 
     public string ConnectionString { get; init; } = string.Empty;
 
-    public string Host { get; init; } = "120.55.76.207";
+    public int HealthCheckTimeoutSeconds { get; init; } = 5;
 
-    public int Port { get; init; } = 1521;
-
-    public string ServiceName { get; init; } = "FREEPDB1";
+    public bool HasUsableConnectionString =>
+        !string.IsNullOrWhiteSpace(ConnectionString)
+        && !ConnectionString.Contains("change_me", StringComparison.OrdinalIgnoreCase);
 }

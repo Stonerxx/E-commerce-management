@@ -1,6 +1,7 @@
 using ECommerce.Shared.Contracts;
 using ECommerce.Shared.Errors;
 using ECommerce.Shared.Exceptions;
+using ECommerce.Web.Errors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Oracle.ManagedDataAccess.Client;
@@ -27,8 +28,11 @@ public sealed class ApiExceptionFilter : IExceptionFilter
 
         if (context.Exception is BusinessException businessException)
         {
-            context.Result = new BadRequestObjectResult(
-                ApiResponse<object?>.Fail(businessException.Code, businessException.Message, traceId));
+            context.Result = new ObjectResult(
+                ApiResponse<object?>.Fail(businessException.Code, businessException.Message, traceId))
+            {
+                StatusCode = BusinessExceptionStatusMapper.GetStatusCode(businessException.Code)
+            };
             context.ExceptionHandled = true;
             return;
         }
@@ -62,9 +66,32 @@ public sealed class ApiExceptionFilter : IExceptionFilter
             return;
         }
 
+        if (context.Exception is UnauthorizedAccessException)
+        {
+            context.Result = new ObjectResult(
+                ApiResponse<object?>.Fail("UNAUTHORIZED", "登录状态无效或已失效", traceId))
+            {
+                StatusCode = StatusCodes.Status401Unauthorized
+            };
+            context.ExceptionHandled = true;
+            return;
+        }
+
+        if (context.Exception is InvalidOperationException invalidOperationException)
+        {
+            _logger.LogError(invalidOperationException, "Application configuration or state error. TraceId: {TraceId}", traceId);
+            context.Result = new ObjectResult(
+                ApiResponse<object?>.Fail(ErrorCodes.ConfigurationError, invalidOperationException.Message, traceId))
+            {
+                StatusCode = StatusCodes.Status500InternalServerError
+            };
+            context.ExceptionHandled = true;
+            return;
+        }
+
         _logger.LogError(context.Exception, "Unhandled API error. TraceId: {TraceId}", traceId);
         context.Result = new ObjectResult(
-            ApiResponse<object?>.Fail(ErrorCodes.ValidationError, "服务器内部错误", traceId))
+            ApiResponse<object?>.Fail(ErrorCodes.InternalServerError, "服务器内部错误", traceId))
         {
             StatusCode = StatusCodes.Status500InternalServerError
         };

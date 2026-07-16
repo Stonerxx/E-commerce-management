@@ -1,46 +1,93 @@
+@{
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var isCustomer = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.User);
+    var isAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
+    var canUseAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Service) || isAdmin;
+    var currentUserName = User.Identity?.Name ?? "已登录用户";
+    var currentRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "UNKNOWN";
+}
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - 电商管理系统</title>
+    <title>@ViewData["Title"] - 电商购物平台</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/ECommerce.Web.styles.css" asp-append-version="true" />
 </head>
-<body class="bg-light">
+<body>
     <header>
-        <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm">
+        <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
-                <a class="navbar-brand fw-semibold" href="/">电商管理系统</a>
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">电商购物平台</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
                         aria-controls="mainNavbar" aria-expanded="false" aria-label="切换导航">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="mainNavbar">
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        <li class="nav-item"><a class="nav-link" href="/">首页</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/addresses">收货地址</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/admin">后台首页</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/admin/users">用户管理</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/admin/permissions">权限管理</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/admin/operation-logs">操作日志</a></li>
+                        <li class="nav-item"><a class="nav-link text-dark" href="/">首页</a></li>
+                        <li class="nav-item"><a class="nav-link text-dark" href="/products">浏览商品</a></li>
+                        @if (isCustomer)
+                        {
+                            <li class="nav-item"><a class="nav-link text-dark" href="/cart">购物车</a></li>
+                            <li class="nav-item"><a class="nav-link text-dark" href="/orders">我的订单</a></li>
+                            <li class="nav-item"><a class="nav-link text-dark" href="/addresses">我的地址</a></li>
+                        }
+                        @if (canUseAdmin)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    后台
+                                </a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="/admin">后台首页</a></li>
+                                    <li><a class="dropdown-item" href="/admin/orders">订单管理</a></li>
+                                    @if (isAdmin)
+                                    {
+                                        <li><hr class="dropdown-divider" /></li>
+                                        <li><a class="dropdown-item" href="/admin/users">用户管理</a></li>
+                                        <li><a class="dropdown-item" href="/admin/permissions">权限管理</a></li>
+                                        <li><a class="dropdown-item" href="/admin/operation-logs">操作日志</a></li>
+                                    }
+                                </ul>
+                            </li>
+                        }
+                        <li class="nav-item"><a class="nav-link text-dark" href="/health">健康检查</a></li>
                     </ul>
-                    <div class="d-flex gap-2">
-                        <a class="btn btn-sm btn-outline-primary" href="/account/login">登录</a>
-                        <a class="btn btn-sm btn-primary" href="/account/register">注册</a>
-                    </div>
+                    <ul class="navbar-nav">
+                        @if (isAuthenticated)
+                        {
+                            <li class="nav-item">
+                                <span class="nav-link text-dark">@currentUserName (@currentRole)</span>
+                            </li>
+                            <li class="nav-item">
+                                <form method="post" action="/account/logout" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button class="nav-link btn btn-link text-dark" type="submit">退出</button>
+                                </form>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item"><a class="nav-link text-dark" href="/account/login">登录</a></li>
+                            <li class="nav-item"><a class="nav-link text-dark" href="/account/register">注册</a></li>
+                        }
+                    </ul>
                 </div>
             </div>
         </nav>
     </header>
-    <main class="container py-4">
-        @RenderBody()
-    </main>
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
 
-    <footer class="border-top text-muted py-3">
+    <footer class="border-top footer text-muted">
         <div class="container">
-            &copy; 2026 - 电商管理系统
+            &copy; 2026 - 电商购物平台 - <a href="/docs/team-guide">组员指南</a> - <a href="/docs/development-spec">开发规范</a> - <a href="/docs/demo-flow">演示流程</a>
         </div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>

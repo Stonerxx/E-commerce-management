@@ -13,4 +13,6 @@ public interface ISkuService
     Task UpdateAsync(long skuId, SkuSaveRequest request, long operatorId, CancellationToken cancellationToken = default);
 
     Task SetStatusAsync(long skuId, int status, long operatorId, CancellationToken cancellationToken = default);
+
+    Task RemoveIfUnreferencedOrDisableAsync(long skuId, long operatorId, CancellationToken cancellationToken = default);
 }

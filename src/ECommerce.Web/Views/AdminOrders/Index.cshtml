@@ -1,0 +1,142 @@
+﻿@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "订单管理 - 后台";
+}
+
+<div id="adminOrdersApp" v-cloak>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3">订单管理</h1>
+    </div>
+
+    <!-- 筛选条件 -->
+    <div class="border rounded p-3 bg-white mb-4">
+        <div class="row g-3">
+            <div class="col-12 col-md-3">
+                <label class="form-label small">订单号</label>
+                <input type="text" class="form-control" v-model="filters.orderNo" placeholder="输入订单号" />
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label small">用户 ID</label>
+                <input type="number" class="form-control" v-model="filters.userId" placeholder="用户ID" />
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label small">状态</label>
+                <select class="form-select" v-model="filters.status">
+                    <option value="">全部</option>
+                    <option value="0">待支付</option>
+                    <option value="1">已支付</option>
+                    <option value="2">已发货</option>
+                    <option value="3">已完成</option>
+                    <option value="4">已取消</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-3 d-flex align-items-end">
+                <button class="btn btn-primary w-100" v-on:click="loadOrders">查询</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计 -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="border rounded p-2 bg-white text-center">
+                <div class="text-muted small">总订单</div>
+                <div class="h5 mb-0">{{ totalCount }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="border rounded p-2 bg-white text-center">
+                <div class="text-muted small">待支付</div>
+                <div class="h5 mb-0 text-warning">{{ statusCounts[0] || 0 }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="border rounded p-2 bg-white text-center">
+                <div class="text-muted small">已发货</div>
+                <div class="h5 mb-0 text-primary">{{ statusCounts[2] || 0 }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="border rounded p-2 bg-white text-center">
+                <div class="text-muted small">已完成</div>
+                <div class="h5 mb-0 text-success">{{ statusCounts[3] || 0 }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 订单列表 -->
+    <div class="border rounded bg-white overflow-hidden">
+        <div v-if="loading" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+        </div>
+
+        <div v-else-if="orders.length === 0" class="text-center py-5">
+            <p class="text-muted">暂无订单</p>
+        </div>
+
+        <div v-else>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>订单号</th>
+                            <th>用户 ID</th>
+                            <th>状态</th>
+                            <th class="text-end">金额</th>
+                            <th>创建时间</th>
+                            <th class="text-center">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="order in orders" v-bind:key="order.orderId">
+                            <td>
+                                <a v-bind:href="'/admin/orders/' + order.orderId" class="text-decoration-none">
+                                    {{ order.orderNo }}
+                                </a>
+                            </td>
+                            <td>{{ order.userId }}</td>
+                            <td>
+                                <span class="badge" v-bind:class="getStatusBadge(order.status)">
+                                    {{ getStatusText(order.status) }}
+                                </span>
+                            </td>
+                            <td class="text-end">¥{{ order.payAmount.toFixed(2) }}</td>
+                            <td>{{ formatDate(order.createdAt) }}</td>
+                            <td class="text-center">
+                                <div class="d-flex justify-content-center gap-1">
+                                    <a v-bind:href="'/admin/orders/' + order.orderId" class="btn btn-sm btn-outline-primary">详情</a>
+                                    <button v-if="order.status === 1" class="btn btn-sm btn-outline-success" v-on:click="shipOrder(order.orderId)">发货</button>
+                                    <button v-if="order.status === 0" class="btn btn-sm btn-outline-danger" v-on:click="adminCancelOrder(order.orderId)">取消</button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            <div v-if="totalPages > 1" class="p-3 border-top">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0">
+                        <li class="page-item" v-bind:class="{ disabled: pageIndex === 1 }">
+                            <a class="page-link" href="#" v-on:click.prevent="goPage(pageIndex - 1)">上一页</a>
+                        </li>
+                        <li class="page-item" v-for="p in visiblePages" v-bind:key="p" v-bind:class="{ active: p === pageIndex }">
+                            <a class="page-link" href="#" v-on:click.prevent="goPage(p)">{{ p }}</a>
+                        </li>
+                        <li class="page-item" v-bind:class="{ disabled: pageIndex === totalPages }">
+                            <a class="page-link" href="#" v-on:click.prevent="goPage(pageIndex + 1)">下一页</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/admin-orders.js" asp-append-version="true"></script>
+}

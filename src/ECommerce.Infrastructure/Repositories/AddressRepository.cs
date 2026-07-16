@@ -26,7 +26,7 @@ public sealed class AddressRepository : IAddressRepository
         command.CommandText = """
             SELECT id, receiver_name, receiver_phone, province, city, district, detail_address, is_default, created_at
             FROM ADDRESS
-            WHERE user_id = :user_id
+            WHERE user_id = :user_id AND is_deleted = 0
             ORDER BY is_default DESC, id DESC
             """;
         command.Parameters.Add(new OracleParameter("user_id", userId));
@@ -49,7 +49,7 @@ public sealed class AddressRepository : IAddressRepository
         command.CommandText = """
             SELECT id, receiver_name, receiver_phone, province, city, district, detail_address, is_default, created_at
             FROM ADDRESS
-            WHERE id = :address_id AND user_id = :user_id
+            WHERE id = :address_id AND user_id = :user_id AND is_deleted = 0
             """;
         command.Parameters.Add(new OracleParameter("address_id", addressId));
         command.Parameters.Add(new OracleParameter("user_id", userId));
@@ -69,7 +69,7 @@ public sealed class AddressRepository : IAddressRepository
         await using var command = connection.CreateCommand();
         command.BindByName = true;
         AttachTransaction(command);
-        command.CommandText = """SELECT COUNT(1) FROM ADDRESS WHERE id = :address_id AND user_id = :user_id""";
+        command.CommandText = """SELECT COUNT(1) FROM ADDRESS WHERE id = :address_id AND user_id = :user_id AND is_deleted = 0""";
         command.Parameters.Add(new OracleParameter("address_id", addressId));
         command.Parameters.Add(new OracleParameter("user_id", userId));
         return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)) > 0;
@@ -126,7 +126,7 @@ public sealed class AddressRepository : IAddressRepository
                 district = :district,
                 detail_address = :detail_address,
                 is_default = :is_default
-            WHERE id = :address_id AND user_id = :user_id
+            WHERE id = :address_id AND user_id = :user_id AND is_deleted = 0
             """;
         AddAddressParameters(command, address);
         command.Parameters.Add(new OracleParameter("address_id", address.Id));
@@ -139,7 +139,11 @@ public sealed class AddressRepository : IAddressRepository
         await using var command = connection.CreateCommand();
         command.BindByName = true;
         AttachTransaction(command);
-        command.CommandText = """DELETE FROM ADDRESS WHERE id = :address_id AND user_id = :user_id""";
+        command.CommandText = """
+            UPDATE ADDRESS
+            SET is_deleted = 1, is_default = 0
+            WHERE id = :address_id AND user_id = :user_id AND is_deleted = 0
+            """;
         command.Parameters.Add(new OracleParameter("address_id", addressId));
         command.Parameters.Add(new OracleParameter("user_id", userId));
         await command.ExecuteNonQueryAsync(cancellationToken);
@@ -153,7 +157,7 @@ public sealed class AddressRepository : IAddressRepository
         await using var command = connection.CreateCommand();
         command.BindByName = true;
         AttachTransaction(command);
-        command.CommandText = """UPDATE ADDRESS SET is_default = 1 WHERE id = :address_id AND user_id = :user_id""";
+        command.CommandText = """UPDATE ADDRESS SET is_default = 1 WHERE id = :address_id AND user_id = :user_id AND is_deleted = 0""";
         command.Parameters.Add(new OracleParameter("address_id", addressId));
         command.Parameters.Add(new OracleParameter("user_id", userId));
         await command.ExecuteNonQueryAsync(cancellationToken);
@@ -167,7 +171,7 @@ public sealed class AddressRepository : IAddressRepository
         await using var command = connection.CreateCommand();
         command.BindByName = true;
         AttachTransaction(command);
-        command.CommandText = """UPDATE ADDRESS SET is_default = 0 WHERE user_id = :user_id""";
+        command.CommandText = """UPDATE ADDRESS SET is_default = 0 WHERE user_id = :user_id AND is_deleted = 0""";
         command.Parameters.Add(new OracleParameter("user_id", userId));
         await command.ExecuteNonQueryAsync(cancellationToken);
     }

@@ -1,0 +1,123 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "商品管理";
+}
+
+<div id="productsApp" v-cloak>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">商品管理</h1>
+            <p class="text-muted mb-0">管理商品列表、上下架状态、编辑商品信息</p>
+        </div>
+        <a href="/admin/products/create" class="btn btn-primary">新增商品</a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12 col-lg-4">
+                    <input type="text" class="form-control" placeholder="搜索商品名称..." v-model="keyword" v-on:keyup.enter="loadProducts">
+                </div>
+                <div class="col-12 col-lg-3">
+                    <select class="form-select" v-model.number="categoryId">
+                        <option :value="null">全部分类</option>
+                        <option v-for="cat in categoryOptions" :key="cat.categoryId" :value="cat.categoryId">
+                            {{ cat.name }}
+                        </option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-2">
+                    <select class="form-select" v-model.number="status">
+                        <option :value="null">全部状态</option>
+                        <option :value="0">已下架</option>
+                        <option :value="1">已上架</option>
+                        <option :value="2">预售</option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-3">
+                    <button class="btn btn-outline-primary w-100" v-on:click="loadProducts">搜索</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h5 mb-0">商品列表</h2>
+            <span class="text-muted small">共 {{ pagination.total }} 条记录</span>
+        </div>
+        <div class="card-body p-0">
+            <div v-if="loading" class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+            </div>
+
+            <div v-else-if="products.length === 0" class="text-center py-4 text-muted">
+                暂无商品数据，点击"新增商品"开始创建
+            </div>
+
+            <table v-else class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>商品图片</th>
+                        <th>商品名称</th>
+                        <th>所属分类</th>
+                        <th>最低价格</th>
+                        <th>销量</th>
+                        <th>评分</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="product in products" :key="product.productId">
+                        <td>
+                            <img v-if="product.mainImage" :src="product.mainImage" class="img-thumbnail" style="width: 60px; height: 60px; object-fit: cover;" alt="商品图片">
+                            <span v-else class="text-muted small">无图片</span>
+                        </td>
+                        <td>
+                            <a :href="'/admin/products/' + product.productId + '/edit'" class="text-primary">{{ product.name }}</a>
+                        </td>
+                        <td>{{ getCategoryName(product.categoryId) }}</td>
+                        <td class="text-primary fw-medium">{{ formatPrice(product.priceMin) }}</td>
+                        <td>{{ product.salesCount }}</td>
+                        <td>{{ formatRating(product.avgRating) }}</td>
+                        <td>
+                            <span class="badge" :class="getStatusClass(product.status)">
+                                {{ getStatusText(product.status) }}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-secondary me-1" v-on:click="toggleStatus(product)">
+                                {{ product.status === 1 ? '下架' : '上架' }}
+                            </button>
+                            <a :href="'/admin/products/' + product.productId + '/edit'" class="btn btn-sm btn-outline-primary">编辑</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div v-if="pagination.total > pagination.pageSize" class="card-footer">
+            <nav aria-label="商品列表分页">
+                <ul class="pagination justify-content-center mb-0">
+                    <li class="page-item" :class="{ disabled: pagination.currentPage === 1 }">
+                        <button class="page-link" v-on:click="loadProducts(pagination.currentPage - 1)">上一页</button>
+                    </li>
+                    <li class="page-item" :class="{ active: pagination.currentPage === page }" v-for="page in pageNumbers" :key="page">
+                        <button class="page-link" v-on:click="loadProducts(page)">{{ page }}</button>
+                    </li>
+                    <li class="page-item" :class="{ disabled: pagination.currentPage >= pagination.totalPages }">
+                        <button class="page-link" v-on:click="loadProducts(pagination.currentPage + 1)">下一页</button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/admin-products.js" asp-append-version="true"></script>
+}

@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using ECommerce.Application.DTOs;
 using ECommerce.Application.Services;
 using ECommerce.Shared.Constants;
@@ -7,6 +6,7 @@ using ECommerce.Web.Extensions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace ECommerce.Web.Controllers.Api;
 

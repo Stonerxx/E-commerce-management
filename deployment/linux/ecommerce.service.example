@@ -1,0 +1,16 @@
+[Unit]
+Description=ECommerce ASP.NET Core MVC application
+After=network.target
+
+[Service]
+WorkingDirectory=/var/www/ecommerce
+ExecStart=/usr/bin/dotnet /var/www/ecommerce/ECommerce.Web.dll
+Restart=always
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=ecommerce
+User=www-data
+EnvironmentFile=/etc/ecommerce/ecommerce.env
+
+[Install]
+WantedBy=multi-user.target

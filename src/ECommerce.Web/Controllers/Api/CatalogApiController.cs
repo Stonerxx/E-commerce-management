@@ -1,4 +1,5 @@
 using ECommerce.Application.DTOs;
+using ECommerce.Application.Services;
 using ECommerce.Shared.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,21 +10,33 @@ namespace ECommerce.Web.Controllers.Api;
 [AllowAnonymous]
 public sealed class CatalogApiController : ApiControllerBase
 {
-    [HttpGet("categories")]
-    public ActionResult<ApiResponse<IReadOnlyList<CategoryTreeDto>>> Categories()
+    private readonly ICategoryService _categoryService;
+    private readonly IProductService _productService;
+
+    public CatalogApiController(ICategoryService categoryService, IProductService productService)
     {
-        return NotReady<IReadOnlyList<CategoryTreeDto>>("Category tree endpoint is defined and awaiting implementation.");
+        _categoryService = categoryService;
+        _productService = productService;
+    }
+
+    [HttpGet("categories")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<CategoryTreeDto>>>> Categories(CancellationToken cancellationToken)
+    {
+        var categories = await _categoryService.GetTreeAsync(false, cancellationToken);
+        return Ok(ApiResponse<IReadOnlyList<CategoryTreeDto>>.Ok(categories));
     }
 
     [HttpGet("products")]
-    public ActionResult<ApiResponse<PagedResult<ProductListItemDto>>> Products([FromQuery] ProductQuery query)
+    public async Task<ActionResult<ApiResponse<PagedResult<ProductListItemDto>>>> Products([FromQuery] ProductQuery query, CancellationToken cancellationToken)
     {
-        return NotReady<PagedResult<ProductListItemDto>>("Product search endpoint is defined and awaiting implementation.");
+        var result = await _productService.SearchPublicAsync(query, cancellationToken);
+        return Ok(ApiResponse<PagedResult<ProductListItemDto>>.Ok(result));
     }
 
     [HttpGet("products/{productId:long}")]
-    public ActionResult<ApiResponse<ProductDetailDto>> ProductDetail(long productId)
+    public async Task<ActionResult<ApiResponse<ProductDetailDto>>> ProductDetail(long productId, CancellationToken cancellationToken)
     {
-        return NotReady<ProductDetailDto>("Product detail endpoint is defined and awaiting implementation.");
+        var product = await _productService.GetPublicDetailAndTrackAsync(productId, cancellationToken);
+        return Ok(ApiResponse<ProductDetailDto>.Ok(product));
     }
 }

@@ -1,5 +1,6 @@
 @{
     ViewData["Title"] = "登录";
+    var returnUrl = ViewData["ReturnUrl"] as string;
 }
 
 <div class="row justify-content-center">
@@ -8,6 +9,8 @@
             <h1 class="h3 mb-2">账号登录</h1>
             <p class="text-muted mb-4">登录后会根据角色进入对应页面：普通用户进入首页，客服和管理员进入后台。</p>
             <form method="post" asp-action="LoginPost">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
                 <div asp-validation-summary="All" class="text-danger mb-3"></div>
                 <div class="mb-3">
                     <label class="form-label" for="username">用户名</label>
@@ -26,6 +29,17 @@
                     <a class="btn btn-link" href="/account/register">没有账号，去注册</a>
                 </div>
             </form>
+        </div>
+
+        <div class="alert alert-info mt-4 small">
+            <strong>演示账号</strong>
+            <div class="mt-2">以下账号已写入 seed 数据，密码统一为：<code>demo123</code></div>
+            <ul class="mb-0 mt-2">
+                <li><code>demo_admin</code>：管理员，可访问后台管理</li>
+                <li><code>demo_service</code>：客服，可访问后台订单</li>
+                <li><code>demo_user</code>：普通用户，可访问购物车和我的订单</li>
+                <li><code>demo_buyer</code>：普通用户，带已完成订单和评价数据</li>
+            </ul>
         </div>
     </div>
 </div>

@@ -6,7 +6,7 @@
 
 - 模式：B/S。
 - 后端：ASP.NET Core MVC，目标框架 `net8.0`。
-- 数据库：Oracle，建表脚本在 `migration/init_database.sql`。
+- 数据库：Oracle；建表脚本在 `migration/init_database.sql`，函数、过程、视图和触发器在 `migration/database_objects.sql`。
 - 前端页面：Razor Views + Bootstrap。
 - JSON API：统一使用 `/api/v1/...` 前缀。
 
@@ -111,7 +111,7 @@ http://localhost:5052/docs/development-spec
 
 如果终端回到 PowerShell 提示符，说明服务已经停止，需要重新运行 `dotnet run`。
 
-当前能看到的是项目状态页、健康检查、登录/注册占位页、Vue Dashboard 示例页和两份文档。业务页面和业务接口还没有实现，大多数 `/api/v1/...` 接口会返回 `501 NOT_IMPLEMENTED`。
+当前能看到的是首页入口页、健康检查、临时 Demo 登录、购物车/订单入口、后台订单入口、Vue Dashboard 示例页和两份文档。部分成员功能仍在开发中，未实现的 `/api/v1/...` 接口会返回 `501 NOT_IMPLEMENTED`。
 
 ## 4. 当前阶段是什么状态
 
@@ -126,7 +126,7 @@ http://localhost:5052/docs/development-spec
 | 公共约定 | 统一响应、分页、错误码、权限常量、状态枚举已定义 |
 | 业务接口 | DTO 和 Service 接口已放在 `src/ECommerce.Application`，表示格式和方法名先定好了 |
 | API 入口 | `/api/v1/...` Controller 路由骨架已占位，表示地址先定好了 |
-| 页面入口 | 首页、登录页、注册页、后台布局、Vue Dashboard 示例页已占位 |
+| 页面入口 | 首页、登录页、注册页、购物车、订单、后台布局和 Vue Dashboard 示例页已提供 |
 | 数据库入口 | Oracle 连接、数据库健康检查、UnitOfWork 事务基础已提供 |
 | 部署入口 | `deployment/` 已提供发布脚本、systemd 和 Nginx 样例 |
 | 测试入口 | `tests/ECommerce.Tests` 已能运行 |
@@ -135,11 +135,11 @@ http://localhost:5052/docs/development-spec
 
 | 内容 | 当前表现 | 负责分支 |
 | --- | --- | --- |
-| 登录注册 | 页面能打开，提交后还没有真实认证 | `feat-member2-user-permission-address-log` |
-| 商品分类/SKU/库存 | API 路由已占位，未连数据库 | `feat-member3-product-category-sku-inventory` |
-| 购物车/订单 | API 路由已占位，未实现业务事务 | `feat-member4-cart-order-core` |
-| 支付/优惠券/物流/评价 | API 路由已占位，未实现状态流转 | `feat-member5-payment-coupon-logistics-review` |
-| 统计/导出/后台首页 | API 路由已占位，Vue Dashboard 示例页已提供，未实现统计和 Excel | `feat-member6-stats-export-ui-docs` |
+| 登录注册 | 已接入 member2 真实 AuthService；演示账号使用 PBKDF2 seed 密码哈希 | `feat-member2-user-permission-address-log` |
+| 商品分类/SKU/库存 | 已接入 member3 数据库实现 | `feat-member3-product-category-sku-inventory` |
+| 购物车/订单 | 已接入 member4 核心流程 | `feat-member4-cart-order-core` |
+| 支付/优惠券/物流/评价 | 优惠券模板 CRUD 已接入；支付仍保留 `TEMP_DEMO_PAYMENT`，物流和评价仍有占位接口 | `feat-member5-payment-coupon-logistics-review` |
+| 统计/导出/后台首页 | 已接入 member6 统计 Dashboard 和 Excel 导出基础 | `feat-member6-stats-export-ui-docs` |
 | 部署 | 配置样例已提供，还需要真实服务器环境变量、访问验证和部署截图 | `feat-member1-foundation-oracle-deploy` |
 
 技术负责人验收骨架时，看这几项即可：
@@ -147,9 +147,22 @@ http://localhost:5052/docs/development-spec
 1. `dotnet build ECommerce.sln` 成功。
 2. `dotnet test ECommerce.sln` 成功。
 3. `dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj` 后终端保持运行。
-4. 浏览器能打开 `http://localhost:5052/`，看到“电商购物平台 - 项目状态”。
+4. 浏览器能打开 `http://localhost:5052/`，看到电商购物平台入口页。
 5. 浏览器能打开 `http://localhost:5052/health`，返回 `success: true`。
 6. 浏览器能打开 `http://localhost:5052/account/login`。
+
+演示登录账号：
+
+```text
+密码统一为 demo123
+
+demo_admin    ADMIN
+demo_service  SERVICE
+demo_user     USER
+demo_buyer    USER
+```
+
+注意：这些账号走真实 AuthService 登录，密码哈希来自 `migration/seed_demo_data.sql`。
 7. 访问业务 API 如果返回 `501 NOT_IMPLEMENTED`，这在当前阶段是正常的，表示“接口已占位，等待对应成员实现”。
 
 ## 5. Oracle 怎么配
@@ -194,15 +207,17 @@ Invoke-RestMethod http://localhost:5052/api/v1/system/db-check
 
 ```text
 migration/init_database.sql
+migration/database_objects.sql
 ```
 
 第 1 人做 Oracle 时按这个顺序验收：
 
 1. 本地 Oracle 建库或确认服务器 Oracle 可连。
 2. 执行 `migration/init_database.sql`。
-3. 设置 `Oracle__ConnectionString` 环境变量。
-4. 启动 Web 项目。
-5. 访问 `/api/v1/system/db-check`，截图保留 `connected: true`。
+3. 执行 `migration/database_objects.sql`。
+4. 设置 `Oracle__ConnectionString` 环境变量。
+5. 启动 Web 项目。
+6. 访问 `/api/v1/system/db-check`，截图保留 `connected: true`。
 
 ## 5.1 部署怎么准备
 

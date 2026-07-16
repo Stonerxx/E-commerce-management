@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using ECommerce.Application.DTOs;
 using ECommerce.Application.Services;
 using ECommerce.Shared.Constants;
@@ -6,22 +5,26 @@ using ECommerce.Shared.Exceptions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace ECommerce.Web.Controllers;
 
 public sealed class AccountController : Controller
 {
     private readonly IAuthService _authService;
+    private readonly ILogger<AccountController> _logger;
 
-    public AccountController(IAuthService authService)
+    public AccountController(IAuthService authService, ILogger<AccountController> logger)
     {
         _authService = authService;
+        _logger = logger;
     }
 
     [HttpGet("/account/login")]
     [AllowAnonymous]
-    public IActionResult Login()
+    public IActionResult Login([FromQuery] string? returnUrl = null)
     {
+        SetLoginViewData(returnUrl);
         return View();
     }
 
@@ -32,17 +35,28 @@ public sealed class AccountController : Controller
         string username,
         string password,
         bool rememberMe,
+        string? returnUrl,
         CancellationToken cancellationToken)
     {
+        SetLoginViewData(returnUrl);
+
         try
         {
             var session = await _authService.LoginAsync(new LoginRequest(username, password, rememberMe), cancellationToken);
             await SignInAsync(session, rememberMe);
-            return Redirect(GetLoginRedirectUrl(session));
+            return RedirectAfterLogin(session, returnUrl);
         }
         catch (BusinessException ex)
         {
             ModelState.AddModelError(string.Empty, ex.Message);
+            return View("Login");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Login failed unexpectedly. TraceId: {TraceId}", HttpContext.TraceIdentifier);
+            ModelState.AddModelError(
+                string.Empty,
+                $"登录失败：请检查服务器数据库连接和演示数据是否已更新。TraceId: {HttpContext.TraceIdentifier}");
             return View("Login");
         }
     }
@@ -81,8 +95,9 @@ public sealed class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
+        await _authService.LogoutAsync();
         await HttpContext.SignOutAsync(AuthConstants.AuthenticationScheme);
-        return Redirect("/account/login");
+        return Redirect("/");
     }
 
     [HttpGet("/account/access-denied")]
@@ -108,8 +123,18 @@ public sealed class AccountController : Controller
             new AuthenticationProperties
             {
                 IsPersistent = rememberMe,
-                ExpiresUtc = rememberMe ? DateTimeOffset.UtcNow.AddDays(7) : null
+                ExpiresUtc = rememberMe ? DateTimeOffset.UtcNow.AddDays(7) : DateTimeOffset.UtcNow.AddHours(8)
             });
+    }
+
+    private IActionResult RedirectAfterLogin(UserSessionDto session, string? returnUrl)
+    {
+        if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+        {
+            return LocalRedirect(returnUrl);
+        }
+
+        return Redirect(GetLoginRedirectUrl(session));
     }
 
     private static string GetLoginRedirectUrl(UserSessionDto session)
@@ -119,5 +144,10 @@ public sealed class AccountController : Controller
             || string.Equals(role, AuthConstants.Roles.Service, StringComparison.OrdinalIgnoreCase))
             ? "/admin"
             : "/";
+    }
+
+    private void SetLoginViewData(string? returnUrl)
+    {
+        ViewData["ReturnUrl"] = returnUrl;
     }
 }

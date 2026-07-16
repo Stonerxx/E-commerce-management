@@ -36,7 +36,7 @@
 | Policy | 权限规则，例如只能普通用户访问、客服或管理员访问、仅管理员访问。 | `AuthConstants.Policies` |
 | IUnitOfWork | 一次业务操作共用同一个数据库连接和事务的工具。 | `src/ECommerce.Shared/Abstractions/IUnitOfWork.cs` |
 | 事务 | 要么全部成功，要么全部回滚。比如创建订单时订单、明细、库存日志必须一起成功。 | 本文第 10 节 |
-| migration | 数据库初始化脚本，不是 C# 代码。负责建表、约束和索引。 | `migration/init_database.sql` |
+| migration | 数据库脚本，不是 C# 代码。`init_database.sql` 负责建表、约束和索引，`database_objects.sql` 负责函数、过程、视图和触发器。 | `migration/init_database.sql`、`migration/database_objects.sql` |
 
 ## 2. 项目结构
 
@@ -164,7 +164,7 @@ Shared -> 不依赖其他项目
 | 页面 JS/CSS | `src/ECommerce.Web/wwwroot/js/*.js`, `src/ECommerce.Web/wwwroot/css/*.css` |
 | Oracle 连接 | `src/ECommerce.Infrastructure/Data/*.cs` |
 | DI 注册 | `src/ECommerce.Infrastructure/DependencyInjection.cs`, `src/ECommerce.Web/Program.cs` |
-| 数据库脚本 | `migration/init_database.sql` |
+| 数据库脚本 | `migration/init_database.sql`、`migration/database_objects.sql` |
 
 当前所有 API Controller 只是占位，默认返回 `501 NOT_IMPLEMENTED`。这表示“路由已经定好，但业务还没实现”，不是系统报错。实现功能时，把对应 Controller 改成调用 Service，不要直接在 Controller 里写 SQL。
 
@@ -226,7 +226,7 @@ GET /api/v1/system/db-check
 
 | 人员 | 主责表 | 依赖表 | 边界说明 |
 | --- | --- | --- | --- |
-| 第 1 人 | 全部表的建表脚本、索引、约束、初始化顺序 | 全部业务表 | 负责 `migration/init_database.sql`、Oracle 连接、`IUnitOfWork`、部署配置；不负责业务 CRUD 规则。 |
+| 第 1 人 | 全部表的建表脚本、索引、约束、数据库对象与初始化顺序 | 全部业务表 | 负责 `migration/init_database.sql`、`migration/database_objects.sql`、Oracle 连接、`IUnitOfWork`、部署配置；不负责业务 CRUD 规则。 |
 | 第 2 人 | `"USER"`、`"ROLE"`、`"PERMISSION"`、`USER_ROLE`、`ROLE_PERMISSION`、`ADDRESS`、`OPERATION_LOG` | 其他模块会引用 `"USER"` 和 `OPERATION_LOG` | 负责注册登录、角色权限、地址、操作日志；其他模块记录后台操作日志时调用 `IOperationLogService`。 |
 | 第 3 人 | `"CATEGORY"`、`PRODUCT`、`PRODUCT_IMAGE`、`PRODUCT_SPEC`、`SKU`、`INVENTORY_LOG` | `"USER"`、`ORDER_MAIN` | 负责商品、分类、图片、规格、SKU、库存和库存日志；订单模块只能通过 `IInventoryService` 锁定、释放、扣减库存。 |
 | 第 4 人 | `CART`、`ORDER_MAIN`、`ORDER_ITEM`、`ORDER_LOG` | `"USER"`、`ADDRESS`、`USER_COUPON`、`SKU`、`PRODUCT` | 负责购物车、订单主流程和订单日志；创建订单时依赖地址、SKU、库存锁定、优惠券校验。 |
@@ -262,7 +262,7 @@ GET /api/v1/system/db-check
 - 支付成功必须通过 `IOrderService.MarkPaidAsync`、`IInventoryService.DeductForPaidOrderAsync`、`ICouponService.UseForOrderAsync` 串起状态流转。
 - 后台关键写操作统一通过 `IOperationLogService` 写 `OPERATION_LOG`。
 - 统计和导出默认只读上游表；如果要增加统计口径，先和对应业务表主责人确认状态含义。
-- 修改表结构、外键、状态字段、索引时，必须同步更新 `migration/init_database.sql`、本文件和相关 DTO/Service 接口。
+- 修改表结构、外键、状态字段、索引时，必须同步更新 `migration/init_database.sql`、`migration/database_objects.sql`（若对象依赖这些结构）、本文件和相关 DTO/Service 接口。
 
 ## 6. 路由与权限
 
@@ -604,8 +604,8 @@ deployment/linux/nginx-ecommerce.conf.example
 
 ```text
 ASPNETCORE_ENVIRONMENT=Production
-ASPNETCORE_URLS=http://127.0.0.1:5052
-Oracle__ConnectionString=User Id=...;Password=...;Data Source=...:1521/XEPDB1
+ASPNETCORE_URLS=http://127.0.0.1:5000
+Oracle__ConnectionString=User Id=...;Password=...;Data Source=...:1521/FREEPDB1
 ```
 
 云服务器部署验收至少包括：

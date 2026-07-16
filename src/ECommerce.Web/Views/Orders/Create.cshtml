@@ -1,0 +1,112 @@
+﻿@{
+    Layout = "_Layout";
+    ViewData["Title"] = "确认订单";
+    var cartItemIds = ViewData["CartItemIds"] as string ?? "";
+}
+
+<div id="checkoutApp" v-cloak>
+    <div class="container py-4">
+        <h1 class="h3 mb-4">确认订单</h1>
+
+        <div v-if="loading" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+        </div>
+
+        <div v-else-if="!previewData" class="text-center py-5">
+            <p class="text-muted">购物车为空或数据加载失败</p>
+            <a href="/cart" class="btn btn-primary">返回购物车</a>
+        </div>
+
+        <div v-else class="row g-4">
+            <!-- 左侧：主要信息 -->
+            <div class="col-12 col-lg-8">
+                <div class="vstack gap-3">
+                    <!-- 1. 收货地址 -->
+                    <div class="border rounded p-3 bg-white">
+                        <h2 class="h6 mb-3">收货地址</h2>
+                        <div v-if="addresses.length === 0" class="text-muted small">
+                            暂无收货地址，<a href="/addresses" class="text-decoration-none">去添加</a>
+                        </div>
+                        <div v-else class="vstack gap-2">
+                            <div v-for="addr in addresses" v-bind:key="addr.addressId" class="form-check">
+                                <input type="radio" class="form-check-input" name="address" v-model="selectedAddressId" v-bind:value="addr.addressId" />
+                                <label class="form-check-label">
+                                    <strong>{{ addr.receiverName }}</strong> {{ addr.receiverPhone }}<br />
+                                    <span class="text-muted small">{{ addr.province }}{{ addr.city }}{{ addr.district }}{{ addr.detailAddress }}</span>
+                                    <span v-if="addr.isDefault" class="badge text-bg-primary ms-2">默认</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. 商品明细 -->
+                    <div class="border rounded p-3 bg-white">
+                        <h2 class="h6 mb-3">商品明细</h2>
+                        <div class="vstack gap-2">
+                            <div v-for="item in previewData.items" v-bind:key="item.skuId" class="d-flex gap-3 align-items-center border-bottom pb-2">
+                                <img v-bind:src="item.mainImage || '/images/default-product.jpg'" alt="商品图片" class="img-thumbnail" style="width:60px;height:60px;object-fit:cover;" />
+                                <div class="flex-grow-1">
+                                    <div>{{ item.productName }}</div>
+                                    <div class="text-muted small">{{ item.specSnap }}</div>
+                                </div>
+                                <div class="text-end">
+                                    <div>¥{{ item.unitPrice.toFixed(2) }} × {{ item.quantity }}</div>
+                                    <div class="text-danger">¥{{ item.subtotal.toFixed(2) }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. 备注 -->
+                    <div class="border rounded p-3 bg-white">
+                        <h2 class="h6 mb-2">备注</h2>
+                        <textarea class="form-control" v-model="remark" rows="2" placeholder="给卖家的留言（选填）"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：订单摘要 -->
+            <div class="col-12 col-lg-4">
+                <div class="border rounded p-3 bg-white sticky-top" style="top: 20px;">
+                    <h2 class="h6 mb-3">订单摘要</h2>
+
+                    <p class="small text-muted mb-3">优惠券功能正在开发，当前订单暂不可使用优惠券。</p>
+
+                    <!-- 金额 -->
+                    <div class="vstack gap-1 border-top pt-2">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted small">商品总额</span>
+                            <span>¥{{ previewData.totalAmount.toFixed(2) }}</span>
+                        </div>
+                        <div v-if="previewData.discountAmount > 0" class="d-flex justify-content-between text-danger">
+                            <span class="text-muted small">优惠</span>
+                            <span>-¥{{ previewData.discountAmount.toFixed(2) }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between border-top pt-2 mt-1">
+                            <strong>实付金额</strong>
+                            <strong class="text-danger h5">¥{{ previewData.payAmount.toFixed(2) }}</strong>
+                        </div>
+                    </div>
+
+                    <!-- 提交按钮 -->
+                    <button class="btn btn-primary w-100 mt-3" v-bind:disabled="submitting || !selectedAddressId" v-on:click="submitOrder">
+                        <span v-if="submitting" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                        {{ submitting ? '提交中...' : '提交订单' }}
+                    </button>
+                    <p v-if="!selectedAddressId && addresses.length > 0" class="text-danger small mt-1">请选择收货地址</p>
+                    <p v-if="addresses.length === 0" class="text-danger small mt-1">请先添加收货地址</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script>
+        window.__CART_ITEM_IDS = '@cartItemIds';
+    </script>
+    <script src="~/js/order-create.js" asp-append-version="true"></script>
+}

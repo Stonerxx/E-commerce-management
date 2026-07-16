@@ -7,7 +7,11 @@ public interface IProductService
 {
     Task<PagedResult<ProductListItemDto>> SearchAsync(ProductQuery query, CancellationToken cancellationToken = default);
 
+    Task<PagedResult<ProductListItemDto>> SearchPublicAsync(ProductQuery query, CancellationToken cancellationToken = default);
+
     Task<ProductDetailDto> GetDetailAsync(long productId, CancellationToken cancellationToken = default);
+
+    Task<ProductDetailDto> GetPublicDetailAndTrackAsync(long productId, CancellationToken cancellationToken = default);
 
     Task<long> CreateAsync(ProductSaveRequest request, long operatorId, CancellationToken cancellationToken = default);
 

@@ -1,0 +1,52 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "分类管理";
+}
+
+<div id="categoriesApp" v-cloak>
+    <h1>分类管理</h1>
+    <button class="btn btn-primary" type="button" v-on:click="openCreateModal(null)">新增根分类</button>
+    <label class="ms-3">
+        <input type="checkbox" v-model="showDisabled" v-on:change="loadCategories" /> 显示已禁用分类
+    </label>
+    
+    <div v-if="loading" class="text-muted mt-3">正在加载分类…</div>
+    <div v-else-if="flatTreeData.length > 0" class="mt-3">
+        <div v-for="item in flatTreeData" :key="item.categoryId" class="py-1" :style="{ paddingLeft: `${(item.treeLevel - 1) * 24}px` }">
+            <button v-if="item.children && item.children.length > 0" type="button" class="btn btn-sm btn-link p-0 me-1" v-on:click="toggleExpand(item)">
+                {{ item.expanded === false ? '▸' : '▾' }}
+            </button>
+            <span v-else class="d-inline-block me-1" style="width: 13px"></span>
+            <span>{{ item.name }}</span>
+            <span v-if="item.status === 0" class="badge text-bg-secondary ms-1">已禁用</span>
+            <button data-action="create-child" :data-id="item.categoryId" v-on:click="handleButtonClick">新增子分类</button>
+            <button data-action="edit" :data-id="item.categoryId" v-on:click="handleButtonClick">编辑</button>
+            <button data-action="delete" :data-id="item.categoryId" v-on:click="handleButtonClick">删除</button>
+        </div>
+    </div>
+    <div v-else class="text-muted mt-3">
+        暂无分类数据
+    </div>
+
+    <div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ isEdit ? '编辑分类' : '新增分类' }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form v-on:submit.prevent="saveCategory">
+                        <input type="text" v-model="form.name" required>
+                        <button type="submit">{{ isEdit ? '保存' : '创建' }}</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/admin-categories.js" asp-append-version="true"></script>
+}
