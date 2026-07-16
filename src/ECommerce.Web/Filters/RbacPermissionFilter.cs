@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 namespace ECommerce.Web.Filters;
 
 /// <summary>
-/// 全局 RBAC 权限过滤器：先由登录和角色 Policy 做基础校验，再根据 PERMISSION 与 ROLE_PERMISSION 表做动态权限校验。
+/// 全局 RBAC 权限过滤器：先由登录和角色 Policy 做基础校验，再根据 PERMISSION 和 ROLE_PERMISSION 表做动态权限校验。
 /// </summary>
 public sealed class RbacPermissionFilter : IAsyncAuthorizationFilter
 {

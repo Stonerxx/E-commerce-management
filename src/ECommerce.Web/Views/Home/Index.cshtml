@@ -1,97 +1,95 @@
 @{
-    ViewData["Title"] = "用户权限模块";
+    ViewData["Title"] = "首页";
 }
 
 <section class="py-4">
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-        <div>
-            <p class="text-primary fw-semibold mb-2">第 2 人负责模块</p>
-            <h1 class="display-6 fw-semibold mb-3">用户、权限、地址、操作日志</h1>
-            <p class="lead text-muted mb-0">
-                本模块已接入注册登录、角色分配、权限绑定、收货地址管理和管理员操作日志查询。
-            </p>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
-            <a class="btn btn-primary" href="/account/login">登录</a>
-            <a class="btn btn-outline-primary" href="/account/register">注册</a>
-            <a class="btn btn-outline-secondary" href="/addresses">我的地址</a>
+    <div class="p-4 p-lg-5 bg-white border rounded shadow-sm mb-4">
+        <div class="row align-items-center g-4">
+            <div class="col-12 col-lg-7">
+                <p class="text-primary fw-semibold mb-2">E-Commerce Management</p>
+                <h1 class="display-6 fw-semibold mb-3">电商购物与后台管理系统</h1>
+                <p class="lead text-muted mb-4">
+                    系统已接入用户认证、角色权限、收货地址和管理员操作日志，可继续与商品、订单、支付、物流等模块协同集成。
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-primary" href="/account/login">立即登录</a>
+                    <a class="btn btn-outline-primary" href="/account/register">创建账号</a>
+                    <a class="btn btn-outline-secondary" href="/addresses">管理收货地址</a>
+                    <a class="btn btn-outline-dark" href="/admin">进入后台</a>
+                </div>
+            </div>
+            <div class="col-12 col-lg-5">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="border rounded p-3 h-100">
+                            <div class="fs-4 fw-semibold">RBAC</div>
+                            <div class="text-muted small">角色权限控制</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="border rounded p-3 h-100">
+                            <div class="fs-4 fw-semibold">API</div>
+                            <div class="text-muted small">统一 JSON 接口</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="border rounded p-3 h-100">
+                            <div class="fs-4 fw-semibold">Oracle</div>
+                            <div class="text-muted small">远程数据库</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="border rounded p-3 h-100">
+                            <div class="fs-4 fw-semibold">Audit</div>
+                            <div class="text-muted small">后台操作日志</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="row g-3 mb-4">
         <div class="col-12 col-md-6 col-xl-3">
-            <div class="border rounded bg-white p-3 h-100">
-                <div class="text-muted small mb-1">认证</div>
-                <h2 class="h5">注册 / 登录</h2>
-                <p class="mb-3 text-muted">普通用户注册后自动分配 USER 角色，登录后写入 Cookie。</p>
-                <a href="/account/login">打开登录页</a>
+            <div class="border rounded bg-white p-3 h-100 shadow-sm">
+                <h2 class="h5">账号中心</h2>
+                <p class="text-muted">注册、登录、退出登录，登录后根据角色自动进入对应页面。</p>
+                <a class="btn btn-sm btn-outline-primary" href="/account/login">登录账号</a>
             </div>
         </div>
         <div class="col-12 col-md-6 col-xl-3">
-            <div class="border rounded bg-white p-3 h-100">
-                <div class="text-muted small mb-1">RBAC</div>
-                <h2 class="h5">用户角色</h2>
-                <p class="mb-3 text-muted">管理员可查询用户、启用禁用账号、为用户分配角色。</p>
-                <a href="/admin/users">后台用户管理</a>
+            <div class="border rounded bg-white p-3 h-100 shadow-sm">
+                <h2 class="h5">收货地址</h2>
+                <p class="text-muted">维护个人收货地址，支持新增、修改、删除和设置默认地址。</p>
+                <a class="btn btn-sm btn-outline-primary" href="/addresses">地址管理</a>
             </div>
         </div>
         <div class="col-12 col-md-6 col-xl-3">
-            <div class="border rounded bg-white p-3 h-100">
-                <div class="text-muted small mb-1">权限</div>
-                <h2 class="h5">角色权限绑定</h2>
-                <p class="mb-3 text-muted">维护 ROLE、PERMISSION、ROLE_PERMISSION 的绑定关系。</p>
-                <a href="/admin/permissions">后台权限管理</a>
+            <div class="border rounded bg-white p-3 h-100 shadow-sm">
+                <h2 class="h5">用户与角色</h2>
+                <p class="text-muted">管理员可查询用户、启用禁用账号，并分配 USER、SERVICE、ADMIN 角色。</p>
+                <a class="btn btn-sm btn-outline-primary" href="/admin/users">用户管理</a>
             </div>
         </div>
         <div class="col-12 col-md-6 col-xl-3">
-            <div class="border rounded bg-white p-3 h-100">
-                <div class="text-muted small mb-1">审计</div>
-                <h2 class="h5">操作日志</h2>
-                <p class="mb-3 text-muted">记录管理员关键写操作，支持按模块、人员、时间筛选。</p>
-                <a href="/admin/operation-logs">查看操作日志</a>
+            <div class="border rounded bg-white p-3 h-100 shadow-sm">
+                <h2 class="h5">权限与日志</h2>
+                <p class="text-muted">绑定角色权限并查看关键后台写操作日志。</p>
+                <a class="btn btn-sm btn-outline-primary" href="/admin/permissions">权限管理</a>
+                <a class="btn btn-sm btn-outline-secondary ms-1" href="/admin/operation-logs">日志</a>
             </div>
         </div>
     </div>
 
-    <div class="row g-3">
-        <div class="col-12 col-lg-7">
-            <div class="border rounded bg-white p-3 h-100">
-                <h2 class="h5 mb-3">验收入口</h2>
-                <div class="list-group list-group-flush">
-                    <a class="list-group-item list-group-item-action d-flex justify-content-between" href="/account/register">
-                        <span>注册页面</span><code>/account/register</code>
-                    </a>
-                    <a class="list-group-item list-group-item-action d-flex justify-content-between" href="/account/login">
-                        <span>登录页面</span><code>/account/login</code>
-                    </a>
-                    <a class="list-group-item list-group-item-action d-flex justify-content-between" href="/addresses">
-                        <span>收货地址管理</span><code>/addresses</code>
-                    </a>
-                    <a class="list-group-item list-group-item-action d-flex justify-content-between" href="/admin/users">
-                        <span>后台用户角色管理</span><code>/admin/users</code>
-                    </a>
-                    <a class="list-group-item list-group-item-action d-flex justify-content-between" href="/admin/permissions">
-                        <span>后台角色权限绑定</span><code>/admin/permissions</code>
-                    </a>
-                    <a class="list-group-item list-group-item-action d-flex justify-content-between" href="/admin/operation-logs">
-                        <span>管理员操作日志</span><code>/admin/operation-logs</code>
-                    </a>
-                </div>
+    <div class="border rounded bg-white p-3 shadow-sm">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <h2 class="h5 mb-1">系统检查</h2>
+                <p class="text-muted mb-0">用于确认应用和数据库连接状态。</p>
             </div>
-        </div>
-        <div class="col-12 col-lg-5">
-            <div class="border rounded bg-white p-3 h-100">
-                <h2 class="h5 mb-3">接口状态</h2>
-                <ul class="mb-0">
-                    <li><code>POST /api/v1/auth/register</code></li>
-                    <li><code>POST /api/v1/auth/login</code></li>
-                    <li><code>GET|POST /api/v1/addresses</code></li>
-                    <li><code>PUT|DELETE /api/v1/addresses/{addressId}</code></li>
-                    <li><code>GET /api/v1/admin/users</code></li>
-                    <li><code>PUT /api/v1/admin/users/{userId}/roles</code></li>
-                    <li><code>GET|PUT /api/v1/admin/permissions/roles/{roleId}</code></li>
-                    <li><code>GET /api/v1/admin/operation-logs</code></li>
-                </ul>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-secondary" href="/health">应用健康检查</a>
+                <a class="btn btn-outline-secondary" href="/api/v1/system/db-check">数据库连接检查</a>
             </div>
         </div>
     </div>
