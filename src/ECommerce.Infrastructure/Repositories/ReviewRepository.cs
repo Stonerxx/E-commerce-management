@@ -233,6 +233,11 @@ public sealed class ReviewRepository : IReviewRepository
     private DbCommand CreateCommand(string sql)
     {
         var command = Connection.CreateCommand();
+        if (command is OracleCommand oracleCommand)
+        {
+            oracleCommand.BindByName = true;
+        }
+
         command.CommandText = sql;
         command.Transaction = Transaction;
         return command;

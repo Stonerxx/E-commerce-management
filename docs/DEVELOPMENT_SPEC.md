@@ -166,7 +166,7 @@ Shared -> 不依赖其他项目
 | DI 注册 | `src/ECommerce.Infrastructure/DependencyInjection.cs`, `src/ECommerce.Web/Program.cs` |
 | 数据库脚本 | `migration/init_database.sql` |
 
-当前所有 API Controller 只是占位，默认返回 `501 NOT_IMPLEMENTED`。这表示“路由已经定好，但业务还没实现”，不是系统报错。实现功能时，把对应 Controller 改成调用 Service，不要直接在 Controller 里写 SQL。
+API Controller 路由已统一定义；已完成的模块通过 Service 调用业务实现，尚未完成的真实支付接口仍返回 `501 NOT_IMPLEMENTED`。Controller 不直接写 SQL。
 
 看接口时按这个顺序：
 
@@ -259,7 +259,7 @@ GET /api/v1/system/db-check
 - 查询 SKU 只用于校验，创建订单真正锁定库存仍必须调用 `IInventoryService.LockForOrderAsync`，不能直接修改 `SKU`。
 - 订单创建必须通过 `IInventoryService.LockForOrderAsync` 锁库存，通过 `ICouponService.ValidateAsync` 校验优惠券。
 - 订单取消必须通过 `IInventoryService.ReleaseForCancelledOrderAsync` 释放锁定库存。
-- 支付成功必须通过 `IOrderService.MarkPaidAsync`、`IInventoryService.DeductForPaidOrderAsync`、`ICouponService.UseForOrderAsync` 串起状态流转。
+- 订单创建必须在同一事务中写入订单、锁定库存并通过 `ICouponService.UseForOrderAsync` 原子核销优惠券；支付成功再通过 `IOrderService.MarkPaidAsync` 和 `IInventoryService.DeductForPaidOrderAsync` 串起状态流转。
 - 后台关键写操作统一通过 `IOperationLogService` 写 `OPERATION_LOG`。
 - 统计和导出默认只读上游表；如果要增加统计口径，先和对应业务表主责人确认状态含义。
 - 修改表结构、外键、状态字段、索引时，必须同步更新 `migration/init_database.sql`、本文件和相关 DTO/Service 接口。

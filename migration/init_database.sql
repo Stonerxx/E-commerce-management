@@ -363,7 +363,11 @@ CREATE TABLE COUPON_TEMPLATE (
     status           NUMBER(1) DEFAULT 1 NOT NULL,
     CONSTRAINT ch_coup_type CHECK (type IN (1,2)),
     CONSTRAINT ch_coup_status CHECK (status IN (0,1)),
-    CONSTRAINT ch_coup_time CHECK (end_time > start_time)
+    CONSTRAINT ch_coup_time CHECK (end_time > start_time),
+    CONSTRAINT ch_coup_amount CHECK ((type = 1 AND amount > 0 AND min_amount >= amount) OR (type = 2 AND amount > 0 AND amount <= 1)),
+    CONSTRAINT ch_coup_min_amount CHECK (min_amount >= 0),
+    CONSTRAINT ch_coup_total CHECK (total_count = -1 OR total_count >= 0),
+    CONSTRAINT ch_coup_received CHECK (received_count >= 0 AND (total_count = -1 OR received_count <= total_count))
 );
 COMMENT ON TABLE COUPON_TEMPLATE IS '优惠券模板表';
 COMMENT ON COLUMN COUPON_TEMPLATE.id IS '券模板ID，自增主键';
@@ -388,6 +392,7 @@ CREATE TABLE USER_COUPON (
     order_id            NUMBER(19),
     CONSTRAINT fk_uc_user FOREIGN KEY (user_id) REFERENCES "USER"(id),
     CONSTRAINT fk_uc_template FOREIGN KEY (coupon_template_id) REFERENCES COUPON_TEMPLATE(id),
+    CONSTRAINT uk_uc_user_template UNIQUE (user_id, coupon_template_id),
     CONSTRAINT ch_uc_status CHECK (status IN (0,1,2))
 );
 COMMENT ON TABLE USER_COUPON IS '用户优惠券表';

@@ -21,6 +21,7 @@ public class OrderService : IOrderService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAddressService _addressService;
     private readonly IInventoryService _inventoryService;
+    private readonly ICouponService _couponService;
     private readonly IOperationLogService _operationLogService;
     private readonly ILogger<OrderService> _logger;
 
@@ -34,6 +35,7 @@ public class OrderService : IOrderService
         IUnitOfWork unitOfWork,
         IAddressService addressService,
         IInventoryService inventoryService,
+        ICouponService couponService,
         IOperationLogService operationLogService,
         ILogger<OrderService> logger)
     {
@@ -44,14 +46,13 @@ public class OrderService : IOrderService
         _unitOfWork = unitOfWork;
         _addressService = addressService;
         _inventoryService = inventoryService;
+        _couponService = couponService;
         _operationLogService = operationLogService;
         _logger = logger;
     }
 
     public async Task<OrderPreviewDto> PreviewAsync(long userId, CreateOrderRequest request, CancellationToken cancellationToken = default)
     {
-        EnsureCouponIsNotRequested(request.UserCouponId);
-
         // 1. 校验地址
         await ValidateAddressAsync(userId, request.AddressId, cancellationToken);
 
@@ -78,7 +79,11 @@ public class OrderService : IOrderService
 
         // 4. 计算金额
         decimal totalAmount = cartItems.Sum(x => x.UnitPrice * x.Quantity);
-        decimal discountAmount = 0;
+        var discountAmount = await GetDiscountAmountAsync(
+            userId,
+            request.UserCouponId,
+            totalAmount,
+            cancellationToken);
 
         var payAmount = totalAmount - discountAmount;
         if (payAmount < 0) payAmount = 0;
@@ -100,8 +105,6 @@ public class OrderService : IOrderService
 
     public async Task<long> CreateAsync(long userId, CreateOrderRequest request, CancellationToken cancellationToken = default)
     {
-        EnsureCouponIsNotRequested(request.UserCouponId);
-
         string? orderNo = null;
 
         try
@@ -131,16 +134,19 @@ public class OrderService : IOrderService
 
             // 3. 计算金额
             decimal totalAmount = cartItems.Sum(x => x.UnitPrice * x.Quantity);
-            decimal discountAmount = 0;
-
-            var payAmount = totalAmount - discountAmount;
-            if (payAmount < 0) payAmount = 0;
-
             // 4. 生成订单编号
             orderNo = GenerateOrderNo();
 
             // 5. 开启事务
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+            // 金额必须由服务端购物车重新计算，并在订单事务中再次验证优惠券。
+            var discountAmount = await GetDiscountAmountAsync(
+                userId,
+                request.UserCouponId,
+                totalAmount,
+                cancellationToken);
+            var payAmount = Math.Max(0, totalAmount - discountAmount);
 
             // 6. 创建订单主表
             var order = new OrderMain
@@ -148,7 +154,7 @@ public class OrderService : IOrderService
                 OrderNo = orderNo,
                 UserId = userId,
                 AddressId = request.AddressId,
-                UserCouponId = null,
+                UserCouponId = request.UserCouponId,
                 Status = (int)OrderStatus.PendingPayment,  // 使用枚举
                 TotalAmount = totalAmount,
                 DiscountAmount = discountAmount,
@@ -169,6 +175,17 @@ public class OrderService : IOrderService
             };
 
             var orderId = await _orderRepository.InsertOrderMainAsync(order, cancellationToken);
+
+            if (request.UserCouponId.HasValue)
+            {
+                await _couponService.UseForOrderAsync(
+                    userId,
+                    request.UserCouponId.Value,
+                    orderId,
+                    totalAmount,
+                    discountAmount,
+                    cancellationToken);
+            }
 
             // 7. 创建订单明细
             var items = cartItems.Select(x => new OrderItem
@@ -315,6 +332,15 @@ public class OrderService : IOrderService
             var skuQuantities = await _orderRepository.GetOrderSkuQuantitiesAsync(orderId, cancellationToken);
             await _inventoryService.ReleaseForCancelledOrderAsync(orderId, skuQuantities, cancellationToken);
 
+            if (order.UserCouponId.HasValue)
+            {
+                await _couponService.RestoreForOrderAsync(
+                    order.UserId,
+                    order.UserCouponId.Value,
+                    orderId,
+                    cancellationToken);
+            }
+
             // 6. 判断是否需要写入 OPERATION_LOG
             //    规范要求：只有"后台关键写操作"才写入 OPERATION_LOG
             //    判断标准：操作人不是订单主人 → 视为后台管理员操作 → 写入 OPERATION_LOG
@@ -406,8 +432,6 @@ public class OrderService : IOrderService
 
         if (order.Status != (int)OrderStatus.PendingPayment)
             throw new BusinessException("ORDER_STATUS_INVALID", $"当前订单状态（{order.Status}）不允许支付");
-
-        EnsureCouponIsNotRequested(order.UserCouponId);
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
@@ -553,12 +577,28 @@ public class OrderService : IOrderService
         return allSelected;
     }
 
-    private static void EnsureCouponIsNotRequested(long? userCouponId)
+    private async Task<decimal> GetDiscountAmountAsync(
+        long userId,
+        long? userCouponId,
+        decimal orderAmount,
+        CancellationToken cancellationToken)
     {
-        if (userCouponId.HasValue)
+        if (!userCouponId.HasValue)
         {
-            throw new BusinessException("COUPON_NOT_READY", "优惠券功能正在开发，当前暂不可使用");
+            return 0;
         }
+
+        var validation = await _couponService.ValidateAsync(
+            userId,
+            userCouponId.Value,
+            orderAmount,
+            cancellationToken);
+        if (!validation.Available)
+        {
+            throw new BusinessException("COUPON_NOT_AVAILABLE", validation.Reason ?? "优惠券不可用");
+        }
+
+        return validation.DiscountAmount;
     }
 
     private static void EnsureStatusChanged(bool statusChanged)

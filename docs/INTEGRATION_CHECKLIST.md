@@ -59,7 +59,7 @@ docs(workflow)：更新统合集成清单
 | member2 | `feat-member2-user-permission-address-log` | 用户、权限、地址、操作日志 | Cookie 登录、角色、地址服务、日志服务 | 待合并检查 |
 | member3 | `feat-member3-product-category-sku-inventory` | 分类、商品、SKU、库存 | 商品 API、SKU 服务、库存扣减/回滚 | 待合并检查 |
 | member4 | `feat-member4-cart-order-core` | 购物车、订单 | Mock 服务替换、事务、订单状态流转 | 已进 main，仍需接线 |
-| member5 | `feat-member5-payment-coupon-logistics-review` | 支付、优惠券、物流、评价 | 支付状态、优惠券核销、物流发货、评价权限 | 待合并检查 |
+| member5 | `feat-member5-payment-coupon-logistics-review` | 支付、优惠券、物流、评价 | 优惠券核销、物流发货、评价权限已合入；真实支付仍待实现 | 分模块完成 |
 | member6 | `feat-member6-stats-export-ui-docs` | 统计、导出、UI、文档 | 后台首页、导出、页面统一、最终文档 | 待合并检查 |
 
 ## 4. Mock 替换表
@@ -72,7 +72,7 @@ member4 为了先跑通购物车和订单流程，当前存在 Mock 服务。最
 | `MockOperationLogService` | member2 | 订单取消、发货、支付等操作写入日志 | 待替换 |
 | `MockSkuService` | member3 | 购物车和订单能读取真实 SKU、价格、商品名 | 待替换 |
 | `MockInventoryService` | member3 | 创建订单锁库存，取消订单释放库存 | 待替换 |
-| `MockCouponService` | member5 | 订单预览和提交能校验优惠券并核销 | 待替换 |
+| `CouponService` | member5 | 订单预览和提交校验优惠券并原子核销 | 已接入 |
 
 替换后必须检查：
 
@@ -168,7 +168,6 @@ migration/seed_demo_data.sql
 | `TEMP_DEMO_ADDRESS` | `src/ECommerce.Infrastructure/Services/Mocks/MockAddressService.cs` | member2 地址服务 | 替换为真实地址查询和维护 |
 | `TEMP_DEMO_SKU` | `src/ECommerce.Infrastructure/Services/Mocks/MockSkuService.cs` | member3 SKU 服务 | 替换为真实 SKU 查询和维护 |
 | `TEMP_DEMO_INVENTORY` | `src/ECommerce.Infrastructure/Services/Mocks/MockInventoryService.cs` | member3 库存服务 | 替换为真实锁库存、释放库存和扣减库存 |
-| `TEMP_DEMO_COUPON` | `src/ECommerce.Infrastructure/Services/Mocks/MockCouponService.cs` | member5 优惠券服务 | 替换为真实优惠券查询、校验和核销 |
 | `TEMP_DEMO_PAYMENT` | `src/ECommerce.Web/Controllers/PaymentController.cs` | member5 支付服务 | 替换为真实支付页面、支付记录和回调 |
 
 演示账号：

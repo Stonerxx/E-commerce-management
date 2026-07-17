@@ -11,7 +11,9 @@
                 loading: false,
                 submitting: false,
                 addresses: [],
+                coupons: [],
                 selectedAddressId: null,
+                selectedCouponId: null,
                 previewData: null,
                 remark: ''
             };
@@ -29,6 +31,7 @@
                 this.loading = true;
                 try {
                     await this.loadAddresses();
+                    await this.loadCoupons();
 
                     const defaultAddr = this.addresses.find(a => a.isDefault);
                     if (defaultAddr) {
@@ -63,6 +66,22 @@
                 }
             },
 
+            async loadCoupons() {
+                try {
+                    const response = await fetch('/api/v1/coupons', {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        this.coupons = result.data.filter(coupon => coupon.status === 0);
+                    } else {
+                        console.warn('加载优惠券失败:', result.message);
+                    }
+                } catch (error) {
+                    console.error('加载优惠券异常:', error);
+                }
+            },
+
             async loadPreview() {
                 if (!this.selectedAddressId) {
                     this.previewData = null;
@@ -72,6 +91,7 @@
                 try {
                     const requestBody = {
                         addressId: this.selectedAddressId,
+                        userCouponId: this.selectedCouponId,
                         cartItemIds: idList,
                         remark: this.remark
                     };
@@ -113,6 +133,7 @@
                 try {
                     const requestBody = {
                         addressId: this.selectedAddressId,
+                        userCouponId: this.selectedCouponId,
                         cartItemIds: idList,
                         remark: this.remark
                     };
@@ -147,6 +168,11 @@
             selectedAddressId() {
                 // 地址变化时重新计算运费或校验，这里重新加载预览
                 if (!this.loading) {
+                    this.loadPreview();
+                }
+            },
+            selectedCouponId() {
+                if (!this.loading && this.selectedAddressId) {
                     this.loadPreview();
                 }
             },

@@ -19,30 +19,45 @@ public sealed class CouponsApiController : ApiControllerBase
 
     [HttpGet("coupons")]
     [Authorize(Policy = AuthConstants.Policies.CustomerOnly)]
-    public ActionResult<ApiResponse<IReadOnlyList<UserCouponDto>>> Mine()
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<UserCouponDto>>>> Mine(
+        CancellationToken cancellationToken)
     {
-        return NotReady<IReadOnlyList<UserCouponDto>>("My coupon endpoint is defined and awaiting implementation.");
+        var result = await _couponService.GetMineAsync(GetCurrentUserId(), cancellationToken);
+        return Ok(ApiResponse<IReadOnlyList<UserCouponDto>>.Ok(result));
     }
 
     [HttpGet("coupon-templates/available")]
     [Authorize(Policy = AuthConstants.Policies.CustomerOnly)]
-    public ActionResult<ApiResponse<IReadOnlyList<CouponTemplateDto>>> Available()
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<CouponTemplateDto>>>> Available(
+        CancellationToken cancellationToken)
     {
-        return NotReady<IReadOnlyList<CouponTemplateDto>>("Available coupon template endpoint is defined and awaiting implementation.");
+        var result = await _couponService.GetAvailableTemplatesAsync(GetCurrentUserId(), cancellationToken);
+        return Ok(ApiResponse<IReadOnlyList<CouponTemplateDto>>.Ok(result));
     }
 
     [HttpPost("coupon-templates/{templateId:int}/receive")]
     [Authorize(Policy = AuthConstants.Policies.CustomerOnly)]
-    public ActionResult<ApiResponse<object?>> Receive(int templateId)
+    public async Task<ActionResult<ApiResponse<object?>>> Receive(
+        int templateId,
+        CancellationToken cancellationToken)
     {
-        return NotReady<object?>("Coupon receive endpoint is defined and awaiting implementation.");
+        await _couponService.ReceiveAsync(GetCurrentUserId(), templateId, cancellationToken);
+        return Ok(ApiResponse<object?>.Ok(null));
     }
 
     [HttpPost("coupons/{userCouponId:long}/validate")]
     [Authorize(Policy = AuthConstants.Policies.CustomerOnly)]
-    public ActionResult<ApiResponse<CouponValidationDto>> Validate(long userCouponId, [FromBody] CouponValidationRequest request)
+    public async Task<ActionResult<ApiResponse<CouponValidationDto>>> Validate(
+        long userCouponId,
+        [FromBody] CouponValidationRequest request,
+        CancellationToken cancellationToken)
     {
-        return NotReady<CouponValidationDto>("Coupon validation endpoint is defined and awaiting implementation.");
+        var result = await _couponService.ValidateAsync(
+            GetCurrentUserId(),
+            userCouponId,
+            request.OrderAmount,
+            cancellationToken);
+        return Ok(ApiResponse<CouponValidationDto>.Ok(result));
     }
 
     [HttpGet("admin/coupon-templates")]

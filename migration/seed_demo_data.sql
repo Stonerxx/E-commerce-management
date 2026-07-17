@@ -235,16 +235,19 @@ INSERT INTO CART (id, user_id, sku_id, quantity, selected, created_at, updated_a
 VALUES (9003, 9004, 9004, 1, 0, SYSDATE - 3, SYSDATE - 2);
 
 INSERT INTO COUPON_TEMPLATE (id, name, type, amount, min_amount, total_count, received_count, start_time, end_time, status)
-VALUES (9001, '满 500 减 50 演示券', 1, 50.00, 500.00, 1000, 2, SYSDATE - 30, SYSDATE + 60, 1);
+VALUES (9001, '满 500 减 50 演示券', 1, 50.00, 500.00, 1000, 1, SYSDATE - 30, SYSDATE + 60, 1);
 
 INSERT INTO COUPON_TEMPLATE (id, name, type, amount, min_amount, total_count, received_count, start_time, end_time, status)
 VALUES (9002, '咖啡礼盒 85 折券', 2, 0.85, 100.00, 500, 1, SYSDATE - 30, SYSDATE + 60, 1);
+
+INSERT INTO COUPON_TEMPLATE (id, name, type, amount, min_amount, total_count, received_count, start_time, end_time, status)
+VALUES (9003, '满 500 减 50 已用演示券', 1, 50.00, 500.00, 1000, 1, SYSDATE - 30, SYSDATE + 60, 1);
 
 INSERT INTO USER_COUPON (id, user_id, coupon_template_id, status, received_at, used_at, order_id)
 VALUES (9001, 9003, 9001, 0, SYSDATE - 5, NULL, NULL);
 
 INSERT INTO USER_COUPON (id, user_id, coupon_template_id, status, received_at, used_at, order_id)
-VALUES (9002, 9003, 9001, 1, SYSDATE - 12, SYSDATE - 8, NULL);
+VALUES (9002, 9003, 9003, 1, SYSDATE - 12, SYSDATE - 8, NULL);
 
 INSERT INTO USER_COUPON (id, user_id, coupon_template_id, status, received_at, used_at, order_id)
 VALUES (9003, 9004, 9002, 0, SYSDATE - 4, NULL, NULL);
@@ -345,9 +348,6 @@ VALUES (9003, 9002, '包裹已签收，签收人：本人', SYSDATE - 10, '深�
 
 INSERT INTO REVIEW (id, order_id, product_id, user_id, rating, content, images, is_anonymous, status, created_at)
 VALUES (9001, 9004, 9003, 9004, 5, '冷萃咖啡礼盒包装完整，适合作为已完成订单和评价演示数据。', '[]', 0, 1, SYSDATE - 9);
-
-INSERT INTO REVIEW (id, order_id, product_id, user_id, rating, content, images, is_anonymous, status, created_at)
-VALUES (9002, 9002, 9002, 9003, 4, '键盘手感不错，这条评价用于后台待审核数量演示。', '[]', 0, 0, SYSDATE - 1);
 
 INSERT INTO OPERATION_LOG (id, operator_id, operator_name, module, action, description, ip_address, request_params, result, created_at)
 VALUES (9001, 9002, 'demo_service', '订单管理', '发货', '客服为演示订单 DEMO202607080003 创建物流信息', '127.0.0.1', '{"orderId":9003}', 1, SYSDATE - 5);
