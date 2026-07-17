@@ -22,6 +22,7 @@ public sealed class FeatureCompletionContractTests
     [Theory]
     [InlineData(nameof(AdminController.Coupons), "/admin/coupons")]
     [InlineData(nameof(AdminController.Reviews), "/admin/reviews")]
+    [InlineData(nameof(AdminController.Statistics), "/admin/statistics")]
     public void CompletionAdminPages_AreAdminOnly(string actionName, string route)
     {
         var method = typeof(AdminController).GetMethod(actionName);
@@ -31,6 +32,15 @@ public sealed class FeatureCompletionContractTests
             .Cast<AuthorizeAttribute>().Single();
         Assert.Equal(AuthConstants.Policies.AdminOnly, authorization.Policy);
         AssertRoute<AdminController>(actionName, typeof(HttpGetAttribute), route);
+    }
+
+    [Fact]
+    public void StatisticsPage_UsesItsOwnView()
+    {
+        var result = new AdminController().Statistics();
+
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.Null(view.ViewName);
     }
 
     [Fact]

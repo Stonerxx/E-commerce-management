@@ -18,7 +18,7 @@ public sealed class AdminController : Controller
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
     public IActionResult Statistics()
     {
-        return View("Dashboard");
+        return View();
     }
 
     [HttpGet("/admin/users")]
