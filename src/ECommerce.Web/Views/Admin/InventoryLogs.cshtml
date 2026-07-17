@@ -11,6 +11,9 @@
             </h1>
             <p class="text-muted mb-0">记录所有库存调整操作，支持按 SKU、类型、时间范围查询</p>
         </div>
+        <button type="button" class="btn btn-outline-success" v-on:click="exportLogs">
+            <i class="bi bi-file-earmark-excel"></i> 导出 Excel
+        </button>
     </div>
 
     <div class="card mb-4">

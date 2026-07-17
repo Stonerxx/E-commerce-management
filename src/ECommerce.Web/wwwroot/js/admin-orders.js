@@ -45,19 +45,24 @@
             this.loadOrders();
         },
         methods: {
+            buildFilterParams(includePagination = false) {
+                const params = new URLSearchParams();
+                if (includePagination) {
+                    params.set('pageIndex', this.pageIndex);
+                    params.set('pageSize', this.pageSize);
+                }
+                if (this.filters.orderNo) params.append('orderNo', this.filters.orderNo);
+                if (this.filters.userId) params.append('userId', this.filters.userId);
+                if (this.filters.status !== '') params.append('status', this.filters.status);
+                if (this.filters.startTime) params.append('startTime', this.filters.startTime);
+                if (this.filters.endTime) params.append('endTime', this.filters.endTime);
+                return params;
+            },
+
             async loadOrders() {
                 this.loading = true;
                 try {
-                    const params = new URLSearchParams({
-                        pageIndex: this.pageIndex,
-                        pageSize: this.pageSize
-                    });
-
-                    if (this.filters.orderNo) params.append('orderNo', this.filters.orderNo);
-                    if (this.filters.userId) params.append('userId', this.filters.userId);
-                    if (this.filters.status) params.append('status', this.filters.status);
-                    if (this.filters.startTime) params.append('startTime', this.filters.startTime);
-                    if (this.filters.endTime) params.append('endTime', this.filters.endTime);
+                    const params = this.buildFilterParams(true);
 
                     const response = await fetch(`/api/v1/admin/orders?${params.toString()}`, {
                         headers: { 'Accept': 'application/json' }
@@ -77,6 +82,11 @@
                 } finally {
                     this.loading = false;
                 }
+            },
+
+            exportOrders() {
+                const params = this.buildFilterParams();
+                window.location.assign(`/api/v1/admin/exports/orders?${params.toString()}`);
             },
 
             calculateStatusCounts() {

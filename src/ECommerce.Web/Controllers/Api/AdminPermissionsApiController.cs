@@ -1,9 +1,7 @@
-using System.Text.Json;
 using ECommerce.Application.DTOs;
 using ECommerce.Application.Services;
 using ECommerce.Shared.Constants;
 using ECommerce.Shared.Contracts;
-using ECommerce.Web.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,14 +12,10 @@ namespace ECommerce.Web.Controllers.Api;
 public sealed class AdminPermissionsApiController : ApiControllerBase
 {
     private readonly IPermissionService _permissionService;
-    private readonly IOperationLogService _operationLogService;
 
-    public AdminPermissionsApiController(
-        IPermissionService permissionService,
-        IOperationLogService operationLogService)
+    public AdminPermissionsApiController(IPermissionService permissionService)
     {
         _permissionService = permissionService;
-        _operationLogService = operationLogService;
     }
 
     [HttpGet("roles")]
@@ -56,15 +50,6 @@ public sealed class AdminPermissionsApiController : ApiControllerBase
         CancellationToken cancellationToken)
     {
         await _permissionService.BindRolePermissionsAsync(roleId, request.PermissionIds, cancellationToken);
-        await _operationLogService.WriteAsync(new OperationLogRequest(
-            User.GetUserId(),
-            User.GetUsername(),
-            "权限管理",
-            "绑定角色权限",
-            $"管理员为角色 {roleId} 绑定权限",
-            GetClientIpAddress(),
-            JsonSerializer.Serialize(request),
-            1), cancellationToken);
 
         return ApiResponse<object?>.Ok(null, HttpContext.TraceIdentifier, "角色权限绑定成功");
     }

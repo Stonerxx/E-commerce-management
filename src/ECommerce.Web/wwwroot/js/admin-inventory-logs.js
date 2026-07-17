@@ -121,6 +121,13 @@
                 loadLogs();
             }
 
+            function exportLogs() {
+                const params = new URLSearchParams();
+                if (changeType.value != null) params.set('changeType', changeType.value);
+                if (skuId.value) params.set('skuId', skuId.value);
+                window.location.assign(`/api/v1/admin/exports/inventory?${params.toString()}`);
+            }
+
             onMounted(() => {
                 loadLogs();
             });
@@ -129,7 +136,7 @@
                 loading, rows, keyword, changeType, skuId,
                 pagination, pageNumbers,
                 getTypeText, getTypeClass, formatTime,
-                loadLogs, resetFilters
+                loadLogs, resetFilters, exportLogs
             };
         }
     }).mount('#logsApp');
