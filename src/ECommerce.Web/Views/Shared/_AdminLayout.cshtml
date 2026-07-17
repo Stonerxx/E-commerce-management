@@ -11,11 +11,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body>
-    <header class="border-bottom">
+<body class="bg-light">
+    <header class="border-bottom shadow-sm">
         <nav class="navbar navbar-expand-lg navbar-light bg-white">
             <div class="container-fluid">
-                <a class="navbar-brand" href="/admin">电商后台</a>
+                <a class="navbar-brand fw-semibold" href="/admin">电商后台</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar"
                         aria-controls="adminNavbar" aria-expanded="false" aria-label="切换后台导航">
                     <span class="navbar-toggler-icon"></span>
@@ -40,9 +40,9 @@
                             <a class="nav-link" href="/admin/statistics">统计报表</a>
                         }
                     </div>
-                    <div class="navbar-nav">
-                        <a class="nav-link" href="/">返回前台</a>
-                        <a class="nav-link" href="/health">健康检查</a>
+                    <div class="d-flex gap-2 py-2 py-lg-0">
+                        <a class="btn btn-outline-primary btn-sm" href="/">返回前台</a>
+                        <a class="btn btn-outline-secondary btn-sm" href="/health">健康检查</a>
                     </div>
                 </div>
             </div>
