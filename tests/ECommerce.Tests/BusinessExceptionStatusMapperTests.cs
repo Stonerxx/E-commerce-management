@@ -11,6 +11,8 @@ public sealed class BusinessExceptionStatusMapperTests
     [InlineData("FORBIDDEN", StatusCodes.Status403Forbidden)]
     [InlineData(ErrorCodes.AuthInvalidCredentials, StatusCodes.Status401Unauthorized)]
     [InlineData("ORDER_STATUS_CHANGED", StatusCodes.Status409Conflict)]
+    [InlineData("ALREADY_REVIEWED", StatusCodes.Status409Conflict)]
+    [InlineData("LOGISTICS_ALREADY_EXISTS", StatusCodes.Status409Conflict)]
     [InlineData(ErrorCodes.ValidationError, StatusCodes.Status400BadRequest)]
     public void GetStatusCode_MapsBusinessCodesToHttpSemantics(string code, int expectedStatus)
     {

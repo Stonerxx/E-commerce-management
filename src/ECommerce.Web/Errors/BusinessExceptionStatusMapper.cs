@@ -23,6 +23,7 @@ public static class BusinessExceptionStatusMapper
 
         if (code is "ORDER_STATUS_CHANGED" or "ORDER_STATUS_INVALID" or "ORDER_CANNOT_CANCEL" or "ORDER_CANNOT_CONFIRM"
             or ErrorCodes.PaymentAlreadyPaid or "SKU_STOCK_BELOW_LOCKED" or "STOCK_LOCK_FAILED"
+            or "ALREADY_REVIEWED" or "LOGISTICS_ALREADY_EXISTS" or "LOGISTICS_STATUS_CHANGED"
             || code.StartsWith("INVENTORY_", StringComparison.Ordinal))
         {
             return StatusCodes.Status409Conflict;

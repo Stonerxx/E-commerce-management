@@ -8,7 +8,8 @@ public sealed record ShipmentRequest(
 public sealed record LogisticsTrackRequest(
     string TrackDesc,
     DateTime TrackTime,
-    string? Location);
+    string? Location,
+    int Status);
 
 public sealed record LogisticsTrackDto(
     long TrackId,

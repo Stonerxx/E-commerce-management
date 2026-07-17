@@ -456,48 +456,16 @@ public class OrderService : IOrderService
 
     public async Task MarkShippedAsync(long orderId, long logisticsId, long operatorId, string operatorName, string ipAddress, CancellationToken cancellationToken = default)
     {
-        var order = await _orderRepository.GetOrderByIdAsync(orderId, cancellationToken);
-        if (order == null)
-            throw new BusinessException("ORDER_NOT_FOUND", "订单不存在");
-
-        if (order.Status != (int)OrderStatus.Paid)
-            throw new BusinessException("ORDER_STATUS_INVALID", $"当前订单状态（{order.Status}）不允许发货");
+        if (_unitOfWork.CurrentTransaction is not null)
+        {
+            await MarkShippedCoreAsync(orderId, logisticsId, operatorId, operatorName, ipAddress, cancellationToken);
+            return;
+        }
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            // 更新订单状态为已发货（使用枚举）
-            var statusChanged = await _orderRepository.TryUpdateStatusAsync(
-                orderId,
-                (int)OrderStatus.Paid,
-                (int)OrderStatus.Shipped,
-                DateTime.Now,
-                cancellationToken);
-            EnsureStatusChanged(statusChanged);
-
-            // 记录订单日志
-            await _orderRepository.InsertOrderLogAsync(new OrderLog
-            {
-                OrderId = orderId,
-                FromStatus = (int)OrderStatus.Paid,
-                ToStatus = (int)OrderStatus.Shipped,
-                OperatorId = operatorId,
-                Remark = $"已发货，物流ID：{logisticsId}",
-                CreatedAt = DateTime.Now
-            }, cancellationToken);
-
-            // 记录操作日志（后台关键操作，必须记录）
-            await _operationLogService.WriteAsync(new OperationLogRequest(
-                operatorId,
-                operatorName,  // 使用真实操作人姓名
-                "订单管理",
-                "发货",
-                $"订单 {order.OrderNo} 已发货，物流ID：{logisticsId}",
-                ipAddress,
-                null,
-                (int)OperationResult.Success
-            ), cancellationToken);
-
+            await MarkShippedCoreAsync(orderId, logisticsId, operatorId, operatorName, ipAddress, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch (Exception ex)
@@ -506,6 +474,52 @@ public class OrderService : IOrderService
             await _unitOfWork.RollbackAsync(cancellationToken);
             throw;
         }
+    }
+
+    private async Task MarkShippedCoreAsync(
+        long orderId,
+        long logisticsId,
+        long operatorId,
+        string operatorName,
+        string ipAddress,
+        CancellationToken cancellationToken)
+    {
+        var order = await _orderRepository.GetOrderByIdAsync(orderId, cancellationToken);
+        if (order == null)
+            throw new BusinessException("ORDER_NOT_FOUND", "订单不存在");
+
+        if (order.Status != (int)OrderStatus.Paid)
+            throw new BusinessException("ORDER_STATUS_INVALID", $"当前订单状态（{order.Status}）不允许发货");
+
+        var statusChanged = await _orderRepository.TryUpdateStatusAsync(
+            orderId,
+            (int)OrderStatus.Paid,
+            (int)OrderStatus.Shipped,
+            DateTime.Now,
+            cancellationToken);
+        EnsureStatusChanged(statusChanged);
+
+        await _orderRepository.InsertOrderLogAsync(new OrderLog
+        {
+            OrderId = orderId,
+            FromStatus = (int)OrderStatus.Paid,
+            ToStatus = (int)OrderStatus.Shipped,
+            OperatorId = operatorId,
+            OperatorName = operatorName,
+            Remark = $"已发货，物流ID：{logisticsId}",
+            CreatedAt = DateTime.Now
+        }, cancellationToken);
+
+        await _operationLogService.WriteAsync(new OperationLogRequest(
+            operatorId,
+            operatorName,
+            "订单管理",
+            "发货",
+            $"订单 {order.OrderNo} 已发货，物流ID：{logisticsId}",
+            ipAddress,
+            null,
+            (int)OperationResult.Success
+        ), cancellationToken);
     }
 
     // ---------- 私有辅助方法 ----------

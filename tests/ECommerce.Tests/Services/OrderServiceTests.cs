@@ -847,6 +847,31 @@ public class OrderServiceTests : ServiceTestBase
     }
 
     [Fact]
+    public async Task MarkShippedAsync_JoinsExistingTransactionWithoutOwningIt()
+    {
+        var order = CreateOrderMain(orderId: TestOrderId, userId: TestUserId, status: (int)OrderStatus.Paid);
+        _unitOfWorkMock.SetupGet(x => x.CurrentTransaction)
+            .Returns(Mock.Of<System.Data.Common.DbTransaction>());
+        _orderRepositoryMock
+            .Setup(x => x.GetOrderByIdAsync(TestOrderId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(order);
+        _orderRepositoryMock
+            .Setup(x => x.TryUpdateStatusAsync(
+                TestOrderId,
+                (int)OrderStatus.Paid,
+                (int)OrderStatus.Shipped,
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        await _orderService.MarkShippedAsync(TestOrderId, 100, 999, "admin", "127.0.0.1");
+
+        _unitOfWorkMock.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(x => x.RollbackAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task MarkShippedAsync_InvalidStatus_ShouldThrow()
     {
         // Arrange
