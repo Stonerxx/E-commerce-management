@@ -52,6 +52,27 @@ public class ProductServiceTests : ServiceTestBase
         unitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task GetRecommendationsAsync_ClampsRequestedLimitToTwenty()
+    {
+        var unitOfWork = CreateUnitOfWorkMock();
+        var productRepository = new Mock<IProductRepository>();
+        productRepository.Setup(x => x.GetRecommendationsAsync(100, 20, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<ProductListItemDto>());
+        var service = CreateService(
+            unitOfWork,
+            productRepository,
+            new Mock<IProductImageRepository>(),
+            new Mock<IProductSpecRepository>());
+
+        var result = await service.GetRecommendationsAsync(100, 999);
+
+        Assert.Empty(result);
+        productRepository.Verify(
+            x => x.GetRecommendationsAsync(100, 20, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
     private static ProductService CreateService(
         Mock<IUnitOfWork> unitOfWork,
         Mock<IProductRepository> productRepository,

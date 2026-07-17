@@ -69,6 +69,16 @@
             </div>
 
             <div class="col-lg-9">
+                <div class="d-flex justify-content-end mb-3">
+                    <select class="form-select form-select-sm" style="max-width: 180px" v-model="sortBy" v-on:change="loadProducts(1)" aria-label="商品排序">
+                        <option value="newest">最新上架</option>
+                        <option value="hot">智能推荐</option>
+                        <option value="sales">销量优先</option>
+                        <option value="rating">评分优先</option>
+                        <option value="priceAsc">价格从低到高</option>
+                        <option value="priceDesc">价格从高到低</option>
+                    </select>
+                </div>
                 <div v-if="loading" class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">加载中...</span>

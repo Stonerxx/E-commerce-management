@@ -63,6 +63,8 @@ public sealed record ProductQuery : PageQuery
     public string? Keyword { get; init; }
 
     public int? Status { get; init; }
+
+    public string? SortBy { get; init; }
 }
 
 public sealed record ProductListItemDto(

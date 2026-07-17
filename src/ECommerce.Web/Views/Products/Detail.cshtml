@@ -149,6 +149,33 @@
 
         <div class="card mt-4">
             <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">为你推荐</h2>
+                <span class="text-muted small">同类商品与综合热度排序</span>
+            </div>
+            <div class="card-body">
+                <div v-if="recommendationsLoading" class="text-center py-4">
+                    <div class="spinner-border spinner-border-sm text-primary"></div>
+                </div>
+                <div v-else-if="recommendations.length === 0" class="text-center text-muted py-4">暂无推荐商品</div>
+                <div v-else class="row g-3">
+                    <div v-for="item in recommendations" v-bind:key="item.productId" class="col-6 col-md-4 col-xl-2">
+                        <a v-bind:href="'/products/' + item.productId" class="card h-100 text-decoration-none">
+                            <img v-bind:src="item.mainImage" class="card-img-top" alt="推荐商品" style="height: 140px; object-fit: cover;" />
+                            <div class="card-body p-2">
+                                <div class="small text-truncate text-body" v-bind:title="item.name">{{ item.name }}</div>
+                                <div class="d-flex justify-content-between align-items-center mt-2 gap-1">
+                                    <span class="text-danger fw-semibold">¥{{ item.priceMin.toFixed(2) }}</span>
+                                    <span class="text-muted small">销量 {{ item.salesCount }}</span>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h2 class="h5 mb-0">用户评价</h2>
                 <span class="text-muted small">共 {{ reviewTotalCount }} 条</span>
             </div>

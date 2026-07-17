@@ -15,6 +15,8 @@
             const reviewPage = ref(1);
             const reviewTotalCount = ref(0);
             const reviewTotalPages = ref(1);
+            const recommendations = ref([]);
+            const recommendationsLoading = ref(false);
 
             const productId = parseInt(window.location.pathname.split('/')[2]);
 
@@ -178,6 +180,22 @@
                 }
             }
 
+            async function loadRecommendations() {
+                recommendationsLoading.value = true;
+                try {
+                    const response = await fetch(`/api/v1/products/${productId}/recommendations?limit=6`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const result = await response.json();
+                    recommendations.value = response.ok && result.success ? (result.data || []) : [];
+                } catch (error) {
+                    console.error('加载推荐商品失败:', error);
+                    recommendations.value = [];
+                } finally {
+                    recommendationsLoading.value = false;
+                }
+            }
+
             function formatReviewDate(value) {
                 return value ? new Date(value).toLocaleString('zh-CN') : '-';
             }
@@ -239,6 +257,7 @@
             onMounted(() => {
                 loadProduct();
                 loadReviews();
+                loadRecommendations();
             });
 
             return {
@@ -254,6 +273,8 @@
                 reviewPage,
                 reviewTotalCount,
                 reviewTotalPages,
+                recommendations,
+                recommendationsLoading,
                 specGroups,
                 currentSku,
                 availableStock,
