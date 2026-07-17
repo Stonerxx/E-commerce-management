@@ -563,6 +563,7 @@ CREATE TABLE REVIEW (
     CONSTRAINT fk_rev_order FOREIGN KEY (order_id) REFERENCES ORDER_MAIN(id),
     CONSTRAINT fk_rev_product FOREIGN KEY (product_id) REFERENCES PRODUCT(id),
     CONSTRAINT fk_rev_user FOREIGN KEY (user_id) REFERENCES "USER"(id),
+    CONSTRAINT uk_review_order_product_user UNIQUE (order_id, product_id, user_id),
     CONSTRAINT ch_rev_rating CHECK (rating BETWEEN 1 AND 5),
     CONSTRAINT ch_rev_anonymous CHECK (is_anonymous IN (0,1)),
     CONSTRAINT ch_rev_status CHECK (status IN (0,1,2)),
