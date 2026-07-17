@@ -82,4 +82,23 @@ public class OracleSchemaTests
         Assert.Equal(1, reader.GetInt32(1));
         Assert.Equal(1, reader.GetInt32(2));
     }
+
+    [DevOracleFact]
+    [Trait("Category", "OracleIntegration")]
+    public async Task Dev_schema_contains_coupon_and_review_concurrency_constraints()
+    {
+        await using var connection = await OracleTestEnvironment.OpenDevAsync();
+        await using var command = OracleTestEnvironment.CreateCommand(connection, @"
+            SELECT COUNT(*)
+            FROM USER_CONSTRAINTS
+            WHERE CONSTRAINT_NAME IN (
+                'UK_UC_USER_TEMPLATE',
+                'UK_REVIEW_ORDER_PRODUCT_USER',
+                'CH_COUP_AMOUNT',
+                'CH_COUP_TOTAL',
+                'CH_COUP_RECEIVED')
+              AND STATUS = 'ENABLED'");
+
+        Assert.Equal(5, Convert.ToInt32(await command.ExecuteScalarAsync()));
+    }
 }
