@@ -53,6 +53,7 @@
                     }
                 ],
                 topProducts: [],
+                trendDimension: "day",
                 trendData: {
                     dates: [],
                     orderCounts: [],
@@ -118,17 +119,18 @@
             },
 
             async loadTrendData() {
-                const params = this.buildRangeParams(30);
+                const days = this.trendDimension === "month" ? 365 : 30;
+                const params = this.buildRangeParams(days, this.trendDimension);
                 const data = await this.apiGet(`/api/v1/admin/statistics/orders?${params}`);
                 const points = data?.points || [];
 
-                this.trendData.dates = points.map(point => this.formatShortDate(point.date));
+                this.trendData.dates = points.map(point => this.formatTrendDate(point.date));
                 this.trendData.orderCounts = points.map(point => point.orderCount || 0);
                 this.trendData.salesAmounts = points.map(point => Number(point.salesAmount || 0));
                 this.renderChart();
             },
 
-            buildRangeParams(days) {
+            buildRangeParams(days, dimension = "day") {
                 const end = new Date();
                 const start = new Date();
                 start.setDate(start.getDate() - days);
@@ -136,8 +138,26 @@
                 return new URLSearchParams({
                     startDate: this.formatDateInput(start),
                     endDate: this.formatDateInput(end),
-                    dimension: "day"
+                    dimension
                 });
+            },
+
+            async setTrendDimension(dimension) {
+                if (this.trendDimension === dimension) {
+                    return;
+                }
+
+                this.trendDimension = dimension;
+                this.loading = true;
+                this.errorMessage = "";
+                try {
+                    await this.loadTrendData();
+                    this.lastUpdated = new Date().toLocaleString();
+                } catch (error) {
+                    this.errorMessage = error.message || "加载统计数据失败";
+                } finally {
+                    this.loading = false;
+                }
             },
 
             renderChart() {
@@ -201,13 +221,20 @@
                 return date.toISOString().slice(0, 10);
             },
 
-            formatShortDate(value) {
+            formatTrendDate(value) {
                 const date = new Date(value);
                 if (Number.isNaN(date.getTime())) {
                     return "";
                 }
 
-                return `${date.getMonth() + 1}/${date.getDate()}`;
+                return this.trendDimension === "month"
+                    ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+                    : `${date.getMonth() + 1}/${date.getDate()}`;
+            }
+        },
+        computed: {
+            trendTitle() {
+                return this.trendDimension === "month" ? "近 12 个月订单趋势" : "近 30 日订单趋势";
             }
         }
     }).mount("#dashboardApp");
