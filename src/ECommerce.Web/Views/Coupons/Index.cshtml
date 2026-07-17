@@ -51,6 +51,7 @@
                         <span class="badge" v-bind:class="statusClass(item.status)">{{ statusText(item.status) }}</span>
                     </div>
                     <div class="text-muted small">领取时间：{{ formatDateTime(item.receivedAt) }}</div>
+                    <div class="text-muted small">有效期：{{ formatDate(item.startTime) }} 至 {{ formatDate(item.endTime) }}</div>
                     <div v-if="item.usedAt" class="text-muted small">使用时间：{{ formatDateTime(item.usedAt) }}</div>
                     <a v-if="item.status === 0" class="btn btn-sm btn-outline-success mt-3" href="/cart">去使用</a>
                 </div>

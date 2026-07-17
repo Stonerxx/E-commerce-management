@@ -160,15 +160,26 @@ public sealed class CouponService : ICouponService
         CancellationToken cancellationToken = default)
     {
         var items = await _couponRepository.GetUserCouponsAsync(userId, cancellationToken);
-        return items.Select(item => new UserCouponDto(
-            item.UserCoupon.Id,
-            item.UserCoupon.UserId,
-            item.UserCoupon.CouponTemplateId,
-            item.Template.Name,
-            item.UserCoupon.Status,
-            item.UserCoupon.ReceivedAt,
-            item.UserCoupon.UsedAt,
-            item.UserCoupon.OrderId)).ToList();
+        var now = DateTime.Now;
+        return items.Select(item =>
+        {
+            var effectiveStatus = item.UserCoupon.Status == (int)UserCouponStatus.Unused
+                                  && !IsTemplateActive(item.Template, now)
+                ? (int)UserCouponStatus.Expired
+                : item.UserCoupon.Status;
+
+            return new UserCouponDto(
+                item.UserCoupon.Id,
+                item.UserCoupon.UserId,
+                item.UserCoupon.CouponTemplateId,
+                item.Template.Name,
+                effectiveStatus,
+                item.UserCoupon.ReceivedAt,
+                item.UserCoupon.UsedAt,
+                item.UserCoupon.OrderId,
+                item.Template.StartTime,
+                item.Template.EndTime);
+        }).ToList();
     }
 
     public async Task<CouponValidationDto> ValidateAsync(
