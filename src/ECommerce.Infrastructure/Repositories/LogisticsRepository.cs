@@ -1,6 +1,7 @@
 using System.Data;
 using System.Data.Common;
 using ECommerce.Domain.Entities;
+using ECommerce.Infrastructure.Data;
 using ECommerce.Shared.Abstractions;
 using Oracle.ManagedDataAccess.Client;
 
@@ -52,7 +53,7 @@ public sealed class LogisticsRepository : ILogisticsRepository
         command.Parameters.Add(idParameter);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
-        logistics.Id = Convert.ToInt64(idParameter.Value);
+        logistics.Id = OracleValueConverter.ToInt64(idParameter.Value);
         return logistics.Id;
     }
 
@@ -77,7 +78,7 @@ public sealed class LogisticsRepository : ILogisticsRepository
         command.Parameters.Add(idParameter);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
-        track.Id = Convert.ToInt64(idParameter.Value);
+        track.Id = OracleValueConverter.ToInt64(idParameter.Value);
         return track.Id;
     }
 

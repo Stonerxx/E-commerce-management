@@ -39,6 +39,18 @@ public sealed class ApiContractTests
     }
 
     [Fact]
+    public void Catalog_ShouldExposePublicProductRecommendations()
+    {
+        var method = typeof(CatalogApiController).GetMethod(nameof(CatalogApiController.ProductRecommendations));
+
+        Assert.NotNull(method);
+        var route = method.GetCustomAttributes(typeof(HttpGetAttribute), false)
+            .Cast<HttpGetAttribute>()
+            .Single();
+        Assert.Equal("products/{productId:long}/recommendations", route.Template);
+    }
+
+    [Fact]
     public void AdminStatistics_ShouldUseActionLevelPolicies()
     {
         AssertAuthorizePolicy<AdminStatisticsApiController>(

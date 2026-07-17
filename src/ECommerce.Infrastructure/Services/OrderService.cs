@@ -89,6 +89,7 @@ public class OrderService : IOrderService
         var items = cartItems.Select(x => new OrderItemDto(
             0,
             x.SkuId,
+            x.ProductId,
             x.ProductName,
             x.SpecDescJson,
             x.MainImage,
@@ -420,7 +421,6 @@ public class OrderService : IOrderService
         if (order == null)
             throw new BusinessException("ORDER_NOT_FOUND", "订单不存在");
 
-        // 幂等性检查：已支付后的状态流转（已发货、已完成）同样意味着支付已处理。
         if (order.Status is (int)OrderStatus.Paid or (int)OrderStatus.Shipped or (int)OrderStatus.Completed)
         {
             _logger.LogWarning("订单 {OrderId} 已完成支付处理，重复调用 MarkPaidAsync", orderId);
@@ -430,35 +430,16 @@ public class OrderService : IOrderService
         if (order.Status != (int)OrderStatus.PendingPayment)
             throw new BusinessException("ORDER_STATUS_INVALID", $"当前订单状态（{order.Status}）不允许支付");
 
+        if (_unitOfWork.CurrentTransaction is not null)
+        {
+            await MarkPaidCoreAsync(order, paymentId, cancellationToken);
+            return;
+        }
+
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            // 更新订单状态为已支付（使用枚举）
-            var statusChanged = await _orderRepository.TryUpdateStatusAsync(
-                orderId,
-                (int)OrderStatus.PendingPayment,
-                (int)OrderStatus.Paid,
-                DateTime.Now,
-                cancellationToken);
-            EnsureStatusChanged(statusChanged);
-
-            // 记录订单日志
-            await _orderRepository.InsertOrderLogAsync(new OrderLog
-            {
-                OrderId = orderId,
-                FromStatus = (int)OrderStatus.PendingPayment,
-                ToStatus = (int)OrderStatus.Paid,
-                OperatorId = null,  // 系统自动操作
-                Remark = $"支付成功，支付记录ID：{paymentId}",
-                CreatedAt = DateTime.Now
-            }, cancellationToken);
-
-            // 扣减库存（实际库存，释放锁定库存）
-            var skuQuantities = await _orderRepository.GetOrderSkuQuantitiesAsync(orderId, cancellationToken);
-            await _inventoryService.DeductForPaidOrderAsync(orderId, skuQuantities, cancellationToken);
-
-            // 商品销量由 TRG_ORDER_PAID_UPDATE_SALES 在订单状态成功更新后维护。
-
+            await MarkPaidCoreAsync(order, paymentId, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch (Exception ex)
@@ -467,6 +448,35 @@ public class OrderService : IOrderService
             await _unitOfWork.RollbackAsync(cancellationToken);
             throw;
         }
+    }
+
+    private async Task MarkPaidCoreAsync(
+        OrderMain order,
+        long paymentId,
+        CancellationToken cancellationToken)
+    {
+        var statusChanged = await _orderRepository.TryUpdateStatusAsync(
+            order.Id,
+            (int)OrderStatus.PendingPayment,
+            (int)OrderStatus.Paid,
+            DateTime.Now,
+            cancellationToken);
+        EnsureStatusChanged(statusChanged);
+
+        await _orderRepository.InsertOrderLogAsync(new OrderLog
+        {
+            OrderId = order.Id,
+            FromStatus = (int)OrderStatus.PendingPayment,
+            ToStatus = (int)OrderStatus.Paid,
+            OperatorId = null,
+            Remark = $"支付成功，支付记录ID：{paymentId}",
+            CreatedAt = DateTime.Now
+        }, cancellationToken);
+
+        var skuQuantities = await _orderRepository.GetOrderSkuQuantitiesAsync(order.Id, cancellationToken);
+        await _inventoryService.DeductForPaidOrderAsync(order.Id, skuQuantities, cancellationToken);
+
+        // 商品销量由 TRG_ORDER_PAID_UPDATE_SALES 在订单状态成功更新后维护。
     }
 
     public async Task MarkShippedAsync(long orderId, long logisticsId, long operatorId, string operatorName, string ipAddress, CancellationToken cancellationToken = default)
@@ -613,6 +623,7 @@ public class OrderService : IOrderService
         var items = order.Items.Select(x => new OrderItemDto(
             x.Id,
             x.SkuId,
+            x.ProductId,
             x.ProductNameSnap,
             x.SpecSnap,
             x.MainImageSnap,

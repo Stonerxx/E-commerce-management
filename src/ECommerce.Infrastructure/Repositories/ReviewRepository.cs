@@ -4,6 +4,7 @@ using System.Text;
 using ECommerce.Application.DTOs;
 using ECommerce.Domain.Entities;
 using ECommerce.Domain.Enums;
+using ECommerce.Infrastructure.Data;
 using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Contracts;
 using Oracle.ManagedDataAccess.Client;
@@ -103,7 +104,7 @@ public sealed class ReviewRepository : IReviewRepository
         command.Parameters.Add(idParameter);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
-        review.Id = Convert.ToInt64(idParameter.Value);
+        review.Id = OracleValueConverter.ToInt64(idParameter.Value);
         return review.Id;
     }
 

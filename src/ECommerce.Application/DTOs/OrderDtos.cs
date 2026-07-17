@@ -42,6 +42,7 @@ public sealed record OrderListItemDto(
 public sealed record OrderItemDto(
     long OrderItemId,
     long SkuId,
+    long ProductId,
     string ProductName,
     string SpecSnap,
     string MainImage,

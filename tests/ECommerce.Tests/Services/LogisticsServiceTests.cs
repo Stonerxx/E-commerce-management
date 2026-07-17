@@ -144,6 +144,27 @@ public sealed class LogisticsServiceTests
     }
 
     [Fact]
+    public async Task GetByOrderAdminAsync_ReturnsLogisticsWithoutCustomerOwnershipRule()
+    {
+        _orders.Setup(item => item.GetOrderByIdAsync(10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OrderMain { Id = 10, UserId = 99 });
+        _logistics.Setup(item => item.GetByOrderIdAsync(10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Logistics
+            {
+                Id = 30,
+                OrderId = 10,
+                CompanyName = "测试物流",
+                TrackingNo = "TRACK-1",
+                Status = (int)LogisticsStatus.InTransit
+            });
+
+        var result = await _service.GetByOrderAdminAsync(10);
+
+        Assert.NotNull(result);
+        Assert.Equal(30, result.LogisticsId);
+    }
+
+    [Fact]
     public async Task AddTrackAsync_RejectsStatusRegression()
     {
         _logistics.Setup(item => item.GetByIdAsync(30, It.IsAny<CancellationToken>()))

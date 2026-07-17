@@ -2,6 +2,7 @@ using System.Data.Common;
 using System.Text;
 using ECommerce.Application.DTOs;
 using ECommerce.Domain.Entities;
+using ECommerce.Infrastructure.Data;
 using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Contracts;
 
@@ -128,7 +129,7 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
         command.Parameters.Add(newIdParam);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
-        return Convert.ToInt64(newIdParam.Value);
+        return OracleValueConverter.ToInt64(newIdParam.Value);
     }
 
     private static void AddSearchParameters(DbCommand command, InventoryLogQuery query)

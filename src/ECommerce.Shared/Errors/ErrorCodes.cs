@@ -14,7 +14,6 @@ public static class ErrorCodes
     public const string CouponNotAvailable = "COUPON_NOT_AVAILABLE";
     public const string PaymentAlreadyPaid = "PAYMENT_ALREADY_PAID";
     public const string ExportFailed = "EXPORT_FAILED";
-    public const string NotImplemented = "NOT_IMPLEMENTED";
     public const string InternalServerError = "INTERNAL_SERVER_ERROR";
     public const string ConfigurationError = "CONFIGURATION_ERROR";
 }

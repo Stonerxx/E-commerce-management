@@ -1,4 +1,5 @@
 using System.Data;
+using ECommerce.Infrastructure.Data;
 using Oracle.ManagedDataAccess.Client;
 
 namespace ECommerce.OracleIntegrationTests;
@@ -26,7 +27,7 @@ public sealed class OracleMember5ModuleTests
             var id = new OracleParameter(":Id", OracleDbType.Int32) { Direction = ParameterDirection.Output };
             insertTemplate.Parameters.Add(id);
             Assert.Equal(1, await insertTemplate.ExecuteNonQueryAsync());
-            templateId = Convert.ToInt32(id.Value);
+            templateId = OracleValueConverter.ToInt32(id.Value);
         }
 
         await using (var receiveInventory = OracleTestEnvironment.CreateCommand(connection, @"
@@ -53,7 +54,7 @@ public sealed class OracleMember5ModuleTests
             var id = new OracleParameter(":Id", OracleDbType.Int64) { Direction = ParameterDirection.Output };
             insertUserCoupon.Parameters.Add(id);
             Assert.Equal(1, await insertUserCoupon.ExecuteNonQueryAsync());
-            userCouponId = Convert.ToInt64(id.Value);
+            userCouponId = OracleValueConverter.ToInt64(id.Value);
         }
 
         await using (var duplicate = OracleTestEnvironment.CreateCommand(connection, @"
@@ -118,12 +119,19 @@ public sealed class OracleMember5ModuleTests
             references.UserId,
             references.AddressId);
 
-        await using (var completeOrder = OracleTestEnvironment.CreateCommand(
-            connection,
-            "UPDATE ORDER_MAIN SET status = 3 WHERE id = :OrderId",
-            transaction))
+        foreach (var (expectedStatus, targetStatus) in new[] { (0, 1), (1, 2), (2, 3) })
         {
+            await using var completeOrder = OracleTestEnvironment.CreateCommand(
+                connection,
+                """
+                UPDATE ORDER_MAIN
+                SET status = :TargetStatus
+                WHERE id = :OrderId AND status = :ExpectedStatus
+                """,
+                transaction);
+            completeOrder.Parameters.Add(":TargetStatus", OracleDbType.Int32).Value = targetStatus;
             completeOrder.Parameters.Add(":OrderId", OracleDbType.Int64).Value = orderId;
+            completeOrder.Parameters.Add(":ExpectedStatus", OracleDbType.Int32).Value = expectedStatus;
             Assert.Equal(1, await completeOrder.ExecuteNonQueryAsync());
         }
 
@@ -154,7 +162,7 @@ public sealed class OracleMember5ModuleTests
             var id = new OracleParameter(":Id", OracleDbType.Int64) { Direction = ParameterDirection.Output };
             insertReview.Parameters.Add(id);
             Assert.Equal(1, await insertReview.ExecuteNonQueryAsync());
-            reviewId = Convert.ToInt64(id.Value);
+            reviewId = OracleValueConverter.ToInt64(id.Value);
         }
 
         await using (var readReview = OracleTestEnvironment.CreateCommand(connection, @"
@@ -239,7 +247,7 @@ public sealed class OracleMember5ModuleTests
             var id = new OracleParameter(":Id", OracleDbType.Int64) { Direction = ParameterDirection.Output };
             insertLogistics.Parameters.Add(id);
             Assert.Equal(1, await insertLogistics.ExecuteNonQueryAsync());
-            logisticsId = Convert.ToInt64(id.Value);
+            logisticsId = OracleValueConverter.ToInt64(id.Value);
         }
 
         await using (var insertTrack = OracleTestEnvironment.CreateCommand(connection, @"

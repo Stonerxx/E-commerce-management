@@ -58,7 +58,7 @@ demo123
 8. 点击“模拟支付成功”。
 9. 返回“我的订单”，确认新订单状态变为“已支付”。
 
-说明：`/payment/{orderId}` 当前是 `TEMP_DEMO_PAYMENT` 临时页，只负责在 member5 合入前打通演示闭环。
+说明：`/payment/{orderId}` 使用模拟渠道，但会真实创建 `PAYMENT` 记录，并在同一事务内完成支付状态、订单状态和库存扣减。
 结算页会加载当前用户未使用的优惠券；预览和创建订单都使用服务端重新计算的商品总额校验优惠券，订单写入与优惠券核销在同一事务中完成。
 
 ## 4. 历史订单演示
@@ -89,18 +89,9 @@ demo123
 
 普通 `USER` 账号不应该看到后台入口，手动访问 `/admin` 也应进入拒绝访问页面。
 
-## 6. 临时逻辑替换清单
+## 6. 统合检查
 
-以下标记都表示临时代码，成员模块合入后需要替换：
-
-| 标记 | 文件 | 替换来源 |
-| --- | --- | --- |
-| `TEMP_DEMO_ADDRESS` | `src/ECommerce.Infrastructure/Services/Mocks/MockAddressService.cs` | member2 地址服务 |
-| `TEMP_DEMO_SKU` | `src/ECommerce.Infrastructure/Services/Mocks/MockSkuService.cs` | member3 SKU 服务 |
-| `TEMP_DEMO_INVENTORY` | `src/ECommerce.Infrastructure/Services/Mocks/MockInventoryService.cs` | member3 库存服务 |
-| `TEMP_DEMO_PAYMENT` | `src/ECommerce.Web/Controllers/PaymentController.cs` | member5 支付服务 |
-
-最终统合前可以运行：
+核心流程已移除临时 Mock 和 `TEMP_DEMO_*` 标记。最终统合前可以运行：
 
 ```powershell
 rg -n "TEMP_DEMO_" src docs README.md

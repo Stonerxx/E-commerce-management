@@ -43,9 +43,16 @@
     <div class="row g-3 mb-4" v-if="isAdmin">
         <div class="col-12 col-xl-8">
             <div class="card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h2 class="h5 mb-0">近 30 日订单趋势</h2>
-                    <span class="small text-muted">按日统计</span>
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h2 class="h5 mb-0">{{ trendTitle }}</h2>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="统计维度">
+                        <button type="button" class="btn"
+                                v-bind:class="trendDimension === 'day' ? 'btn-primary' : 'btn-outline-primary'"
+                                v-on:click="setTrendDimension('day')">按日</button>
+                        <button type="button" class="btn"
+                                v-bind:class="trendDimension === 'month' ? 'btn-primary' : 'btn-outline-primary'"
+                                v-on:click="setTrendDimension('month')">按月</button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div id="trendChart" style="width: 100%; height: 320px;"></div>

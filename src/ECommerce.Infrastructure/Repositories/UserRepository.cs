@@ -1,6 +1,7 @@
 using System.Data;
 using ECommerce.Application.DTOs;
 using ECommerce.Domain.Entities;
+using ECommerce.Infrastructure.Data;
 using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Contracts;
 using Oracle.ManagedDataAccess.Client;
@@ -85,7 +86,7 @@ public sealed class UserRepository : IUserRepository
             userCommand.Parameters.Add(userIdParameter);
             await userCommand.ExecuteNonQueryAsync(cancellationToken);
 
-            var userId = Convert.ToInt64(userIdParameter.Value.ToString());
+            var userId = OracleValueConverter.ToInt64(userIdParameter.Value);
 
             var userRole = new UserRole
             {

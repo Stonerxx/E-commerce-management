@@ -18,7 +18,9 @@ public sealed class AdminOperationAuditFilter : IAsyncActionFilter
         "/api/v1/admin/product-images",
         "/api/v1/admin/skus",
         "/api/v1/admin/users",
-        "/api/v1/admin/permissions"
+        "/api/v1/admin/permissions",
+        "/api/v1/admin/coupon-templates",
+        "/api/v1/admin/reviews"
     ];
 
     private readonly IOperationLogService _operationLogService;
@@ -91,6 +93,8 @@ public sealed class AdminOperationAuditFilter : IAsyncActionFilter
         if (path.Contains("/products", StringComparison.OrdinalIgnoreCase)) return "商品管理";
         if (path.Contains("/skus", StringComparison.OrdinalIgnoreCase)) return "SKU管理";
         if (path.Contains("/users", StringComparison.OrdinalIgnoreCase)) return "用户管理";
+        if (path.Contains("/coupon-templates", StringComparison.OrdinalIgnoreCase)) return "优惠券管理";
+        if (path.Contains("/reviews", StringComparison.OrdinalIgnoreCase)) return "评价管理";
         return "权限管理";
     }
 

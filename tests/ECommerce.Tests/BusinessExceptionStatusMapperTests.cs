@@ -15,6 +15,8 @@ public sealed class BusinessExceptionStatusMapperTests
     [InlineData("LOGISTICS_ALREADY_EXISTS", StatusCodes.Status409Conflict)]
     [InlineData("COUPON_ALREADY_USED", StatusCodes.Status409Conflict)]
     [InlineData("COUPON_CHANGED", StatusCodes.Status409Conflict)]
+    [InlineData("PAYMENT_STATUS_CHANGED", StatusCodes.Status409Conflict)]
+    [InlineData(ErrorCodes.ConfigurationError, StatusCodes.Status500InternalServerError)]
     [InlineData(ErrorCodes.ValidationError, StatusCodes.Status400BadRequest)]
     public void GetStatusCode_MapsBusinessCodesToHttpSemantics(string code, int expectedStatus)
     {

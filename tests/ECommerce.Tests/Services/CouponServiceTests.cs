@@ -116,6 +116,21 @@ public sealed class CouponServiceTests
     }
 
     [Fact]
+    public async Task GetMineAsync_ShowsUnusedCouponAsExpiredWhenTemplateIsOutOfDate()
+    {
+        var template = CreateTemplate();
+        template.EndTime = DateTime.Now.AddMinutes(-1);
+        _repository.Setup(item => item.GetUserCouponsAsync(10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { CreateUserCouponDetail(template) });
+
+        var result = await _service.GetMineAsync(10);
+
+        var coupon = Assert.Single(result);
+        Assert.Equal((int)UserCouponStatus.Expired, coupon.Status);
+        Assert.Equal(template.EndTime, coupon.EndTime);
+    }
+
+    [Fact]
     public async Task ValidateAsync_CalculatesDiscountRate()
     {
         var template = CreateTemplate();

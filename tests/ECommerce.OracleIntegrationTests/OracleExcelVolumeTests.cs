@@ -1,4 +1,3 @@
-using System.Text;
 using ClosedXML.Excel;
 using ECommerce.Application.DTOs;
 using ECommerce.Application.Services;
@@ -26,11 +25,7 @@ public class OracleExcelVolumeTests
 
         try
         {
-            for (var offset = 0; offset < rowCount; offset += 250)
-            {
-                var batchSize = Math.Min(250, rowCount - offset);
-                await InsertOrderBatchAsync(connection, firstOrderId, offset, batchSize, prefix, references.UserId, references.AddressId);
-            }
+            await InsertOrdersAsync(connection, firstOrderId, rowCount, prefix, references.UserId, references.AddressId);
 
             var configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -65,28 +60,43 @@ public class OracleExcelVolumeTests
         }
     }
 
-    private static async Task InsertOrderBatchAsync(
+    private static async Task InsertOrdersAsync(
         OracleConnection connection,
         long firstOrderId,
-        int offset,
-        int batchSize,
+        int rowCount,
         string prefix,
         long userId,
         long addressId)
     {
-        var sql = new StringBuilder("INSERT ALL");
-        for (var index = offset; index < offset + batchSize; index++)
-        {
-            var orderId = firstOrderId + index;
-            sql.AppendLine();
-            sql.Append("  INTO ORDER_MAIN (id, order_no, user_id, address_id, status, total_amount, discount_amount, pay_amount, pay_expire_time, receiver_snapshot, created_at, updated_at) VALUES (")
-                .Append(orderId).Append(", '").Append(prefix).Append('-').Append(index.ToString("D4")).Append("', ")
-                .Append(userId).Append(", ").Append(addressId)
-                .Append(", 1, 1, 0, 1, SYSDATE + 1, '{\"source\":\"oracle-integration\"}', SYSDATE, SYSDATE)");
-        }
-        sql.AppendLine().Append("SELECT 1 FROM DUAL");
-
-        await using var command = OracleTestEnvironment.CreateCommand(connection, sql.ToString());
-        Assert.Equal(batchSize, await command.ExecuteNonQueryAsync());
+        await using var command = OracleTestEnvironment.CreateCommand(connection, """
+            INSERT INTO ORDER_MAIN
+                (id, order_no, user_id, address_id, status, total_amount, discount_amount,
+                 pay_amount, pay_expire_time, receiver_snapshot, created_at, updated_at)
+            SELECT
+                :FirstOrderId + generated.row_index - 1,
+                :Prefix || '-' || LPAD(generated.row_index - 1, 4, '0'),
+                :UserId,
+                :AddressId,
+                1,
+                1,
+                0,
+                1,
+                SYSDATE + 1,
+                '{"source":"oracle-integration"}',
+                SYSDATE,
+                SYSDATE
+            FROM (
+                SELECT LEVEL AS row_index
+                FROM DUAL
+                CONNECT BY LEVEL <= :RowCount
+            ) generated
+            """);
+        command.CommandTimeout = 180;
+        command.Parameters.Add(":FirstOrderId", OracleDbType.Int64).Value = firstOrderId;
+        command.Parameters.Add(":Prefix", OracleDbType.Varchar2).Value = prefix;
+        command.Parameters.Add(":UserId", OracleDbType.Int64).Value = userId;
+        command.Parameters.Add(":AddressId", OracleDbType.Int64).Value = addressId;
+        command.Parameters.Add(":RowCount", OracleDbType.Int32).Value = rowCount;
+        Assert.Equal(rowCount, await command.ExecuteNonQueryAsync());
     }
 }

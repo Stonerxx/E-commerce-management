@@ -6,6 +6,7 @@
             const loading = ref(false);
             const keyword = ref('');
             const selectedCategoryId = ref(null);
+            const sortBy = ref('newest');
             const categoryTree = ref([]);
             const products = ref([]);
             const pagination = ref({
@@ -51,7 +52,8 @@
 
                 const params = new URLSearchParams({
                     pageIndex: pageIndex,
-                    pageSize: pagination.value.pageSize
+                    pageSize: pagination.value.pageSize,
+                    sortBy: sortBy.value
                 });
                 if (keyword.value.trim()) {
                     params.append('keyword', keyword.value.trim());
@@ -104,6 +106,7 @@
                 loading,
                 keyword,
                 selectedCategoryId,
+                sortBy,
                 categoryTree,
                 products,
                 pagination,

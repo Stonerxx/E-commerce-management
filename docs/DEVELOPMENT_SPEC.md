@@ -166,7 +166,7 @@ Shared -> 不依赖其他项目
 | DI 注册 | `src/ECommerce.Infrastructure/DependencyInjection.cs`, `src/ECommerce.Web/Program.cs` |
 | 数据库脚本 | `migration/init_database.sql`、`migration/database_objects.sql` |
 
-API Controller 路由已统一定义；已完成的模块通过 Service 调用业务实现，尚未完成的真实支付接口仍返回 `501 NOT_IMPLEMENTED`。Controller 不直接写 SQL。
+API Controller 路由已统一定义并调用对应 Service；Controller 不直接写 SQL。模拟支付持久化 `PAYMENT`，并通过签名回调或页面操作完成支付事务。
 
 看接口时按这个顺序：
 
@@ -207,7 +207,7 @@ GET /api/v1/system/db-check
 
 该接口会返回 `connected`、`sessionUser`、`currentSchema` 和 `serviceName`，用于确认当前后端实际连到哪个 Oracle 用户和服务。
 
-当前登录模块还未完成，基础阶段该接口允许匿名访问，便于第 1 人验证 Oracle 和服务器部署。登录权限完成后，可按验收要求改为 `AdminOnly`。
+该接口继续允许匿名访问，便于负载均衡和部署探针验证就绪状态；返回内容不包含连接密码。
 
 ## 5. 分支职责
 
@@ -393,6 +393,7 @@ JSON API 权限要和页面入口匹配：
 - `GET /api/v1/payments/{orderId}`
 - `POST /api/v1/payments/callback/simulated`
 - `POST /api/v1/admin/orders/{orderId}/shipments`
+- `GET /api/v1/admin/orders/{orderId}/logistics`
 - `GET /api/v1/logistics/{orderId}`
 - `POST /api/v1/admin/logistics/{logisticsId}/tracks`
 - `POST /api/v1/reviews`

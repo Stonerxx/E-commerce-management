@@ -163,6 +163,21 @@ public sealed class LogisticsService : ILogisticsService
         return logistics is null ? null : MapDto(logistics);
     }
 
+    public async Task<LogisticsDto?> GetByOrderAdminAsync(
+        long orderId,
+        CancellationToken cancellationToken = default)
+    {
+        if (orderId <= 0)
+        {
+            throw new BusinessException("VALIDATION_ERROR", "订单 ID 无效");
+        }
+
+        _ = await _orderRepository.GetOrderByIdAsync(orderId, cancellationToken)
+            ?? throw new BusinessException("ORDER_NOT_FOUND", "订单不存在");
+        var logistics = await _logisticsRepository.GetByOrderIdAsync(orderId, cancellationToken);
+        return logistics is null ? null : MapDto(logistics);
+    }
+
     private static void ValidateShipment(long orderId, ShipmentRequest request)
     {
         if (orderId <= 0)

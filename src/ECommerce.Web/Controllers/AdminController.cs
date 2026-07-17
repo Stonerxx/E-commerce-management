@@ -90,4 +90,18 @@ public sealed class AdminController : Controller
     {
         return View();
     }
+
+    [HttpGet("/admin/coupons")]
+    [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
+    public IActionResult Coupons()
+    {
+        return View();
+    }
+
+    [HttpGet("/admin/reviews")]
+    [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
+    public IActionResult Reviews()
+    {
+        return View();
+    }
 }

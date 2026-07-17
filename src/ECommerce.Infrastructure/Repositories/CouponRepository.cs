@@ -3,6 +3,7 @@ using System.Data.Common;
 using System.Text;
 using ECommerce.Domain.Entities;
 using ECommerce.Domain.Enums;
+using ECommerce.Infrastructure.Data;
 using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Contracts;
 using Oracle.ManagedDataAccess.Client;
@@ -135,7 +136,7 @@ public sealed class CouponRepository : ICouponRepository
         idParameter.Direction = ParameterDirection.Output;
         command.Parameters.Add(idParameter);
         await command.ExecuteNonQueryAsync(cancellationToken);
-        template.Id = Convert.ToInt32(idParameter.Value);
+        template.Id = OracleValueConverter.ToInt32(idParameter.Value);
         return template.Id;
     }
 
@@ -208,7 +209,7 @@ public sealed class CouponRepository : ICouponRepository
         idParameter.Direction = ParameterDirection.Output;
         command.Parameters.Add(idParameter);
         await command.ExecuteNonQueryAsync(cancellationToken);
-        userCoupon.Id = Convert.ToInt64(idParameter.Value);
+        userCoupon.Id = OracleValueConverter.ToInt64(idParameter.Value);
         return userCoupon.Id;
     }
 

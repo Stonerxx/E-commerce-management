@@ -1,4 +1,5 @@
 ﻿using ECommerce.Application.DTOs;
+using System.Data.Common;
 using ECommerce.Application.Services;
 using ECommerce.Domain.Entities;
 using ECommerce.Domain.Enums;
@@ -777,6 +778,22 @@ public class OrderServiceTests : ServiceTestBase
             It.IsAny<CancellationToken>()
         ), Times.Once);
         _unitOfWorkMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task MarkPaidAsync_UsesExistingPaymentTransactionWithoutCommittingIt()
+    {
+        var order = CreateOrderMain(orderId: TestOrderId, userId: TestUserId, status: (int)OrderStatus.PendingPayment);
+        var skuQuantities = new List<OrderSkuQuantity> { new(TestSkuId, 2) };
+        _unitOfWorkMock.SetupGet(x => x.CurrentTransaction).Returns(new Mock<DbTransaction>().Object);
+        _orderRepositoryMock.Setup(x => x.GetOrderByIdAsync(TestOrderId, It.IsAny<CancellationToken>())).ReturnsAsync(order);
+        _orderRepositoryMock.Setup(x => x.GetOrderSkuQuantitiesAsync(TestOrderId, It.IsAny<CancellationToken>())).ReturnsAsync(skuQuantities);
+
+        await _orderService.MarkPaidAsync(TestOrderId, 5001);
+
+        _inventoryServiceMock.Verify(x => x.DeductForPaidOrderAsync(TestOrderId, skuQuantities, It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]

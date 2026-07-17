@@ -1,0 +1,66 @@
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "优惠券中心";
+}
+
+<div id="couponsApp" v-cloak class="py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <div>
+            <h1 class="h3 mb-1">优惠券中心</h1>
+            <p class="text-muted mb-0">领取可用优惠券，并查看自己的使用状态。</p>
+        </div>
+        <a class="btn btn-outline-primary" href="/orders/create">去结算</a>
+    </div>
+
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item"><button class="nav-link" v-bind:class="{ active: tab === 'available' }" v-on:click="tab = 'available'">可领取</button></li>
+        <li class="nav-item"><button class="nav-link" v-bind:class="{ active: tab === 'mine' }" v-on:click="tab = 'mine'">我的优惠券</button></li>
+    </ul>
+
+    <div v-if="loading" class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+
+    <div v-else-if="tab === 'available'" class="row g-3">
+        <div v-if="available.length === 0" class="col-12 text-center text-muted py-5">暂无可领取优惠券</div>
+        <div v-for="item in available" v-bind:key="item.templateId" class="col-12 col-md-6 col-xl-4">
+            <div class="card h-100 border-danger-subtle">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between gap-3">
+                        <div>
+                            <h2 class="h5">{{ item.name }}</h2>
+                            <div class="text-danger fs-4 fw-bold">{{ discountText(item) }}</div>
+                        </div>
+                        <span class="badge text-bg-light align-self-start">满 ¥{{ item.minAmount.toFixed(2) }} 可用</span>
+                    </div>
+                    <div class="text-muted small mt-3">有效期：{{ formatDate(item.startTime) }} 至 {{ formatDate(item.endTime) }}</div>
+                    <div class="text-muted small">剩余：{{ remainingText(item) }}</div>
+                    <button class="btn btn-danger mt-auto pt-2" v-on:click="receive(item)" v-bind:disabled="receivingId === item.templateId">
+                        {{ receivingId === item.templateId ? '领取中...' : '立即领取' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div v-else class="row g-3">
+        <div v-if="mine.length === 0" class="col-12 text-center text-muted py-5">还没有优惠券</div>
+        <div v-for="item in mine" v-bind:key="item.userCouponId" class="col-12 col-md-6 col-xl-4">
+            <div class="card h-100" v-bind:class="item.status === 0 ? 'border-success-subtle' : 'opacity-75'">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <h2 class="h5 mb-1">{{ item.couponName }}</h2>
+                        <span class="badge" v-bind:class="statusClass(item.status)">{{ statusText(item.status) }}</span>
+                    </div>
+                    <div class="text-muted small">领取时间：{{ formatDateTime(item.receivedAt) }}</div>
+                    <div class="text-muted small">有效期：{{ formatDate(item.startTime) }} 至 {{ formatDate(item.endTime) }}</div>
+                    <div v-if="item.usedAt" class="text-muted small">使用时间：{{ formatDateTime(item.usedAt) }}</div>
+                    <a v-if="item.status === 0" class="btn btn-sm btn-outline-success mt-3" href="/cart">去使用</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/coupons.js" asp-append-version="true"></script>
+}

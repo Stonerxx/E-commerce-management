@@ -68,6 +68,22 @@ public sealed class ProductService : IProductService
         return detail with { ViewCount = detail.ViewCount + 1 };
     }
 
+    public async Task<IReadOnlyList<ProductListItemDto>> GetRecommendationsAsync(
+        long productId,
+        int limit = 6,
+        CancellationToken cancellationToken = default)
+    {
+        if (productId <= 0)
+        {
+            throw new BusinessException("PRODUCT_ID_INVALID", "商品 ID 必须大于 0");
+        }
+
+        return await _productRepository.GetRecommendationsAsync(
+            productId,
+            Math.Clamp(limit, 1, 20),
+            cancellationToken);
+    }
+
     public async Task<long> CreateAsync(ProductSaveRequest request, long operatorId, CancellationToken cancellationToken = default)
     {
         ValidateRequest(request);

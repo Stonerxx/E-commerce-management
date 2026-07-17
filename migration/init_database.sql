@@ -658,6 +658,10 @@ COMMENT ON COLUMN ORDER_STAT_SNAPSHOT.new_user_count IS '当日新增用户数';
 -- 可选：为常用查询字段创建索引（提升性能）
 -- ============================================================
 CREATE INDEX idx_address_user_id ON ADDRESS(user_id);
+-- Oracle 的函数索引只在“有效且默认”时产生键值，从数据库层保证每个用户至多一个默认地址。
+CREATE UNIQUE INDEX uk_address_one_default ON ADDRESS (
+    CASE WHEN is_deleted = 0 AND is_default = 1 THEN user_id END
+);
 CREATE INDEX idx_product_category ON PRODUCT(category_id);
 CREATE INDEX idx_product_status ON PRODUCT(status);
 CREATE INDEX idx_sku_product ON SKU(product_id);

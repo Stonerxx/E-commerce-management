@@ -1,3 +1,4 @@
+using ECommerce.Infrastructure.Data;
 using Oracle.ManagedDataAccess.Client;
 
 namespace ECommerce.OracleIntegrationTests;
@@ -22,7 +23,7 @@ public class OracleSchemaTests
             var idParameter = new OracleParameter(":Id", OracleDbType.Int64) { Direction = System.Data.ParameterDirection.Output };
             insert.Parameters.Add(idParameter);
             await insert.ExecuteNonQueryAsync();
-            userId = Convert.ToInt64(idParameter.Value);
+            userId = OracleValueConverter.ToInt64(idParameter.Value);
             Assert.True(userId >= 10_001, $"Expected generated user id >= 10001, got {userId}.");
         }
         finally
@@ -66,6 +67,13 @@ public class OracleSchemaTests
         Assert.Equal(11, constraintCount);
 
         command.CommandText = """SELECT COUNT(*) FROM "USER" WHERE id = 1 AND username = 'system' AND status = 0""";
+        Assert.Equal(1, Convert.ToInt32(await command.ExecuteScalarAsync()));
+
+        command.CommandText = @"
+            SELECT COUNT(*)
+            FROM USER_INDEXES
+            WHERE INDEX_NAME = 'UK_ADDRESS_ONE_DEFAULT'
+              AND UNIQUENESS = 'UNIQUE'";
         Assert.Equal(1, Convert.ToInt32(await command.ExecuteScalarAsync()));
     }
 

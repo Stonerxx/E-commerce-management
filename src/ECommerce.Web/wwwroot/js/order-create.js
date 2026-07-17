@@ -151,7 +151,6 @@
                     if (result.success && result.data) {
                         const orderId = result.data.orderId;
                         alert('订单创建成功！');
-                        // TEMP_DEMO_PAYMENT: member5 合入前先跳转到临时模拟支付页。
                         window.location.href = `/payment/${orderId}`;
                     } else {
                         alert(result.message || '创建订单失败，请重试');
