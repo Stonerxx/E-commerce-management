@@ -1,11 +1,13 @@
 @using ECommerce.Domain.Enums
-@model ECommerce.Web.Models.DemoPaymentViewModel
+@model ECommerce.Web.Models.PaymentViewModel
 @{
     Layout = "_Layout";
     ViewData["Title"] = "模拟支付";
 
     var order = Model.Order;
-    var canDemoPay = order.Status == (int)OrderStatus.PendingPayment;
+    var payment = Model.Payment;
+    var canPay = order.Status == (int)OrderStatus.PendingPayment
+        && payment.Status is (int)PaymentStatus.Pending or (int)PaymentStatus.Failed;
     var statusText = order.Status switch
     {
         (int)OrderStatus.PendingPayment => "待支付",
@@ -20,15 +22,14 @@
 <div class="container py-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <div>
-            <p class="text-uppercase text-muted small fw-semibold mb-1">TEMP_DEMO_PAYMENT</p>
+            <p class="text-uppercase text-muted small fw-semibold mb-1">PAYMENT</p>
             <h1 class="h3 mb-0">模拟支付</h1>
         </div>
         <a class="btn btn-outline-secondary" href="/orders">返回我的订单</a>
     </div>
 
-    <div class="alert alert-warning">
-        这是 member5 支付模块合入前的临时演示页，只负责把待支付订单推进到已支付状态。
-        真实支付、支付记录和回调逻辑以后由 <code>IPaymentService</code> 接管。
+    <div class="alert alert-info">
+        本页使用模拟支付渠道，但会真实创建支付记录，并在同一事务内完成订单状态和库存扣减。
     </div>
 
     @if (!string.IsNullOrWhiteSpace(Model.Notice))
@@ -47,6 +48,12 @@
                     <dd class="col-sm-9">@statusText</dd>
                     <dt class="col-sm-3">支付金额</dt>
                     <dd class="col-sm-9 text-danger fw-semibold">¥@order.PayAmount.ToString("F2")</dd>
+                    <dt class="col-sm-3">支付记录</dt>
+                    <dd class="col-sm-9">@payment.PaymentId</dd>
+                    <dt class="col-sm-3">支付方式</dt>
+                    <dd class="col-sm-9">@payment.PayMethod</dd>
+                    <dt class="col-sm-3">交易流水</dt>
+                    <dd class="col-sm-9">@(payment.TradeNo ?? "-")</dd>
                     <dt class="col-sm-3">支付截止</dt>
                     <dd class="col-sm-9">@order.PayExpireTime.ToString("yyyy-MM-dd HH:mm:ss")</dd>
                 </dl>
@@ -56,16 +63,16 @@
         <div class="col-12 col-lg-4">
             <div class="border rounded bg-white p-3">
                 <h2 class="h5 mb-3">演示操作</h2>
-                @if (canDemoPay)
+                @if (canPay)
                 {
                     <form method="post" action="/payment/@order.OrderId/demo-pay">
                         @Html.AntiForgeryToken()
-                        <button class="btn btn-primary w-100" type="submit">模拟支付成功</button>
+                        <button class="btn btn-primary w-100" type="submit">确认模拟支付</button>
                     </form>
                 }
                 else
                 {
-                    <p class="text-muted mb-0">当前状态不能模拟支付。</p>
+                    <p class="text-muted mb-0">当前支付已处理或订单状态不允许支付。</p>
                 }
                 <div class="d-grid gap-2 mt-3">
                     <a class="btn btn-outline-primary" href="/orders/@order.OrderId">查看订单详情</a>

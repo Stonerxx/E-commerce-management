@@ -10,6 +10,11 @@
             const selectedImage = ref('');
             const quantity = ref(1);
             const selectedSpecs = ref({});
+            const reviews = ref([]);
+            const reviewsLoading = ref(false);
+            const reviewPage = ref(1);
+            const reviewTotalCount = ref(0);
+            const reviewTotalPages = ref(1);
 
             const productId = parseInt(window.location.pathname.split('/')[2]);
 
@@ -150,6 +155,33 @@
                 }
             }
 
+            async function loadReviews(page = 1) {
+                if (page < 1) return;
+                reviewsLoading.value = true;
+                try {
+                    const response = await fetch(`/api/v1/products/${productId}/reviews?pageIndex=${page}&pageSize=5`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) {
+                        throw new Error(result.message || '评价加载失败');
+                    }
+                    reviews.value = result.data.items || [];
+                    reviewPage.value = result.data.pageIndex || page;
+                    reviewTotalCount.value = result.data.totalCount || 0;
+                    reviewTotalPages.value = Math.max(1, result.data.totalPages || 1);
+                } catch (error) {
+                    console.error('加载评价失败:', error);
+                    reviews.value = [];
+                } finally {
+                    reviewsLoading.value = false;
+                }
+            }
+
+            function formatReviewDate(value) {
+                return value ? new Date(value).toLocaleString('zh-CN') : '-';
+            }
+
             async function buyNow() {
                 if (!currentSku.value) return;
 
@@ -206,6 +238,7 @@
 
             onMounted(() => {
                 loadProduct();
+                loadReviews();
             });
 
             return {
@@ -216,11 +249,18 @@
                 selectedImage,
                 quantity,
                 selectedSpecs,
+                reviews,
+                reviewsLoading,
+                reviewPage,
+                reviewTotalCount,
+                reviewTotalPages,
                 specGroups,
                 currentSku,
                 availableStock,
                 currentSkuSpecText,
                 selectSpec,
+                loadReviews,
+                formatReviewDate,
                 addToCart,
                 buyNow
             };

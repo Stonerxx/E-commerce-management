@@ -16,6 +16,7 @@ public static class DependencyInjection
     {
         services.Configure<OracleOptions>(configuration.GetSection(OracleOptions.SectionName));
         services.Configure<StatisticsSnapshotOptions>(configuration.GetSection(StatisticsSnapshotOptions.SectionName));
+        services.Configure<PaymentOptions>(configuration.GetSection(PaymentOptions.SectionName));
         services.AddScoped<IOracleConnectionFactory, OracleConnectionFactory>();
         services.AddScoped<IDatabaseHealthCheck, DatabaseHealthCheck>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -35,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<ICouponRepository, CouponRepository>();
         services.AddScoped<IReviewRepository, ReviewRepository>();
         services.AddScoped<ILogisticsRepository, LogisticsRepository>();
+        services.AddScoped<IPaymentRepository, PaymentRepository>();
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
@@ -51,6 +53,7 @@ public static class DependencyInjection
         services.AddScoped<ICouponService, CouponService>();
         services.AddScoped<IReviewService, ReviewService>();
         services.AddScoped<ILogisticsService, LogisticsService>();
+        services.AddScoped<IPaymentService, PaymentService>();
 
         services.AddHostedService<OrderTimeoutHostedService>();
 

@@ -111,11 +111,11 @@ http://localhost:5052/docs/development-spec
 
 如果终端回到 PowerShell 提示符，说明服务已经停止，需要重新运行 `dotnet run`。
 
-当前能看到的是首页入口页、健康检查、临时 Demo 登录、购物车/订单入口、后台订单入口、Vue Dashboard 示例页和两份文档。部分成员功能仍在开发中，未实现的 `/api/v1/...` 接口会返回 `501 NOT_IMPLEMENTED`。
+当前可演示真实登录、商品浏览、购物车、下单、持久化模拟支付、优惠券、物流、评价，以及后台商品、订单、库存、优惠券、评价、统计和导出流程。
 
 ## 4. 当前阶段是什么状态
 
-现在项目处在“可运行骨架 + 接口格式已定”的阶段，不是完整业务系统。
+现在项目处在“业务闭环已接通、等待环境联调与发布验收”的阶段。
 
 已完成：
 
@@ -124,21 +124,21 @@ http://localhost:5052/docs/development-spec
 | 解决方案 | `ECommerce.sln` 已包含 Web、Application、Domain、Infrastructure、Shared、Tests |
 | 目录结构 | 五层目录已经建好，各层项目引用已经配置 |
 | 公共约定 | 统一响应、分页、错误码、权限常量、状态枚举已定义 |
-| 业务接口 | DTO 和 Service 接口已放在 `src/ECommerce.Application`，表示格式和方法名先定好了 |
-| API 入口 | `/api/v1/...` Controller 路由骨架已占位，表示地址先定好了 |
-| 页面入口 | 首页、登录页、注册页、购物车、订单、后台布局和 Vue Dashboard 示例页已提供 |
+| 业务接口 | 核心 DTO、Service、Repository 和事务规则已接通 |
+| API 入口 | `/api/v1/...` Controller 已调用真实业务服务 |
+| 页面入口 | 前后台核心业务页面和管理入口已提供 |
 | 数据库入口 | Oracle 连接、数据库健康检查、UnitOfWork 事务基础已提供 |
 | 部署入口 | `deployment/` 已提供发布脚本、systemd 和 Nginx 样例 |
 | 测试入口 | `tests/ECommerce.Tests` 已能运行 |
 
-未完成：
+模块状态：
 
 | 内容 | 当前表现 | 负责分支 |
 | --- | --- | --- |
 | 登录注册 | 已接入 member2 真实 AuthService；演示账号使用 PBKDF2 seed 密码哈希 | `feat-member2-user-permission-address-log` |
 | 商品分类/SKU/库存 | 已接入 member3 数据库实现 | `feat-member3-product-category-sku-inventory` |
 | 购物车/订单 | 已接入 member4 核心流程 | `feat-member4-cart-order-core` |
-| 支付/优惠券/物流/评价 | 优惠券、物流和评价已接入真实服务；支付仍保留 `TEMP_DEMO_PAYMENT` | `merging` |
+| 支付/优惠券/物流/评价 | 持久化模拟支付、原子核销、物流轨迹和评价审核均已接通 | `feat-member1-foundation-oracle-deploy` |
 | 统计/导出/后台首页 | 已接入 member6 统计 Dashboard 和 Excel 导出基础 | `feat-member6-stats-export-ui-docs` |
 | 部署 | 配置样例已提供，还需要真实服务器环境变量、访问验证和部署截图 | `feat-member1-foundation-oracle-deploy` |
 
@@ -163,7 +163,7 @@ demo_buyer    USER
 ```
 
 注意：这些账号走真实 AuthService 登录，密码哈希来自 `migration/seed_demo_data.sql`。
-7. 真实支付 API 仍会返回 `501 NOT_IMPLEMENTED`；优惠券、物流和评价 API 已接入真实服务。
+7. 模拟支付 API 会创建 `PAYMENT` 记录；匿名模拟回调必须使用 `Payment__SimulatedCallbackSecret` 生成 HMAC-SHA256 签名。
 
 ## 5. Oracle 怎么配
 

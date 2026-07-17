@@ -146,6 +146,37 @@
                 </div>
             </div>
         </div>
+
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">用户评价</h2>
+                <span class="text-muted small">共 {{ reviewTotalCount }} 条</span>
+            </div>
+            <div class="card-body">
+                <div v-if="reviewsLoading" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+                <div v-else-if="reviews.length === 0" class="text-center text-muted py-4">暂无已发布评价</div>
+                <div v-else class="vstack gap-3">
+                    <div v-for="review in reviews" v-bind:key="review.reviewId" class="border-bottom pb-3">
+                        <div class="d-flex justify-content-between gap-2">
+                            <div class="text-warning"><span v-for="n in 5" v-bind:key="n">{{ n <= review.rating ? '★' : '☆' }}</span></div>
+                            <small class="text-muted">{{ formatReviewDate(review.createdAt) }}</small>
+                        </div>
+                        <div class="small text-muted mb-2">{{ review.isAnonymous ? '匿名用户' : '用户 ' + review.userId }}</div>
+                        <p class="mb-2">{{ review.content || '用户未填写文字评价' }}</p>
+                        <div v-if="review.images.length" class="d-flex flex-wrap gap-2">
+                            <a v-for="image in review.images" v-bind:key="image" v-bind:href="image" target="_blank">
+                                <img v-bind:src="image" alt="评价图片" class="rounded border" style="width:72px;height:72px;object-fit:cover" />
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div v-if="reviewTotalPages > 1" class="d-flex justify-content-center align-items-center gap-3 mt-3">
+                    <button class="btn btn-sm btn-outline-secondary" v-on:click="loadReviews(reviewPage - 1)" v-bind:disabled="reviewPage <= 1">上一页</button>
+                    <span class="small text-muted">{{ reviewPage }} / {{ reviewTotalPages }}</span>
+                    <button class="btn btn-sm btn-outline-secondary" v-on:click="loadReviews(reviewPage + 1)" v-bind:disabled="reviewPage >= reviewTotalPages">下一页</button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

@@ -8,6 +8,10 @@
                 loading: false,
                 order: null,
                 showShipModal: false,
+                showLogisticsPanel: false,
+                logisticsLoading: false,
+                logistics: null,
+                trackForm: { trackDesc: '', location: '', status: 1 },
                 shipment: {
                     companyName: '',
                     trackingNo: ''
@@ -30,6 +34,9 @@
 
                     if (result.success && result.data) {
                         this.order = result.data;
+                        if (this.showLogisticsPanel && (this.order.status === 2 || this.order.status === 3)) {
+                            await this.loadLogistics();
+                        }
                     } else {
                         console.error('加载订单详情失败:', result.message);
                     }
@@ -157,9 +164,40 @@
                 }
             },
 
-            showLogistics(orderId) {
-                // TODO: 实现物流弹窗或跳转
-                alert('物流功能由 Member5 实现，敬请期待');
+            async showLogistics() {
+                this.showLogisticsPanel = !this.showLogisticsPanel;
+                if (this.showLogisticsPanel) await this.loadLogistics();
+            },
+
+            async loadLogistics() {
+                this.logisticsLoading = true;
+                try {
+                    const response = await fetch(`/api/v1/admin/orders/${orderId}/logistics`, { headers: { 'Accept': 'application/json' } });
+                    const result = await response.json();
+                    this.logistics = response.ok && result.success ? result.data : null;
+                    if (this.logistics) this.trackForm.status = Math.max(1, this.logistics.status);
+                } catch (error) {
+                    console.error('加载物流失败:', error);
+                    this.logistics = null;
+                } finally {
+                    this.logisticsLoading = false;
+                }
+            },
+
+            logisticsStatusText(status) {
+                return ({ 0: '已揽收', 1: '运输中', 2: '派送中', 3: '已签收' })[status] || '未知';
+            },
+
+            async addTrack() {
+                if (!this.logistics || !this.trackForm.trackDesc) { alert('请填写轨迹描述'); return; }
+                const response = await fetch(`/api/v1/admin/logistics/${this.logistics.logisticsId}/tracks`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ trackDesc: this.trackForm.trackDesc, trackTime: new Date().toISOString(), location: this.trackForm.location || null, status: this.trackForm.status })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) { alert(result.message || '轨迹添加失败'); return; }
+                this.trackForm.trackDesc = ''; this.trackForm.location = ''; await this.loadLogistics();
             },
 
             shipOrder(orderId) {

@@ -1,5 +1,4 @@
 using ECommerce.Shared.Contracts;
-using ECommerce.Shared.Errors;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -48,13 +47,4 @@ public abstract class ApiControllerBase : ControllerBase
         return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
     }
 
-    protected ActionResult<ApiResponse<T>> NotReady<T>(string message)
-    {
-        var response = ApiResponse<T>.Fail(
-            ErrorCodes.NotImplemented,
-            message,
-            HttpContext.TraceIdentifier);
-
-        return StatusCode(StatusCodes.Status501NotImplemented, response);
-    }
 }

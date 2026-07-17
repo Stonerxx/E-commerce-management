@@ -45,7 +45,7 @@
             <div class="border rounded p-3 bg-white">
                 <h2 class="h6 mb-2">收货信息</h2>
                 <div v-if="order.receiverSnapshotJson">
-                    <p class="mb-1">{{ parseReceiver(receiverSnapshotJson) }}</p>
+                    <p class="mb-1">{{ parseReceiver(order.receiverSnapshotJson) }}</p>
                 </div>
             </div>
 
@@ -70,6 +70,7 @@
                                         <div>
                                             <div>{{ item.productName }}</div>
                                             <div class="text-muted small">{{ item.specSnap }}</div>
+                                            <button v-if="order.status === 3" class="btn btn-link btn-sm p-0 mt-1" v-on:click="openReview(item)">评价商品</button>
                                         </div>
                                     </div>
                                 </td>
@@ -101,6 +102,25 @@
                 <button v-if="order.status === 0" class="btn btn-primary" v-on:click="goPay(order.orderId)">去支付</button>
                 <button v-if="order.status === 0" class="btn btn-outline-danger" v-on:click="cancelOrder(order.orderId)">取消订单</button>
                 <button v-if="order.status === 2" class="btn btn-outline-success" v-on:click="confirmOrder(order.orderId)">确认收货</button>
+            </div>
+
+            <div v-if="reviewForm" class="border rounded p-3 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h6 mb-0">评价：{{ reviewForm.productName }}</h2><button class="btn-close" v-on:click="reviewForm = null"></button></div>
+                <div class="mb-3"><label class="form-label">评分</label><div class="d-flex gap-2"><button v-for="n in 5" v-bind:key="n" type="button" class="btn btn-sm" v-bind:class="n <= reviewForm.rating ? 'btn-warning' : 'btn-outline-secondary'" v-on:click="reviewForm.rating = n">{{ n }} ★</button></div></div>
+                <div class="mb-3"><label class="form-label">评价内容</label><textarea class="form-control" rows="3" v-model.trim="reviewForm.content" maxlength="1000"></textarea></div>
+                <div class="mb-3"><label class="form-label">图片 URL（每行一个，可选）</label><textarea class="form-control" rows="2" v-model="reviewForm.imageUrls"></textarea></div>
+                <div class="form-check mb-3"><input id="anonymousReview" class="form-check-input" type="checkbox" v-model="reviewForm.isAnonymous" /><label class="form-check-label" for="anonymousReview">匿名评价</label></div>
+                <button class="btn btn-primary" v-on:click="submitReview" v-bind:disabled="submittingReview">{{ submittingReview ? '提交中...' : '提交评价' }}</button>
+            </div>
+
+            <div v-if="order.status === 2 || order.status === 3" class="border rounded p-3 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h6 mb-0">物流信息</h2><button class="btn btn-sm btn-outline-secondary" v-on:click="loadLogistics">刷新</button></div>
+                <div v-if="logisticsLoading" class="text-muted">物流加载中...</div>
+                <div v-else-if="logistics">
+                    <div class="row g-2 mb-3"><div class="col-md-4"><span class="text-muted">物流公司：</span>{{ logistics.companyName }}</div><div class="col-md-4"><span class="text-muted">运单号：</span>{{ logistics.trackingNo }}</div><div class="col-md-4"><span class="text-muted">状态：</span>{{ logisticsStatusText(logistics.status) }}</div></div>
+                    <div class="vstack gap-2"><div v-for="track in logistics.tracks.slice().reverse()" v-bind:key="track.trackId" class="border-start border-primary ps-3"><div>{{ track.trackDesc }}</div><small class="text-muted">{{ formatDate(track.trackTime) }}<span v-if="track.location"> · {{ track.location }}</span></small></div></div>
+                </div>
+                <div v-else class="text-muted">暂无物流信息</div>
             </div>
 
             <!-- 订单日志 -->

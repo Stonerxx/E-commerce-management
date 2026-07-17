@@ -1,3 +1,4 @@
+using ECommerce.Application.DTOs;
 using ECommerce.Application.Services;
 using ECommerce.Domain.Enums;
 using ECommerce.Shared.Constants;
@@ -11,13 +12,13 @@ namespace ECommerce.Web.Controllers;
 [Authorize(Policy = AuthConstants.Policies.CustomerOnly)]
 public sealed class PaymentController : Controller
 {
-    private const long DemoPaymentId = 0;
-
     private readonly IOrderService _orderService;
+    private readonly IPaymentService _paymentService;
 
-    public PaymentController(IOrderService orderService)
+    public PaymentController(IOrderService orderService, IPaymentService paymentService)
     {
         _orderService = orderService;
+        _paymentService = paymentService;
     }
 
     [HttpGet("/payment/{orderId:long}")]
@@ -25,28 +26,25 @@ public sealed class PaymentController : Controller
     {
         var userId = GetCurrentUserId();
         var order = await _orderService.GetPaymentContextAsync(userId, orderId, cancellationToken);
+        var payment = order.Status == (int)OrderStatus.PendingPayment
+            ? await _paymentService.CreateOrGetPendingAsync(userId, orderId, cancellationToken)
+            : await _paymentService.GetByOrderAsync(userId, orderId, cancellationToken);
         var notice = TempData["PaymentNotice"] as string;
-        return View(new DemoPaymentViewModel(order, notice));
+        return View(new PaymentViewModel(order, payment, notice));
     }
 
     [HttpPost("/payment/{orderId:long}/demo-pay")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DemoPay(long orderId, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> SimulatePay(long orderId, CancellationToken cancellationToken = default)
     {
-        // TEMP_DEMO_PAYMENT: 仅用于 member5 支付模块合入前的演示闭环。
-        // member5 合入真实 IPaymentService 后，删除此 Action 和对应临时页面。
         var userId = GetCurrentUserId();
-        var order = await _orderService.GetPaymentContextAsync(userId, orderId, cancellationToken);
-
-        if (order.Status == (int)OrderStatus.PendingPayment)
-        {
-            await _orderService.MarkPaidAsync(orderId, DemoPaymentId, cancellationToken);
-            TempData["PaymentNotice"] = "TEMP_DEMO_PAYMENT 已模拟支付成功，订单状态已改为已支付。";
-        }
-        else
-        {
-            TempData["PaymentNotice"] = "当前订单不是待支付状态，未重复模拟支付。";
-        }
+        var result = await _paymentService.SimulatePayAsync(
+            userId,
+            new SimulatePaymentRequest(orderId, "模拟支付"),
+            cancellationToken);
+        TempData["PaymentNotice"] = result.Paid
+            ? $"支付成功，交易流水号：{result.TradeNo}"
+            : "支付尚未完成。";
 
         return RedirectToAction(nameof(Detail), new { orderId });
     }

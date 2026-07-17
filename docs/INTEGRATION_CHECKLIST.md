@@ -56,22 +56,22 @@ docs(workflow)：更新统合集成清单
 | 成员 | 分支 | 模块 | 统合重点 | 状态 |
 | --- | --- | --- | --- | --- |
 | member1 | `feat-member1-foundation-oracle-deploy` | Oracle、部署、首页入口 | 环境变量、systemd、GitHub Actions、默认页导航 | 已有基础 |
-| member2 | `feat-member2-user-permission-address-log` | 用户、权限、地址、操作日志 | Cookie 登录、角色、地址服务、日志服务 | 待合并检查 |
-| member3 | `feat-member3-product-category-sku-inventory` | 分类、商品、SKU、库存 | 商品 API、SKU 服务、库存扣减/回滚 | 待合并检查 |
-| member4 | `feat-member4-cart-order-core` | 购物车、订单 | Mock 服务替换、事务、订单状态流转 | 已进 main，仍需接线 |
-| member5 | `feat-member5-payment-coupon-logistics-review` | 支付、优惠券、物流、评价 | 优惠券核销、物流发货、评价权限已合入；真实支付仍待实现 | 分模块完成 |
-| member6 | `feat-member6-stats-export-ui-docs` | 统计、导出、UI、文档 | 后台首页、导出、页面统一、最终文档 | 待合并检查 |
+| member2 | `feat-member2-user-permission-address-log` | 用户、权限、地址、操作日志 | Cookie 登录、角色、地址服务、日志服务 | 已统合 |
+| member3 | `feat-member3-product-category-sku-inventory` | 分类、商品、SKU、库存 | 商品 API、SKU 服务、库存扣减/回滚 | 已统合 |
+| member4 | `feat-member4-cart-order-core` | 购物车、订单 | 事务、订单状态流转 | 已统合 |
+| member5 | `feat-member5-payment-coupon-logistics-review` | 支付、优惠券、物流、评价 | 持久化模拟支付、优惠券核销、物流发货、评价权限与页面闭环 | 已统合并补齐 |
+| member6 | `feat-member6-stats-export-ui-docs` | 统计、导出、UI、文档 | 后台首页、导出、页面统一、最终文档 | 已统合 |
 
 ## 4. Mock 替换表
 
-member4 为了先跑通购物车和订单流程，当前存在 Mock 服务。最终统合时必须逐项替换为真实实现。
+统合阶段曾使用以下 Mock 服务，目前均已删除并由真实服务替代。
 
 | Mock 类 | 真实模块来源 | 检查点 | 状态 |
 | --- | --- | --- | --- |
-| `MockAddressService` | member2 | 创建订单读取用户地址，默认地址逻辑正确；临时演示地址 ID 必须和 `seed_demo_data.sql` 中 9001/9002/9003 保持一致 | 待替换 |
-| `MockOperationLogService` | member2 | 订单取消、发货、支付等操作写入日志 | 待替换 |
-| `MockSkuService` | member3 | 购物车和订单能读取真实 SKU、价格、商品名 | 待替换 |
-| `MockInventoryService` | member3 | 创建订单锁库存，取消订单释放库存 | 待替换 |
+| `MockAddressService` | member2 | 创建订单读取用户地址和默认地址 | 已删除 |
+| `MockOperationLogService` | member2 | 后台关键操作写入日志 | 已删除 |
+| `MockSkuService` | member3 | 购物车和订单读取真实 SKU | 已删除 |
+| `MockInventoryService` | member3 | 创建、取消和支付的库存事务 | 已删除 |
 | `CouponService` | member5 | 订单预览和提交校验优惠券并原子核销 | 已接入 |
 
 替换后必须检查：
@@ -122,7 +122,7 @@ member3 当前公共文件差异：
 
 - 修改 `src/ECommerce.Application/Services/ISkuService.cs`，新增 `DeleteByProductAsync(long productId, CancellationToken cancellationToken = default)`。
 - 修改 `migration/init_database.sql`：`CATEGORY`、`PRODUCT_SPEC`、`SKU` 增加创建/更新时间字段；`INVENTORY_LOG.change_type` 扩展 `ORDER_LOCK`、`ORDER_RELEASE`、`ORDER_DEDUCT`。
-- 已在当前临时 `MockSkuService` 中预先补同名方法，避免合入 member3 后接口变更导致编译失败。
+- 统合期间曾在临时 `MockSkuService` 中预先补同名方法；当前已由真实 `SkuService` 接管。
 - 已在 `InventoryChangeType` 中预先补 `OrderLock`、`OrderRelease`、`OrderDeduct` 常量。
 - 合并时重点确认 `seed_demo_data.sql` 的 `SKU`、`PRODUCT_SPEC`、`CATEGORY` 插入语句是否依赖默认时间字段；当前字段有默认值，理论上无需补列。
 
@@ -158,18 +158,11 @@ migration/seed_demo_data.sql
 @migration/seed_demo_data.sql
 ```
 
-注意：`seed_demo_data.sql` 使用 9000-9999 号段的显式 ID，可重复执行；其中 `password_hash` 是占位值，member2 完成真实认证后需要替换为登录算法对应的哈希。
+注意：`seed_demo_data.sql` 使用 9000-9999 号段的显式 ID，可重复执行；演示账号已使用 `AuthService` 可校验的 PBKDF2 哈希。
 
-## 7. 临时演示逻辑标记
+## 7. 支付演示配置
 
-当前为了让购物车、订单、支付和后台页面可以提前联调，代码里保留了以下临时逻辑：
-
-| 标记 | 文件 | 替换来源 | 处理要求 |
-| --- | --- | --- | --- |
-| `TEMP_DEMO_ADDRESS` | `src/ECommerce.Infrastructure/Services/Mocks/MockAddressService.cs` | member2 地址服务 | 替换为真实地址查询和维护 |
-| `TEMP_DEMO_SKU` | `src/ECommerce.Infrastructure/Services/Mocks/MockSkuService.cs` | member3 SKU 服务 | 替换为真实 SKU 查询和维护 |
-| `TEMP_DEMO_INVENTORY` | `src/ECommerce.Infrastructure/Services/Mocks/MockInventoryService.cs` | member3 库存服务 | 替换为真实锁库存、释放库存和扣减库存 |
-| `TEMP_DEMO_PAYMENT` | `src/ECommerce.Web/Controllers/PaymentController.cs` | member5 支付服务 | 替换为真实支付页面、支付记录和回调 |
+支付模块使用持久化模拟渠道：页面支付会写入 `PAYMENT`，并在同一事务内推进订单与扣减库存。模拟回调按 `orderId|tradeNo|status|payAmount|rawData` 拼接内容，使用 `Payment__SimulatedCallbackSecret` 计算 HMAC-SHA256 十六进制签名。
 
 演示账号：
 

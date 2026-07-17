@@ -46,6 +46,17 @@ public sealed class LogisticsApiController : ApiControllerBase
         return Ok(ApiResponse<object?>.Ok(null));
     }
 
+    [HttpGet("admin/orders/{orderId:long}/logistics")]
+    [Authorize(Policy = AuthConstants.Policies.ServiceOrAdmin)]
+    public async Task<ActionResult<ApiResponse<LogisticsDto>>> GetByOrderAdmin(
+        long orderId,
+        CancellationToken cancellationToken)
+    {
+        var logistics = await _logisticsService.GetByOrderAdminAsync(orderId, cancellationToken)
+            ?? throw new BusinessException("LOGISTICS_NOT_FOUND", "物流信息不存在");
+        return Ok(ApiResponse<LogisticsDto>.Ok(logistics));
+    }
+
     [HttpPost("admin/logistics/{logisticsId:long}/tracks")]
     [Authorize(Policy = AuthConstants.Policies.ServiceOrAdmin)]
     public async Task<ActionResult<ApiResponse<object?>>> AddTrack(

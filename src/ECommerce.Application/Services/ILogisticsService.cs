@@ -21,4 +21,6 @@ public interface ILogisticsService
         CancellationToken cancellationToken = default);
 
     Task<LogisticsDto?> GetByOrderAsync(long userId, long orderId, CancellationToken cancellationToken = default);
+
+    Task<LogisticsDto?> GetByOrderAdminAsync(long orderId, CancellationToken cancellationToken = default);
 }
