@@ -55,10 +55,15 @@ public class OracleSchemaTests
                 'CH_SKU_STOCK_NONNEGATIVE',
                 'CH_SKU_LOCKED_STOCK_NONNEGATIVE',
                 'CH_SKU_STOCK_NOT_BELOW_LOCKED',
-                'UK_SKU_PRODUCT_SPEC')
+                'UK_SKU_PRODUCT_SPEC',
+                'CH_OM_AMOUNT_CONSISTENCY',
+                'CH_ORDER_ITEM_AMOUNT',
+                'CH_PAY_AMOUNT_NONNEGATIVE',
+                'CH_PAY_PAID_AT',
+                'CH_PAY_TRADE_NO')
               AND STATUS = 'ENABLED'";
         var constraintCount = Convert.ToInt32(await command.ExecuteScalarAsync());
-        Assert.Equal(6, constraintCount);
+        Assert.Equal(11, constraintCount);
 
         command.CommandText = """SELECT COUNT(*) FROM "USER" WHERE id = 1 AND username = 'system' AND status = 0""";
         Assert.Equal(1, Convert.ToInt32(await command.ExecuteScalarAsync()));
@@ -71,16 +76,31 @@ public class OracleSchemaTests
         await using var connection = await OracleTestEnvironment.OpenDemoAsync();
         await using var command = OracleTestEnvironment.CreateCommand(connection, @"
             SELECT
-                (SELECT COUNT(*) FROM ""USER"" WHERE id = 9001) AS user_count,
-                (SELECT COUNT(*) FROM PRODUCT WHERE id = 9001) AS product_count,
-                (SELECT COUNT(*) FROM ORDER_MAIN WHERE id = 9001) AS order_count
+                (SELECT COUNT(*) FROM ""USER"" WHERE id BETWEEN 9001 AND 9010) AS user_count,
+                (SELECT COUNT(*) FROM PRODUCT WHERE id BETWEEN 9001 AND 9240) AS product_count,
+                (SELECT COUNT(*) FROM SKU WHERE id BETWEEN 9001 AND 9240) AS sku_count,
+                (SELECT COUNT(*) FROM ORDER_MAIN WHERE id BETWEEN 9000 AND 9999) AS order_count,
+                (SELECT COUNT(*) FROM ORDER_MAIN
+                 WHERE id BETWEEN 9000 AND 9999
+                   AND status = 4
+                   AND pay_amount <> 0) AS cancelled_order_amount_errors,
+                (SELECT COUNT(*) FROM ORDER_MAIN om
+                 WHERE om.id BETWEEN 9000 AND 9999
+                   AND om.total_amount <> (
+                       SELECT NVL(SUM(oi.subtotal), 0)
+                       FROM ORDER_ITEM oi
+                       WHERE oi.order_id = om.id
+                   )) AS order_item_amount_errors
             FROM DUAL");
 
         await using var reader = await command.ExecuteReaderAsync();
         Assert.True(await reader.ReadAsync());
-        Assert.Equal(1, reader.GetInt32(0));
-        Assert.Equal(1, reader.GetInt32(1));
-        Assert.Equal(1, reader.GetInt32(2));
+        Assert.Equal(10, reader.GetInt32(0));
+        Assert.Equal(150, reader.GetInt32(1));
+        Assert.Equal(156, reader.GetInt32(2));
+        Assert.Equal(48, reader.GetInt32(3));
+        Assert.Equal(0, reader.GetInt32(4));
+        Assert.Equal(0, reader.GetInt32(5));
     }
 
     [DevOracleFact]

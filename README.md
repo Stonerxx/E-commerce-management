@@ -7,6 +7,7 @@
 - [组员开工指南](docs/TEAM_GUIDE.md)：分支、运行、提交、PR 和日常协作流程。
 - [开发规范](docs/DEVELOPMENT_SPEC.md)：项目结构、接口规范、代码规范、API 格式、路由、事务和跨模块协作。
 - [Oracle 初始化脚本](migration/init_database.sql)：24 张业务表、约束和索引。
+- [Oracle 数据库对象脚本](migration/database_objects.sql)：库存函数、统计过程、报表视图，以及订单一致性/销量触发器。
 
 ## 项目启动
 
@@ -99,6 +100,14 @@ Invoke-RestMethod http://localhost:5052/api/v1/system/db-check
 - `/api/v1/system/db-check` 已能检查 Oracle 配置和连接耗时。
 - `deployment/` 下已提供发布脚本、环境变量样例、systemd 服务样例和 Nginx 反向代理样例。
 - 服务器最终验收还需要填真实 `Oracle__ConnectionString`，运行初始化脚本，截图证明服务器公网地址能访问。
+
+数据库首次初始化或重建时，按下面顺序执行：
+
+```powershell
+sqlplus 用户名/密码@//数据库地址:1521/服务名 @migration/init_database.sql
+sqlplus 用户名/密码@//数据库地址:1521/服务名 @migration/database_objects.sql
+sqlplus 用户名/密码@//数据库地址:1521/服务名 @migration/seed_demo_data.sql
+```
 
 发布推荐走 GitHub Actions：
 

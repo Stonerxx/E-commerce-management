@@ -26,19 +26,18 @@ class ExportService : IExportService
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync();
 
-        // 1. 构建 SQL，左连接 PAYMENT 表获取支付时间和支付方式
+        // 1. 从订单报表视图读取；视图保证一行对应一个订单。
         var sqlBuilder = new StringBuilder();
         sqlBuilder.AppendLine("SELECT");
-        sqlBuilder.AppendLine("    om.ORDER_NO AS OrderNo,");
-        sqlBuilder.AppendLine("    om.USER_ID AS UserId,");
-        sqlBuilder.AppendLine("    om.STATUS AS Status,");
-        sqlBuilder.AppendLine("    om.TOTAL_AMOUNT AS TotalAmount,");
-        sqlBuilder.AppendLine("    om.PAY_AMOUNT AS PayAmount,");
-        sqlBuilder.AppendLine("    om.CREATED_AT AS CreatedAt,");
-        sqlBuilder.AppendLine("    p.PAID_AT AS PaymentTime,");
-        sqlBuilder.AppendLine("    p.PAY_METHOD AS PayMethod");
-        sqlBuilder.AppendLine("FROM ORDER_MAIN om");
-        sqlBuilder.AppendLine("LEFT JOIN PAYMENT p ON p.ORDER_ID = om.ID");
+        sqlBuilder.AppendLine("    r.ORDER_NO AS OrderNo,");
+        sqlBuilder.AppendLine("    r.USER_ID AS UserId,");
+        sqlBuilder.AppendLine("    r.ORDER_STATUS AS Status,");
+        sqlBuilder.AppendLine("    r.TOTAL_AMOUNT AS TotalAmount,");
+        sqlBuilder.AppendLine("    r.PAY_AMOUNT AS PayAmount,");
+        sqlBuilder.AppendLine("    r.CREATED_AT AS CreatedAt,");
+        sqlBuilder.AppendLine("    r.PAYMENT_TIME AS PaymentTime,");
+        sqlBuilder.AppendLine("    r.PAY_METHOD AS PayMethod");
+        sqlBuilder.AppendLine("FROM V_ORDER_REPORT r");
         sqlBuilder.AppendLine("WHERE 1=1");
 
         var parameters = new List<OracleParameter>();
@@ -46,37 +45,37 @@ class ExportService : IExportService
         // 筛选条件
         if (query.UserId.HasValue && query.UserId.Value > 0)
         {
-            sqlBuilder.AppendLine("    AND om.USER_ID = :UserId");
+            sqlBuilder.AppendLine("    AND r.USER_ID = :UserId");
             parameters.Add(new OracleParameter(":UserId", OracleDbType.Int64) { Value = query.UserId.Value });
         }
 
         // 订单号模糊搜索
         if (!string.IsNullOrEmpty(query.OrderNo))
         {
-            sqlBuilder.AppendLine("    AND om.ORDER_NO LIKE :OrderNo");
+            sqlBuilder.AppendLine("    AND r.ORDER_NO LIKE :OrderNo");
             parameters.Add(new OracleParameter(":OrderNo", OracleDbType.Varchar2) { Value = $"%{query.OrderNo}%" });
         }
 
         if (query.Status.HasValue)
         {
-            sqlBuilder.AppendLine("    AND om.STATUS = :Status");
+            sqlBuilder.AppendLine("    AND r.ORDER_STATUS = :Status");
             parameters.Add(new OracleParameter(":Status", OracleDbType.Int32) { Value = query.Status.Value });
         }
 
         if (query.StartTime.HasValue)
         {
-            sqlBuilder.AppendLine("    AND om.CREATED_AT >= :StartTime");
+            sqlBuilder.AppendLine("    AND r.CREATED_AT >= :StartTime");
             parameters.Add(new OracleParameter(":StartTime", OracleDbType.Date) { Value = query.StartTime.Value });
         }
 
         if (query.EndTime.HasValue)
         {
             var endDate = query.EndTime.Value.Date.AddDays(1);
-            sqlBuilder.AppendLine("    AND om.CREATED_AT < :EndTime");
+            sqlBuilder.AppendLine("    AND r.CREATED_AT < :EndTime");
             parameters.Add(new OracleParameter(":EndTime", OracleDbType.Date) { Value = endDate });
         }
 
-        sqlBuilder.AppendLine("ORDER BY om.CREATED_AT DESC");
+        sqlBuilder.AppendLine("ORDER BY r.CREATED_AT DESC");
 
         // 导出不使用普通列表的默认分页值（20），未显式指定时导出最多 5000 行。
         var pageSize = GetExportLimit(query.PageSize);

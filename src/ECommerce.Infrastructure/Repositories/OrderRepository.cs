@@ -129,7 +129,9 @@ public class OrderRepository : IOrderRepository
         await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = @"
             UPDATE order_main
-            SET status = :TargetStatus, updated_at = :UpdatedAt
+            SET status = :TargetStatus,
+                updated_at = :UpdatedAt,
+                pay_amount = CASE WHEN :IsCancelled = 1 THEN 0 ELSE pay_amount END
             WHERE id = :OrderId AND status = :ExpectedStatus";
 
         await using var cmd = Connection.CreateCommand();
@@ -137,6 +139,7 @@ public class OrderRepository : IOrderRepository
         cmd.Transaction = Transaction;
         cmd.Parameters.Add(CreateParameter("TargetStatus", targetStatus));
         cmd.Parameters.Add(CreateParameter("UpdatedAt", updatedAt));
+        cmd.Parameters.Add(CreateParameter("IsCancelled", targetStatus == 4 ? 1 : 0));
         cmd.Parameters.Add(CreateParameter("OrderId", orderId));
         cmd.Parameters.Add(CreateParameter("ExpectedStatus", expectedStatus));
 
