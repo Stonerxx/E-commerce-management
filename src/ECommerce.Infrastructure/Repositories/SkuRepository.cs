@@ -1,6 +1,7 @@
 using System.Data.Common;
 using ECommerce.Application.DTOs;
 using ECommerce.Domain.Entities;
+using ECommerce.Infrastructure.Data;
 using ECommerce.Shared.Abstractions;
 
 namespace ECommerce.Infrastructure.Repositories;
@@ -117,7 +118,7 @@ public sealed class SkuRepository : ISkuRepository
         command.Parameters.Add(newIdParam);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
-        return Convert.ToInt64(newIdParam.Value);
+        return OracleValueConverter.ToInt64(newIdParam.Value);
     }
 
     public async Task<int> UpdateAsync(Sku sku, CancellationToken cancellationToken = default)

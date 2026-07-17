@@ -1,4 +1,5 @@
 ﻿using ECommerce.Domain.Entities;
+using ECommerce.Infrastructure.Data;
 using ECommerce.Infrastructure.Models;
 using ECommerce.Shared.Abstractions;
 using Oracle.ManagedDataAccess.Client;
@@ -154,7 +155,7 @@ public class CartRepository : ICartRepository
         cmd.Parameters.Add(pId);
 
         await cmd.ExecuteNonQueryAsync(cancellationToken);
-        cart.Id = Convert.ToInt64(pId.Value);
+        cart.Id = OracleValueConverter.ToInt64(pId.Value);
     }
 
     public async Task<int> TryIncreaseQuantityAsync(
@@ -175,6 +176,10 @@ public class CartRepository : ICartRepository
             """;
 
         await using var command = Connection.CreateCommand();
+        if (command is OracleCommand oracleCommand)
+        {
+            oracleCommand.BindByName = true;
+        }
         command.CommandText = sql;
         command.Transaction = Transaction;
         command.Parameters.Add(CreateParameter("Quantity", quantity));

@@ -1,6 +1,7 @@
 using System.Data;
 using System.Data.Common;
 using ECommerce.Domain.Entities;
+using ECommerce.Infrastructure.Data;
 using ECommerce.Shared.Abstractions;
 using Oracle.ManagedDataAccess.Client;
 
@@ -55,7 +56,7 @@ public sealed class PaymentRepository : IPaymentRepository
         command.Parameters.Add(idParameter);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
-        payment.Id = Convert.ToInt64(idParameter.Value);
+        payment.Id = OracleValueConverter.ToInt64(idParameter.Value);
         return payment.Id;
     }
 

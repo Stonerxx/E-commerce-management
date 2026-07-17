@@ -1,5 +1,6 @@
 ﻿using ECommerce.Application.DTOs;
 using ECommerce.Domain.Entities;
+using ECommerce.Infrastructure.Data;
 using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Contracts;
 using Oracle.ManagedDataAccess.Client;
@@ -61,7 +62,7 @@ public class OrderRepository : IOrderRepository
         cmd.Parameters.Add(pId);
 
         await cmd.ExecuteNonQueryAsync(cancellationToken);
-        order.Id = Convert.ToInt64(pId.Value);
+        order.Id = OracleValueConverter.ToInt64(pId.Value);
         return order.Id;
     }
 
