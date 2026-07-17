@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+using System.Reflection;
 using ECommerce.Shared.Contracts;
 using ECommerce.Shared.Errors;
 using ECommerce.Shared.Exceptions;
@@ -63,7 +63,7 @@ public sealed class ApiExceptionFilterTests
     [Fact]
     public void OracleException_InDevelopmentIncludesOracleDetails()
     {
-        var exception = (OracleException)RuntimeHelpers.GetUninitializedObject(typeof(OracleException));
+        var exception = CreateOracleException(942, "ORA-00942: table or view does not exist");
         var context = CreateContext(exception);
 
         CreateFilter(Environments.Development).OnException(context);
@@ -78,7 +78,7 @@ public sealed class ApiExceptionFilterTests
     [Fact]
     public void OracleException_InProductionHidesOracleDetails()
     {
-        var exception = (OracleException)RuntimeHelpers.GetUninitializedObject(typeof(OracleException));
+        var exception = CreateOracleException(1017, "ORA-01017: invalid username/password");
         var context = CreateContext(exception);
 
         CreateFilter(Environments.Production).OnException(context);
@@ -108,6 +108,18 @@ public sealed class ApiExceptionFilterTests
         var environment = new Mock<IWebHostEnvironment>();
         environment.SetupGet(item => item.EnvironmentName).Returns(environmentName);
         return new ApiExceptionFilter(Mock.Of<ILogger<ApiExceptionFilter>>(), environment.Object);
+    }
+
+    private static OracleException CreateOracleException(int number, string message)
+    {
+        var constructor = typeof(OracleException).GetConstructor(
+            BindingFlags.Instance | BindingFlags.NonPublic,
+            binder: null,
+            new[] { typeof(int), typeof(string), typeof(string), typeof(string), typeof(int) },
+            modifiers: null)
+            ?? throw new InvalidOperationException("OracleException test constructor was not found.");
+
+        return (OracleException)constructor.Invoke(new object[] { number, message, "test-db", string.Empty, 0 });
     }
 
     private static ExceptionContext CreateContext(Exception exception)
