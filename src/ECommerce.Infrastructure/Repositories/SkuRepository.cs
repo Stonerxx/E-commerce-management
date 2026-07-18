@@ -40,10 +40,10 @@ public sealed class SkuRepository : ISkuRepository
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = """
-            SELECT s.\"ID\", s.\"PRODUCT_ID\", s.\"SPEC_DESC\", s.\"PRICE\", s.\"ORIGINAL_PRICE\", s.\"STOCK\", s.\"LOCKED_STOCK\", s.\"WARNING_STOCK\", s.\"SKU_IMAGE\", s.\"STATUS\", s.\"CREATED_AT\", s.\"UPDATED_AT\", p.\"STATUS\" AS \"PRODUCT_STATUS\"
-            FROM \"SKU\" s
-            INNER JOIN \"PRODUCT\" p ON p.\"ID\" = s.\"PRODUCT_ID\"
-            WHERE s.\"ID\" = :skuId
+            SELECT s."ID", s."PRODUCT_ID", s."SPEC_DESC", s."PRICE", s."ORIGINAL_PRICE", s."STOCK", s."LOCKED_STOCK", s."WARNING_STOCK", s."SKU_IMAGE", s."STATUS", s."CREATED_AT", s."UPDATED_AT", p."STATUS" AS "PRODUCT_STATUS"
+            FROM "SKU" s
+            INNER JOIN "PRODUCT" p ON p."ID" = s."PRODUCT_ID"
+            WHERE s."ID" = :skuId
             """;
 
         using var command = connection.CreateCommand();
