@@ -3,43 +3,55 @@
     var returnUrl = ViewData["ReturnUrl"] as string;
 }
 
-<div class="row justify-content-center">
-    <div class="col-12 col-md-7 col-lg-5">
-        <div class="border rounded bg-white p-4 shadow-sm">
-            <h1 class="h3 mb-2">账号登录</h1>
-            <p class="text-muted mb-4">登录后会根据角色进入对应页面：普通用户进入首页，客服和管理员进入后台。</p>
-            <form method="post" asp-action="LoginPost">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="returnUrl" value="@returnUrl" />
-                <div asp-validation-summary="All" class="text-danger mb-3"></div>
-                <div class="mb-3">
-                    <label class="form-label" for="username">用户名</label>
-                    <input class="form-control" id="username" name="username" autocomplete="username" required />
+<div class="auth-page">
+    <div class="auth-shell">
+        <div class="row g-0">
+            <aside class="col-lg-5 auth-aside">
+                <a class="app-brand text-white mb-5" href="/"><span class="brand-mark"><i class="bi bi-bag-heart-fill"></i></span><span><strong>星选商城</strong><small>WELCOME BACK</small></span></a>
+                <div class="page-kicker text-info">DEMO ACCESS</div>
+                <h1 class="display-6 fw-bold mb-3">欢迎回来</h1>
+                <p class="text-muted mb-4">登录后系统会根据角色进入对应首页：会员管理购物与订单，客服处理订单服务，管理员查看完整运营数据。</p>
+                <div class="small fw-semibold mb-2">快速填入演示账号</div>
+                <div class="vstack gap-2">
+                    <button class="demo-account text-start" type="button" data-demo-account="demo_user"><strong>普通会员</strong> · <code>demo_user</code></button>
+                    <button class="demo-account text-start" type="button" data-demo-account="demo_buyer"><strong>有订单会员</strong> · <code>demo_buyer</code></button>
+                    <button class="demo-account text-start" type="button" data-demo-account="demo_service"><strong>客服专员</strong> · <code>demo_service</code></button>
+                    <button class="demo-account text-start" type="button" data-demo-account="demo_admin"><strong>系统管理员</strong> · <code>demo_admin</code></button>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label" for="password">密码</label>
-                    <input class="form-control" id="password" name="password" type="password" autocomplete="current-password" required />
-                </div>
-                <div class="form-check mb-4">
-                    <input class="form-check-input" id="rememberMe" name="rememberMe" type="checkbox" value="true" />
-                    <label class="form-check-label" for="rememberMe">7 天内保持登录</label>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <button class="btn btn-primary" type="submit">登录</button>
-                    <a class="btn btn-link" href="/account/register">没有账号，去注册</a>
-                </div>
-            </form>
-        </div>
-
-        <div class="alert alert-info mt-4 small">
-            <strong>演示账号</strong>
-            <div class="mt-2">以下账号已写入 seed 数据，密码统一为：<code>demo123</code></div>
-            <ul class="mb-0 mt-2">
-                <li><code>demo_admin</code>：管理员，可访问后台管理</li>
-                <li><code>demo_service</code>：客服，可访问后台订单</li>
-                <li><code>demo_user</code>：普通用户，可访问购物车和我的订单</li>
-                <li><code>demo_buyer</code>：普通用户，带已完成订单和评价数据</li>
-            </ul>
+                <div class="small text-muted mt-3">演示密码统一为 <code>demo123</code></div>
+            </aside>
+            <div class="col-lg-7 auth-form">
+                <div class="mb-4"><div class="page-kicker">ACCOUNT LOGIN</div><h2 class="h2 fw-bold mb-2">账号登录</h2><p class="text-muted mb-0">使用用户名和密码继续</p></div>
+                <form method="post" asp-action="LoginPost">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                    <div asp-validation-summary="All" class="alert alert-danger py-2" role="alert"></div>
+                    <div class="mb-3"><label class="form-label fw-semibold" for="username">用户名</label><div class="input-group input-group-lg"><span class="input-group-text"><i class="bi bi-person"></i></span><input class="form-control" id="username" name="username" autocomplete="username" required autofocus placeholder="请输入用户名" /></div></div>
+                    <div class="mb-3"><div class="d-flex justify-content-between"><label class="form-label fw-semibold" for="password">密码</label><span class="small text-muted">至少 6 位</span></div><div class="input-group input-group-lg"><span class="input-group-text"><i class="bi bi-lock"></i></span><input class="form-control" id="password" name="password" type="password" autocomplete="current-password" required placeholder="请输入密码" /><button class="btn btn-outline-secondary" type="button" data-password-toggle="#password" aria-label="显示密码"><i class="bi bi-eye"></i></button></div></div>
+                    <div class="form-check mb-4"><input class="form-check-input" id="rememberMe" name="rememberMe" type="checkbox" value="true" /><label class="form-check-label" for="rememberMe">7 天内保持登录</label></div>
+                    <button class="btn btn-primary btn-lg w-100 rounded-pill" type="submit">登录 <i class="bi bi-arrow-right ms-1"></i></button>
+                    <p class="text-center text-muted mt-4 mb-0">还没有账号？<a class="fw-semibold text-decoration-none" href="/account/register">免费注册</a></p>
+                </form>
+            </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll("[data-demo-account]").forEach(function (button) {
+            button.addEventListener("click", function () {
+                document.getElementById("username").value = button.dataset.demoAccount;
+                document.getElementById("password").value = "demo123";
+                document.getElementById("password").focus();
+            });
+        });
+        document.querySelector("[data-password-toggle]")?.addEventListener("click", function () {
+            var input = document.querySelector(this.dataset.passwordToggle);
+            var visible = input.type === "text";
+            input.type = visible ? "password" : "text";
+            this.innerHTML = visible ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+            this.setAttribute("aria-label", visible ? "显示密码" : "隐藏密码");
+        });
+    </script>
+}

@@ -1,80 +1,93 @@
-﻿@{
+@{
     Layout = "_Layout";
-    ViewData["Title"] = "我的购物车";
+    ViewData["Title"] = "购物车";
 }
 
-<div id="cartApp" v-cloak>
-    <div class="container py-4">
-        <h1 class="h3 mb-4">我的购物车</h1>
+<div id="cartApp" v-cloak class="py-3 py-lg-4">
+    <div class="page-heading d-flex flex-wrap justify-content-between align-items-end gap-3">
+        <div><div class="page-kicker">SHOPPING CART</div><h1 class="display-6 fw-bold mb-2">我的购物车</h1><p class="text-muted mb-0">核对商品规格与数量，选中后统一结算</p></div>
+        <a class="btn btn-outline-primary rounded-pill px-3" href="/products"><i class="bi bi-arrow-left me-1"></i>继续购物</a>
+    </div>
 
-        <!-- 空状态 -->
-        <div v-if="items.length === 0" class="text-center py-5">
-            <p class="text-muted">购物车是空的，去逛逛吧！</p>
-            <a href="/products" class="btn btn-primary">去购物</a>
-        </div>
+    <div v-if="loading" class="surface-card py-5 text-center" role="status">
+        <div class="spinner-border text-primary"><span class="visually-hidden">加载中</span></div>
+        <p class="text-muted mt-3 mb-0">正在加载购物车...</p>
+    </div>
 
-        <!-- 购物车列表 -->
-        <div v-else>
+    <div v-else-if="errorMessage" class="alert alert-warning d-flex justify-content-between align-items-center gap-3">
+        <span><i class="bi bi-exclamation-triangle me-2"></i>{{ errorMessage }}</span>
+        <button class="btn btn-sm btn-outline-warning" type="button" v-on:click="loadCart">重试</button>
+    </div>
+
+    <div v-else-if="items.length === 0" class="surface-card empty-state">
+        <div class="empty-state-icon"><i class="bi bi-cart-x"></i></div>
+        <h2 class="h4">购物车还是空的</h2>
+        <p class="text-muted">逛逛热销商品，把喜欢的好物加入购物车吧。</p>
+        <a href="/products?sortBy=hot" class="btn btn-primary rounded-pill px-4">发现好物</a>
+    </div>
+
+    <div v-else>
+        <div class="surface-card overflow-hidden d-none d-lg-block">
+            <div class="px-3 py-3 border-bottom d-flex justify-content-between align-items-center">
+                <label class="d-flex align-items-center gap-2 mb-0">
+                    <input class="form-check-input mt-0" type="checkbox" v-bind:checked="allSelected" v-on:change="toggleAll($event.target.checked)" v-bind:disabled="bulkUpdating" />
+                    <span>全选（{{ items.length }} 件）</span>
+                </label>
+                <button class="btn btn-sm btn-link text-danger text-decoration-none" type="button" v-on:click="clearCart" v-bind:disabled="bulkUpdating">清空购物车</button>
+            </div>
             <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>
-                                <input type="checkbox" v-model="allSelected" v-on:change="toggleAll" />
-                            </th>
-                            <th>商品信息</th>
-                            <th class="text-center">单价</th>
-                            <th class="text-center">数量</th>
-                            <th class="text-end">小计</th>
-                            <th class="text-center">操作</th>
-                        </tr>
-                    </thead>
+                <table class="table align-middle mb-0">
+                    <thead><tr><th class="ps-3" style="width:48px"></th><th>商品信息</th><th class="text-center">单价</th><th class="text-center">数量</th><th class="text-end">小计</th><th class="text-end pe-3">操作</th></tr></thead>
                     <tbody>
                         <tr v-for="item in items" v-bind:key="item.cartItemId">
-                            <td>
-                                <input type="checkbox" v-model="item.selected" v-on:change="updateItem(item)" />
-                            </td>
+                            <td class="ps-3"><input class="form-check-input" type="checkbox" v-model="item.selected" v-on:change="updateItem(item)" v-bind:disabled="isBusy(item.cartItemId)" /></td>
                             <td>
                                 <div class="d-flex align-items-center gap-3">
-                                    <img v-bind:src="item.mainImage || '/images/default-product.jpg'" alt="商品图片" class="img-thumbnail" style="width:60px;height:60px;object-fit:cover;" />
-                                    <div>
-                                        <a v-bind:href="'/products/' + item.productId" class="text-decoration-none">
-                                            <strong>{{ item.productName }}</strong>
-                                        </a>
-                                        <p class="text-muted small mb-0">{{ item.specDescJson }}</p>
-                                    </div>
+                                    <img v-bind:src="item.mainImage || '/images/product-placeholder.svg'" v-bind:alt="item.productName" class="cart-thumb" />
+                                    <div class="min-w-0"><a v-bind:href="'/products/' + item.productId" class="fw-semibold text-body text-decoration-none">{{ item.productName }}</a><div class="text-muted small mt-1">{{ formatSpecs(item.specDescJson) }}</div></div>
                                 </div>
                             </td>
-                            <td class="text-center">¥{{ item.unitPrice.toFixed(2) }}</td>
+                            <td class="text-center">¥{{ formatMoney(item.unitPrice) }}</td>
                             <td class="text-center">
-                                <div class="input-group input-group-sm" style="width:120px;margin:0 auto;">
-                                    <button class="btn btn-outline-secondary" type="button" v-on:click="decreaseQuantity(item)">-</button>
-                                    <input type="number" class="form-control text-center" v-model.number="item.quantity" min="1" v-on:change="updateItem(item)" />
-                                    <button class="btn btn-outline-secondary" type="button" v-on:click="increaseQuantity(item)">+</button>
+                                <div class="input-group input-group-sm quantity-control mx-auto">
+                                    <button class="btn btn-outline-secondary" type="button" v-on:click="changeQuantity(item, -1)" v-bind:disabled="item.quantity <= 1 || isBusy(item.cartItemId)">−</button>
+                                    <input type="number" class="form-control text-center" v-model.number="item.quantity" min="1" step="1" v-on:change="updateItem(item)" v-bind:disabled="isBusy(item.cartItemId)" aria-label="商品数量" />
+                                    <button class="btn btn-outline-secondary" type="button" v-on:click="changeQuantity(item, 1)" v-bind:disabled="isBusy(item.cartItemId)">+</button>
                                 </div>
                             </td>
-                            <td class="text-end">¥{{ (item.unitPrice * item.quantity).toFixed(2) }}</td>
-                            <td class="text-center">
-                                <button class="btn btn-sm btn-outline-danger" v-on:click="removeItem(item.cartItemId)">删除</button>
-                            </td>
+                            <td class="text-end fw-semibold">¥{{ formatMoney(item.unitPrice * item.quantity) }}</td>
+                            <td class="text-end pe-3"><button class="btn btn-sm btn-link text-danger text-decoration-none" type="button" v-on:click="removeItem(item)" v-bind:disabled="isBusy(item.cartItemId)"><i class="bi bi-trash3"></i> 删除</button></td>
                         </tr>
                     </tbody>
                 </table>
             </div>
+        </div>
 
-            <!-- 底部结算 -->
-            <div class="border-top pt-3 mt-3">
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <div>
-                        <span>已选 <strong>{{ selectedCount }}</strong> 件商品</span>
-                        <span class="ms-3">合计：<strong class="text-danger">¥{{ selectedTotal.toFixed(2) }}</strong></span>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-outline-secondary" v-on:click="clearCart">清空</button>
-                        <button class="btn btn-primary" v-bind:disabled="selectedCount === 0" v-on:click="checkout">去结算</button>
-                    </div>
-                </div>
+        <div class="d-lg-none vstack gap-3">
+            <div class="surface-card p-3 d-flex justify-content-between align-items-center">
+                <label class="d-flex align-items-center gap-2 mb-0"><input class="form-check-input mt-0" type="checkbox" v-bind:checked="allSelected" v-on:change="toggleAll($event.target.checked)" v-bind:disabled="bulkUpdating" /><span>全选 {{ items.length }} 件</span></label>
+                <button class="btn btn-sm btn-link text-danger text-decoration-none" type="button" v-on:click="clearCart">清空</button>
             </div>
+            <article v-for="item in items" v-bind:key="item.cartItemId" class="surface-card p-3">
+                <div class="d-flex gap-3">
+                    <input class="form-check-input mt-1" type="checkbox" v-model="item.selected" v-on:change="updateItem(item)" v-bind:disabled="isBusy(item.cartItemId)" />
+                    <img v-bind:src="item.mainImage || '/images/product-placeholder.svg'" v-bind:alt="item.productName" class="cart-thumb" />
+                    <div class="min-w-0 flex-grow-1"><a v-bind:href="'/products/' + item.productId" class="fw-semibold text-body text-decoration-none d-block text-truncate">{{ item.productName }}</a><div class="text-muted small mt-1 text-truncate">{{ formatSpecs(item.specDescJson) }}</div><div class="price-current mt-2">¥{{ formatMoney(item.unitPrice) }}</div></div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                    <div class="input-group input-group-sm quantity-control">
+                        <button class="btn btn-outline-secondary" type="button" v-on:click="changeQuantity(item, -1)" v-bind:disabled="item.quantity <= 1 || isBusy(item.cartItemId)">−</button>
+                        <input type="number" class="form-control text-center" v-model.number="item.quantity" min="1" step="1" v-on:change="updateItem(item)" v-bind:disabled="isBusy(item.cartItemId)" aria-label="商品数量" />
+                        <button class="btn btn-outline-secondary" type="button" v-on:click="changeQuantity(item, 1)" v-bind:disabled="isBusy(item.cartItemId)">+</button>
+                    </div>
+                    <button class="btn btn-sm btn-link text-danger text-decoration-none" type="button" v-on:click="removeItem(item)"><i class="bi bi-trash3"></i></button>
+                </div>
+            </article>
+        </div>
+
+        <div class="checkout-bar mt-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div><span class="text-muted">已选 <strong class="text-body">{{ selectedCount }}</strong> 件</span><span class="ms-3">合计 <strong class="price-current fs-4">¥{{ formatMoney(selectedTotal) }}</strong></span></div>
+            <button class="btn btn-primary btn-lg rounded-pill px-4" v-bind:disabled="selectedCount === 0 || bulkUpdating" v-on:click="checkout">去结算 <i class="bi bi-arrow-right ms-1"></i></button>
         </div>
     </div>
 </div>

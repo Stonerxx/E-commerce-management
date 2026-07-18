@@ -1,34 +1,27 @@
-﻿(function () {
+(function () {
     const { createApp } = Vue;
 
     createApp({
         data() {
             return {
-                loading: false,
+                loading: true,
+                errorMessage: "",
                 orders: [],
                 pageIndex: 1,
                 pageSize: 10,
                 totalCount: 0,
                 totalPages: 1,
-                filters: {
-                    status: '',
-                    startTime: '',
-                    endTime: ''
-                }
+                busyOrderIds: [],
+                filters: { status: "", startTime: "", endTime: "" }
             };
         },
         computed: {
             visiblePages() {
                 const pages = [];
-                const maxVisible = 5;
-                let start = Math.max(1, this.pageIndex - Math.floor(maxVisible / 2));
-                let end = Math.min(this.totalPages, start + maxVisible - 1);
-                if (end - start < maxVisible - 1) {
-                    start = Math.max(1, end - maxVisible + 1);
-                }
-                for (let i = start; i <= end; i++) {
-                    pages.push(i);
-                }
+                let start = Math.max(1, this.pageIndex - 2);
+                let end = Math.min(this.totalPages, start + 4);
+                if (end - start < 4) start = Math.max(1, end - 4);
+                for (let page = start; page <= end; page += 1) pages.push(page);
                 return pages;
             }
         },
@@ -38,118 +31,104 @@
         methods: {
             async loadOrders() {
                 this.loading = true;
+                this.errorMessage = "";
                 try {
-                    const params = new URLSearchParams({
-                        pageIndex: this.pageIndex,
-                        pageSize: this.pageSize
-                    });
+                    const params = new URLSearchParams({ pageIndex: String(this.pageIndex), pageSize: String(this.pageSize) });
+                    if (this.filters.status !== "") params.set("status", this.filters.status);
+                    if (this.filters.startTime) params.set("startTime", `${this.filters.startTime}T00:00:00`);
+                    if (this.filters.endTime) params.set("endTime", `${this.filters.endTime}T23:59:59`);
 
-                    if (this.filters.status) params.append('status', this.filters.status);
-                    if (this.filters.startTime) params.append('startTime', this.filters.startTime);
-                    if (this.filters.endTime) params.append('endTime', this.filters.endTime);
-
-                    const response = await fetch(`/api/v1/orders?${params.toString()}`, {
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    const result = await response.json();
-
-                    if (result.success && result.data) {
-                        this.orders = result.data.items || [];
-                        this.totalCount = result.data.totalCount || 0;
-                        this.totalPages = result.data.totalPages || 1;
-                    } else {
-                        console.error('加载订单失败:', result.message);
-                    }
+                    const payload = await this.request(`/api/v1/orders?${params}`);
+                    this.orders = payload.data?.items || [];
+                    this.totalCount = payload.data?.totalCount || 0;
+                    this.totalPages = Math.max(1, payload.data?.totalPages || 1);
+                    this.pageIndex = Math.min(this.pageIndex, this.totalPages);
                 } catch (error) {
-                    console.error('加载订单异常:', error);
+                    this.orders = [];
+                    this.totalCount = 0;
+                    this.errorMessage = error instanceof Error ? error.message : "订单加载失败";
                 } finally {
                     this.loading = false;
                 }
             },
-
-            goPage(page) {
-                if (page < 1 || page > this.totalPages) return;
-                this.pageIndex = page;
+            applyFilters() {
+                if (this.filters.startTime && this.filters.endTime && this.filters.startTime > this.filters.endTime) {
+                    window.appToast?.("开始日期不能晚于结束日期", "warning");
+                    return;
+                }
+                this.pageIndex = 1;
                 this.loadOrders();
             },
-
+            resetFilters() {
+                this.filters = { status: "", startTime: "", endTime: "" };
+                this.pageIndex = 1;
+                this.loadOrders();
+            },
+            goPage(page) {
+                if (page < 1 || page > this.totalPages || page === this.pageIndex) return;
+                this.pageIndex = page;
+                this.loadOrders();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            },
+            isBusy(orderId) {
+                return this.busyOrderIds.includes(orderId);
+            },
+            setBusy(orderId, busy) {
+                this.busyOrderIds = busy ? [...new Set([...this.busyOrderIds, orderId])] : this.busyOrderIds.filter(id => id !== orderId);
+            },
             getStatusText(status) {
-                const map = {
-                    0: '待支付',
-                    1: '已支付',
-                    2: '已发货',
-                    3: '已完成',
-                    4: '已取消'
-                };
-                return map[status] || '未知';
+                return ({ 0: "待支付", 1: "已支付", 2: "已发货", 3: "已完成", 4: "已取消" })[Number(status)] || "未知";
             },
-
             getStatusBadge(status) {
-                const map = {
-                    0: 'text-bg-warning',
-                    1: 'text-bg-info',
-                    2: 'text-bg-primary',
-                    3: 'text-bg-success',
-                    4: 'text-bg-secondary'
-                };
-                return map[status] || 'text-bg-secondary';
+                return ({ 0: "text-bg-warning", 1: "text-bg-info", 2: "text-bg-primary", 3: "text-bg-success", 4: "text-bg-secondary" })[Number(status)] || "text-bg-secondary";
             },
-
-            formatDate(dateStr) {
-                if (!dateStr) return '-';
-                const date = new Date(dateStr);
-                return date.toLocaleString('zh-CN');
+            formatDate(value) {
+                if (!value) return "-";
+                const date = new Date(value);
+                return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString("zh-CN");
             },
-
-            async cancelOrder(orderId) {
-                if (!confirm('确定要取消这个订单吗？')) return;
-
+            formatMoney(value) {
+                return Number(value || 0).toFixed(2);
+            },
+            async cancelOrder(order) {
+                if (!window.confirm(`确认取消订单 ${order.orderNo} 吗？`)) return;
+                this.setBusy(order.orderId, true);
                 try {
-                    const response = await fetch(`/api/v1/orders/${orderId}/cancel`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify({ reason: '用户主动取消' })
-                    });
-                    const result = await response.json();
-
-                    if (result.success) {
-                        this.loadOrders();
-                    } else {
-                        alert(result.message || '取消订单失败');
-                    }
+                    await this.request(`/api/v1/orders/${order.orderId}/cancel`, "POST", { reason: "用户主动取消" });
+                    window.appToast?.("订单已取消，库存将自动释放", "success");
+                    await this.loadOrders();
                 } catch (error) {
-                    console.error('取消订单异常:', error);
-                    alert('取消订单失败，请稍后重试');
+                    window.appToast?.(error instanceof Error ? error.message : "取消订单失败", "danger");
+                } finally {
+                    this.setBusy(order.orderId, false);
                 }
             },
-
-            async confirmOrder(orderId) {
-                if (!confirm('确认已收到商品？')) return;
-
+            async confirmOrder(order) {
+                if (!window.confirm(`确认已收到订单 ${order.orderNo} 的商品吗？`)) return;
+                this.setBusy(order.orderId, true);
                 try {
-                    const response = await fetch(`/api/v1/orders/${orderId}/confirm`, {
-                        method: 'POST',
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    const result = await response.json();
-
-                    if (result.success) {
-                        this.loadOrders();
-                    } else {
-                        alert(result.message || '确认收货失败');
-                    }
+                    await this.request(`/api/v1/orders/${order.orderId}/confirm`, "POST");
+                    window.appToast?.("已确认收货", "success");
+                    await this.loadOrders();
                 } catch (error) {
-                    console.error('确认收货异常:', error);
-                    alert('确认收货失败，请稍后重试');
+                    window.appToast?.(error instanceof Error ? error.message : "确认收货失败", "danger");
+                } finally {
+                    this.setBusy(order.orderId, false);
                 }
             },
-
             goPay(orderId) {
                 window.location.href = `/payment/${orderId}`;
+            },
+            async request(url, method = "GET", body = null) {
+                const response = await fetch(url, {
+                    method,
+                    headers: { Accept: "application/json", ...(body ? { "Content-Type": "application/json" } : {}) },
+                    body: body ? JSON.stringify(body) : null
+                });
+                const payload = await response.json().catch(() => null);
+                if (!response.ok || !payload?.success) throw new Error(payload?.message || `请求失败（${response.status}）`);
+                return payload;
             }
         }
-    }).mount('#ordersApp');
+    }).mount("#ordersApp");
 })();

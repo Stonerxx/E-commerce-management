@@ -1,35 +1,28 @@
-﻿(function () {
+(function () {
     const { createApp } = Vue;
 
     createApp({
         data() {
             return {
-                loading: false,
+                loading: true,
+                errorMessage: "",
                 items: [],
-                selectedTotal: 0,
-                selectedCount: 0,
-                pageIndex: 1,
-                pageSize: 20,
-                totalCount: 0,
-                totalPages: 1,
-                filters: {
-                    status: ''
-                }
+                pendingItemIds: [],
+                bulkUpdating: false
             };
         },
         computed: {
-            allSelected: {
-                get() {
-                    return this.items.length > 0 && this.items.every(item => item.selected);
-                },
-                set(value) {
-                    this.items.forEach(item => {
-                        if (item.selected !== value) {
-                            item.selected = value;
-                            this.updateItem(item);
-                        }
-                    });
-                }
+            allSelected() {
+                return this.items.length > 0 && this.items.every(item => item.selected);
+            },
+            selectedItems() {
+                return this.items.filter(item => item.selected);
+            },
+            selectedCount() {
+                return this.selectedItems.length;
+            },
+            selectedTotal() {
+                return this.selectedItems.reduce((sum, item) => sum + Number(item.unitPrice || 0) * Number(item.quantity || 0), 0);
             }
         },
         mounted() {
@@ -38,126 +31,127 @@
         methods: {
             async loadCart() {
                 this.loading = true;
+                this.errorMessage = "";
                 try {
-                    const response = await fetch('/api/v1/cart', {
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    const result = await response.json();
-
-                    if (result.success && result.data) {
-                        this.items = result.data.items || [];
-                        this.calculateTotals();
-                    } else {
-                        console.error('加载购物车失败:', result.message);
-                    }
+                    const payload = await this.request("/api/v1/cart");
+                    this.items = payload.data?.items || [];
                 } catch (error) {
-                    console.error('加载购物车异常:', error);
+                    this.errorMessage = error instanceof Error ? error.message : "购物车加载失败";
                 } finally {
                     this.loading = false;
                 }
             },
-
-            calculateTotals() {
-                const selected = this.items.filter(item => item.selected);
-                this.selectedCount = selected.length;
-                this.selectedTotal = selected.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+            isBusy(cartItemId) {
+                return this.bulkUpdating || this.pendingItemIds.includes(cartItemId);
             },
-
-            async updateItem(item) {
+            setBusy(cartItemId, busy) {
+                this.pendingItemIds = busy
+                    ? [...new Set([...this.pendingItemIds, cartItemId])]
+                    : this.pendingItemIds.filter(id => id !== cartItemId);
+            },
+            normalizeQuantity(item) {
+                const quantity = Math.floor(Number(item.quantity));
+                item.quantity = Number.isFinite(quantity) && quantity >= 1 ? quantity : 1;
+            },
+            async updateItem(item, quiet = false) {
+                if (this.isBusy(item.cartItemId)) return;
+                this.normalizeQuantity(item);
+                this.setBusy(item.cartItemId, true);
                 try {
-                    const response = await fetch(`/api/v1/cart/items/${item.cartItemId}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            quantity: item.quantity,
-                            selected: item.selected
-                        })
+                    await this.request(`/api/v1/cart/items/${item.cartItemId}`, "PUT", {
+                        quantity: item.quantity,
+                        selected: item.selected
                     });
-                    const result = await response.json();
-
-                    if (result.success) {
-                        this.calculateTotals();
-                    } else {
-                        // 回滚
-                        await this.loadCart();
-                        alert(result.message || '更新失败');
-                    }
+                    if (!quiet) window.appToast?.("购物车已更新", "success");
                 } catch (error) {
-                    console.error('更新购物车异常:', error);
+                    window.appToast?.(error instanceof Error ? error.message : "购物车更新失败", "danger");
                     await this.loadCart();
+                } finally {
+                    this.setBusy(item.cartItemId, false);
                 }
             },
-
-            async removeItem(cartItemId) {
-                if (!confirm('确定要删除这个商品吗？')) return;
-
+            async toggleAll(selected) {
+                const changed = this.items.filter(item => item.selected !== selected);
+                if (!changed.length) return;
+                this.bulkUpdating = true;
+                changed.forEach(item => { item.selected = selected; });
                 try {
-                    const response = await fetch(`/api/v1/cart/items/${cartItemId}`, {
-                        method: 'DELETE',
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    const result = await response.json();
-
-                    if (result.success) {
-                        this.items = this.items.filter(item => item.cartItemId !== cartItemId);
-                        this.calculateTotals();
-                    } else {
-                        alert(result.message || '删除失败');
-                    }
+                    await Promise.all(changed.map(item => this.request(`/api/v1/cart/items/${item.cartItemId}`, "PUT", {
+                        quantity: item.quantity,
+                        selected: item.selected
+                    })));
+                    window.appToast?.(selected ? "已选择全部商品" : "已取消全选", "success");
                 } catch (error) {
-                    console.error('删除购物车项异常:', error);
-                    alert('删除失败，请稍后重试');
+                    window.appToast?.(error instanceof Error ? error.message : "全选状态更新失败", "danger");
+                    await this.loadCart();
+                } finally {
+                    this.bulkUpdating = false;
                 }
             },
-
+            async changeQuantity(item, delta) {
+                if (this.isBusy(item.cartItemId)) return;
+                this.normalizeQuantity(item);
+                item.quantity = Math.max(1, item.quantity + delta);
+                await this.updateItem(item, true);
+            },
+            async removeItem(item) {
+                if (!window.confirm(`确认从购物车移除“${item.productName}”吗？`)) return;
+                this.setBusy(item.cartItemId, true);
+                try {
+                    await this.request(`/api/v1/cart/items/${item.cartItemId}`, "DELETE");
+                    this.items = this.items.filter(current => current.cartItemId !== item.cartItemId);
+                    window.appToast?.("商品已移除", "success");
+                } catch (error) {
+                    window.appToast?.(error instanceof Error ? error.message : "删除失败", "danger");
+                } finally {
+                    this.setBusy(item.cartItemId, false);
+                }
+            },
             async clearCart() {
-                if (!confirm('确定要清空购物车吗？')) return;
-
+                if (!window.confirm("确认清空购物车吗？此操作无法撤销。")) return;
+                this.bulkUpdating = true;
                 try {
-                    const response = await fetch('/api/v1/cart', {
-                        method: 'DELETE',
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    const result = await response.json();
-
-                    if (result.success) {
-                        this.items = [];
-                        this.calculateTotals();
-                    } else {
-                        alert(result.message || '清空失败');
-                    }
+                    await this.request("/api/v1/cart", "DELETE");
+                    this.items = [];
+                    window.appToast?.("购物车已清空", "success");
                 } catch (error) {
-                    console.error('清空购物车异常:', error);
-                    alert('清空失败，请稍后重试');
+                    window.appToast?.(error instanceof Error ? error.message : "清空失败", "danger");
+                } finally {
+                    this.bulkUpdating = false;
                 }
             },
-
-            increaseQuantity(item) {
-                item.quantity += 1;
-                this.updateItem(item);
-            },
-
-            decreaseQuantity(item) {
-                if (item.quantity <= 1) return;
-                item.quantity -= 1;
-                this.updateItem(item);
-            },
-
             checkout() {
-                const selectedIds = this.items.filter(item => item.selected).map(item => item.cartItemId);
-                if (selectedIds.length === 0) {
-                    alert('请至少选择一件商品');
+                const selectedIds = this.selectedItems.map(item => item.cartItemId);
+                if (!selectedIds.length) {
+                    window.appToast?.("请至少选择一件商品", "warning");
                     return;
                 }
-
-                // 跳转到订单确认页，携带选中的购物车项 ID
                 const params = new URLSearchParams();
-                selectedIds.forEach(id => params.append('cartItemIds', id));
-                window.location.href = `/orders/create?${params.toString()}`;
+                selectedIds.forEach(id => params.append("cartItemIds", id));
+                window.location.href = `/orders/create?${params}`;
+            },
+            formatSpecs(value) {
+                if (!value) return "默认规格";
+                try {
+                    const parsed = JSON.parse(value);
+                    return Object.entries(parsed).map(([key, item]) => `${key}：${item}`).join(" · ") || "默认规格";
+                } catch (_) {
+                    return value;
+                }
+            },
+            formatMoney(value) {
+                return Number(value || 0).toFixed(2);
+            },
+            async request(url, method = "GET", body = null) {
+                const response = await fetch(url, {
+                    method,
+                    headers: { Accept: "application/json", ...(body ? { "Content-Type": "application/json" } : {}) },
+                    body: body ? JSON.stringify(body) : null
+                });
+                const payload = await response.json().catch(() => null);
+                if (!response.ok || !payload?.success) throw new Error(payload?.message || `请求失败（${response.status}）`);
+                return payload;
             }
         }
-    }).mount('#cartApp');
+    }).mount("#cartApp");
 })();

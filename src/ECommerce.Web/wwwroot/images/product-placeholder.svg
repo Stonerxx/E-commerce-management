@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" role="img" aria-labelledby="title description">
+  <title id="title">商品图片占位图</title>
+  <desc id="description">尚未上传商品图片</desc>
+  <rect width="640" height="640" fill="#eef2ff"/>
+  <rect x="192" y="210" width="256" height="230" rx="32" fill="#c7d2fe"/>
+  <path d="M248 252c0-45 32-82 72-82s72 37 72 82" fill="none" stroke="#6366f1" stroke-width="24" stroke-linecap="round"/>
+  <circle cx="275" cy="322" r="14" fill="#6366f1"/>
+  <circle cx="365" cy="322" r="14" fill="#6366f1"/>
+  <path d="M275 378c29 24 61 24 90 0" fill="none" stroke="#6366f1" stroke-width="14" stroke-linecap="round"/>
+  <text x="320" y="500" text-anchor="middle" fill="#4f46e5" font-family="Arial, sans-serif" font-size="28">商品图片</text>
+</svg>

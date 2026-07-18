@@ -82,6 +82,15 @@
 
             function selectSpec(specName, specValue) {
                 selectedSpecs.value[specName] = specValue;
+                quantity.value = 1;
+            }
+
+            function normalizeQuantity() {
+                const normalized = Math.floor(Number(quantity.value));
+                quantity.value = Number.isFinite(normalized) ? Math.max(1, normalized) : 1;
+                if (availableStock.value > 0) {
+                    quantity.value = Math.min(quantity.value, availableStock.value);
+                }
             }
 
             async function loadProduct() {
@@ -119,6 +128,12 @@
             async function addToCart() {
                 if (!currentSku.value) return;
 
+                normalizeQuantity();
+                if (availableStock.value <= 0 || quantity.value > availableStock.value) {
+                    window.appToast?.('当前库存不足，请调整购买数量', 'warning');
+                    return;
+                }
+
                 addingToCart.value = true;
                 try {
                     const response = await fetch('/api/v1/cart/items', {
@@ -138,20 +153,20 @@
                         return;
                     }
                     if (response.status === 403) {
-                        alert('当前账号没有加入购物车权限');
+                        window.appToast?.('当前账号没有加入购物车权限', 'warning');
                         return;
                     }
 
                     const result = await response.json().catch(() => null);
 
                     if (response.ok && result?.success) {
-                        alert('已添加到购物车');
+                        window.appToast?.('已添加到购物车', 'success');
                     } else {
-                        alert(result?.message || '添加失败');
+                        window.appToast?.(result?.message || '添加失败', 'danger');
                     }
                 } catch (error) {
                     console.error('加入购物车失败:', error);
-                    alert('添加失败，请稍后重试');
+                    window.appToast?.('添加失败，请稍后重试', 'danger');
                 } finally {
                     addingToCart.value = false;
                 }
@@ -203,6 +218,12 @@
             async function buyNow() {
                 if (!currentSku.value) return;
 
+                normalizeQuantity();
+                if (availableStock.value <= 0 || quantity.value > availableStock.value) {
+                    window.appToast?.('当前库存不足，请调整购买数量', 'warning');
+                    return;
+                }
+
                 try {
                     const addResponse = await fetch('/api/v1/cart/items', {
                         method: 'POST',
@@ -222,13 +243,13 @@
                     }
 
                     if (addResponse.status === 403) {
-                        alert('当前账号没有立即购买权限');
+                        window.appToast?.('当前账号没有立即购买权限', 'warning');
                         return;
                     }
 
                     const addResult = await addResponse.json().catch(() => null);
                     if (!addResponse.ok || !addResult?.success) {
-                        alert(addResult?.message || '操作失败');
+                        window.appToast?.(addResult?.message || '操作失败', 'danger');
                         return;
                     }
 
@@ -246,11 +267,11 @@
                             return;
                         }
                     }
-                    alert('请前往购物车结算');
+                    window.appToast?.('商品已加入购物车，请在购物车中结算', 'info');
                     window.location.href = '/cart';
                 } catch (error) {
                     console.error('立即购买失败:', error);
-                    alert('操作失败，请稍后重试');
+                    window.appToast?.('操作失败，请稍后重试', 'danger');
                 }
             }
 
@@ -280,6 +301,7 @@
                 availableStock,
                 currentSkuSpecText,
                 selectSpec,
+                normalizeQuantity,
                 loadReviews,
                 formatReviewDate,
                 addToCart,
