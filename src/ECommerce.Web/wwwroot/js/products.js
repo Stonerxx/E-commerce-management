@@ -1,87 +1,76 @@
 (function () {
     const { createApp, ref, computed, onMounted } = Vue;
+    const initialParams = new URLSearchParams(window.location.search);
 
     createApp({
         setup() {
             const loading = ref(false);
-            const keyword = ref('');
-            const selectedCategoryId = ref(null);
-            const sortBy = ref('newest');
+            const errorMessage = ref("");
+            const keyword = ref(initialParams.get("keyword") || "");
+            const categoryValue = Number(initialParams.get("categoryId"));
+            const selectedCategoryId = ref(Number.isInteger(categoryValue) && categoryValue > 0 ? categoryValue : null);
+            const allowedSorts = ["newest", "hot", "sales", "rating", "priceAsc", "priceDesc"];
+            const requestedSort = initialParams.get("sortBy") || "newest";
+            const sortBy = ref(allowedSorts.includes(requestedSort) ? requestedSort : "newest");
             const categoryTree = ref([]);
             const products = ref([]);
-            const pagination = ref({
-                pageIndex: 1,
-                pageSize: 12,
-                totalCount: 0,
-                totalPages: 0
-            });
+            const pagination = ref({ pageIndex: 1, pageSize: 12, totalCount: 0, totalPages: 0 });
 
             const pageNumbers = computed(() => {
                 const pages = [];
                 const total = pagination.value.totalPages;
                 const current = pagination.value.pageIndex;
-                const maxVisible = 5;
                 let start = Math.max(1, current - 2);
-                let end = Math.min(total, start + maxVisible - 1);
-                if (end - start + 1 < maxVisible) {
-                    start = Math.max(1, end - maxVisible + 1);
-                }
-                for (let i = start; i <= end; i++) {
-                    pages.push(i);
-                }
+                let end = Math.min(total, start + 4);
+                if (end - start < 4) start = Math.max(1, end - 4);
+                for (let page = start; page <= end; page += 1) pages.push(page);
                 return pages;
             });
 
             async function loadCategories() {
                 try {
-                    const response = await fetch('/api/v1/categories', {
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    const result = await response.json();
-                    if (result.success && result.data) {
-                        categoryTree.value = result.data;
-                    }
+                    const response = await fetch("/api/v1/categories", { headers: { Accept: "application/json" } });
+                    const result = await response.json().catch(() => null);
+                    categoryTree.value = response.ok && result?.success ? (result.data || []) : [];
                 } catch (error) {
-                    console.error('加载分类失败:', error);
+                    console.error("加载分类失败:", error);
                 }
             }
 
-            async function loadProducts(page) {
-                const pageIndex = page || 1;
+            async function loadProducts(page = 1) {
+                if (page < 1 || (pagination.value.totalPages > 0 && page > pagination.value.totalPages)) return;
                 loading.value = true;
-
+                errorMessage.value = "";
                 const params = new URLSearchParams({
-                    pageIndex: pageIndex,
-                    pageSize: pagination.value.pageSize,
+                    pageIndex: String(page),
+                    pageSize: String(pagination.value.pageSize),
                     sortBy: sortBy.value
                 });
-                if (keyword.value.trim()) {
-                    params.append('keyword', keyword.value.trim());
-                }
-                if (selectedCategoryId.value) {
-                    params.append('categoryId', selectedCategoryId.value);
-                }
+                if (keyword.value.trim()) params.set("keyword", keyword.value.trim());
+                if (selectedCategoryId.value) params.set("categoryId", String(selectedCategoryId.value));
 
                 try {
-                    const response = await fetch(`/api/v1/products?${params.toString()}`, {
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    const result = await response.json();
+                    const response = await fetch(`/api/v1/products?${params}`, { headers: { Accept: "application/json" } });
+                    const result = await response.json().catch(() => null);
+                    if (!response.ok || !result?.success) throw new Error(result?.message || "商品加载失败");
 
-                    if (result.success && result.data) {
-                        products.value = result.data.items || [];
-                        pagination.value = {
-                            pageIndex: result.data.pageIndex,
-                            pageSize: result.data.pageSize,
-                            totalCount: result.data.totalCount,
-                            totalPages: result.data.totalPages || 0
-                        };
-                    } else {
-                        products.value = [];
-                    }
+                    products.value = result.data?.items || [];
+                    pagination.value = {
+                        pageIndex: result.data?.pageIndex || page,
+                        pageSize: result.data?.pageSize || pagination.value.pageSize,
+                        totalCount: result.data?.totalCount || 0,
+                        totalPages: result.data?.totalPages || 0
+                    };
+
+                    const visibleParams = new URLSearchParams();
+                    if (keyword.value.trim()) visibleParams.set("keyword", keyword.value.trim());
+                    if (selectedCategoryId.value) visibleParams.set("categoryId", String(selectedCategoryId.value));
+                    if (sortBy.value !== "newest") visibleParams.set("sortBy", sortBy.value);
+                    if (page > 1) visibleParams.set("page", String(page));
+                    history.replaceState(null, "", `${window.location.pathname}${visibleParams.size ? `?${visibleParams}` : ""}`);
                 } catch (error) {
-                    console.error('加载商品失败:', error);
                     products.value = [];
+                    errorMessage.value = error instanceof Error ? error.message : "商品加载失败，请稍后重试";
                 } finally {
                     loading.value = false;
                 }
@@ -97,24 +86,23 @@
                 loadProducts(1);
             }
 
+            function resetFilters() {
+                keyword.value = "";
+                selectedCategoryId.value = null;
+                sortBy.value = "newest";
+                loadProducts(1);
+            }
+
+            function formatMoney(value) {
+                return Number(value || 0).toFixed(2);
+            }
+
             onMounted(() => {
                 loadCategories();
-                loadProducts(1);
+                loadProducts(Number(initialParams.get("page")) || 1);
             });
 
-            return {
-                loading,
-                keyword,
-                selectedCategoryId,
-                sortBy,
-                categoryTree,
-                products,
-                pagination,
-                pageNumbers,
-                loadProducts,
-                selectCategory,
-                clearCategory
-            };
+            return { loading, errorMessage, keyword, selectedCategoryId, sortBy, categoryTree, products, pagination, pageNumbers, loadProducts, selectCategory, clearCategory, resetFilters, formatMoney };
         }
-    }).mount('#productsApp');
+    }).mount("#productsApp");
 })();

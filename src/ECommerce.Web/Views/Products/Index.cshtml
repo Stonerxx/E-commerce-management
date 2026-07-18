@@ -1,140 +1,121 @@
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "商品列表";
-    var isCustomer = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.User);
+    ViewData["Title"] = "商品中心";
 }
 
-<div id="productsApp" v-cloak>
-    <div class="py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h1 class="h3 mb-1">商品列表</h1>
-                <p class="text-muted mb-0">共 {{ pagination.totalCount }} 件商品</p>
-            </div>
+<div id="productsApp" v-cloak class="py-3 py-lg-4">
+    <div class="page-heading d-flex flex-wrap justify-content-between align-items-end gap-3">
+        <div>
+            <div class="page-kicker">DISCOVER PRODUCTS</div>
+            <h1 class="display-6 fw-bold mb-2">商品中心</h1>
+            <p class="text-muted mb-0">从 {{ pagination.totalCount }} 件在售商品中找到适合你的选择</p>
         </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#productFilters" aria-expanded="false" aria-controls="productFilters">
+                <i class="bi bi-sliders me-1"></i>筛选
+            </button>
+            <select class="form-select" v-model="sortBy" v-on:change="loadProducts(1)" aria-label="商品排序" style="width:auto">
+                <option value="newest">最新上架</option>
+                <option value="hot">智能推荐</option>
+                <option value="sales">销量优先</option>
+                <option value="rating">评分优先</option>
+                <option value="priceAsc">价格从低到高</option>
+                <option value="priceDesc">价格从高到低</option>
+            </select>
+        </div>
+    </div>
 
-        <div class="row g-4">
-            <div class="col-lg-3">
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <h2 class="h6 mb-0">搜索</h2>
-                    </div>
-                    <div class="card-body">
+    <div v-if="errorMessage" class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2" role="alert">
+        <span><i class="bi bi-exclamation-triangle me-2"></i>{{ errorMessage }}</span>
+        <button class="btn btn-sm btn-outline-warning" type="button" v-on:click="loadProducts(pagination.pageIndex)">重试</button>
+    </div>
+
+    <div class="row g-4">
+        <aside class="col-lg-3">
+            <div id="productFilters" class="collapse d-lg-block">
+                <div class="filter-panel surface-card">
+                    <div class="p-3 border-bottom">
+                        <label class="form-label fw-semibold" for="productKeyword">搜索商品</label>
                         <div class="input-group">
-                            <input type="text" class="form-control" v-model="keyword" placeholder="搜索商品名称..." v-on:keyup.enter="loadProducts(1)">
-                            <button class="btn btn-outline-primary" type="button" v-on:click="loadProducts(1)">
-                                <i class="bi bi-search"></i>
-                            </button>
+                            <input id="productKeyword" type="search" class="form-control" v-model.trim="keyword" placeholder="名称或关键词" v-on:keyup.enter="loadProducts(1)">
+                            <button class="btn btn-primary" type="button" v-on:click="loadProducts(1)" aria-label="提交搜索"><i class="bi bi-search"></i></button>
                         </div>
                     </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-center px-3 pt-3 pb-2">
                         <h2 class="h6 mb-0">商品分类</h2>
-                        <button v-if="selectedCategoryId" type="button" class="btn btn-sm btn-link p-0 text-muted" v-on:click="clearCategory">
-                            清除
+                        <button v-if="selectedCategoryId" type="button" class="btn btn-sm btn-link p-0 text-decoration-none" v-on:click="clearCategory">清除</button>
+                    </div>
+                    <div class="list-group list-group-flush pb-2">
+                        <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-2"
+                                v-bind:class="{ active: !selectedCategoryId }" v-on:click="selectCategory(null)">
+                            <i class="bi bi-grid"></i><span>全部分类</span>
                         </button>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="list-group list-group-flush">
+                        <template v-for="cat in categoryTree" v-bind:key="cat.categoryId">
                             <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                                    :class="{ active: !selectedCategoryId }"
-                                    v-on:click="selectCategory(null)">
-                                <span><i class="bi bi-grid me-1"></i> 全部分类</span>
+                                    v-bind:class="{ active: selectedCategoryId === cat.categoryId }" v-on:click="selectCategory(cat.categoryId)">
+                                <span><i class="bi bi-folder me-2"></i>{{ cat.name }}</span>
+                                <i v-if="cat.children && cat.children.length" class="bi bi-chevron-down small"></i>
                             </button>
-                            <template v-for="cat in categoryTree" :key="cat.categoryId">
-                                <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                                        :class="{ active: selectedCategoryId === cat.categoryId }"
-                                        v-on:click="selectCategory(cat.categoryId)">
-                                    <span><i class="bi bi-folder me-1"></i> {{ cat.name }}</span>
-                                    <span v-if="cat.children && cat.children.length > 0" class="text-muted small">
-                                        <i class="bi bi-chevron-down"></i>
-                                    </span>
-                                </button>
-                                <template v-if="cat.children && cat.children.length > 0">
-                                    <button type="button"
-                                            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                                            :class="{ active: selectedCategoryId === sub.categoryId }"
-                                            v-for="sub in cat.children" :key="sub.categoryId"
-                                            style="padding-left: 2.5rem;"
-                                            v-on:click="selectCategory(sub.categoryId)">
-                                        <span><i class="bi bi-tag me-1"></i> {{ sub.name }}</span>
-                                    </button>
-                                </template>
-                            </template>
+                            <button v-for="sub in cat.children" v-bind:key="sub.categoryId" type="button"
+                                    class="list-group-item list-group-item-action ps-5"
+                                    v-bind:class="{ active: selectedCategoryId === sub.categoryId }" v-on:click="selectCategory(sub.categoryId)">
+                                <i class="bi bi-tag me-2"></i>{{ sub.name }}
+                            </button>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <section class="col-lg-9" aria-live="polite">
+            <div v-if="loading" class="row g-3" aria-label="商品加载中">
+                <div v-for="n in 8" v-bind:key="n" class="col-6 col-md-4 col-xl-3">
+                    <div class="surface-card overflow-hidden"><div class="placeholder col-12" style="aspect-ratio:1/1"></div><div class="p-3"><span class="placeholder col-10"></span><span class="placeholder col-5 mt-3"></span></div></div>
+                </div>
+            </div>
+
+            <div v-else-if="products.length === 0" class="surface-card empty-state">
+                <div class="empty-state-icon"><i class="bi bi-search"></i></div>
+                <h2 class="h5">没有找到匹配商品</h2>
+                <p class="text-muted">换个关键词或清除分类条件再试试。</p>
+                <button class="btn btn-primary" type="button" v-on:click="resetFilters">查看全部商品</button>
+            </div>
+
+            <div v-else class="row g-3">
+                <div v-for="product in products" v-bind:key="product.productId" class="col-6 col-md-4 col-xl-3">
+                    <a v-bind:href="'/products/' + product.productId" class="commerce-card text-decoration-none h-100 d-block">
+                        <div class="product-image-wrap">
+                            <img v-bind:src="product.mainImage || '/images/product-placeholder.svg'" v-bind:alt="product.name" loading="lazy" />
+                            <span v-if="product.status === 2" class="badge text-bg-warning position-absolute top-0 end-0 m-2">预售</span>
                         </div>
-                    </div>
+                        <div class="p-3">
+                            <div class="fw-semibold text-truncate mb-2" v-bind:title="product.name">{{ product.name }}</div>
+                            <div class="d-flex justify-content-between align-items-end gap-2">
+                                <span class="price-current">¥{{ formatMoney(product.priceMin) }}</span>
+                                <span class="text-muted small">已售 {{ product.salesCount }}</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-1 mt-2 small">
+                                <span class="rating-stars"><i class="bi bi-star-fill"></i></span>
+                                <span>{{ Number(product.avgRating || 0).toFixed(1) }}</span>
+                                <span class="text-muted">评分</span>
+                            </div>
+                        </div>
+                    </a>
                 </div>
             </div>
 
-            <div class="col-lg-9">
-                <div class="d-flex justify-content-end mb-3">
-                    <select class="form-select form-select-sm" style="max-width: 180px" v-model="sortBy" v-on:change="loadProducts(1)" aria-label="商品排序">
-                        <option value="newest">最新上架</option>
-                        <option value="hot">智能推荐</option>
-                        <option value="sales">销量优先</option>
-                        <option value="rating">评分优先</option>
-                        <option value="priceAsc">价格从低到高</option>
-                        <option value="priceDesc">价格从高到低</option>
-                    </select>
-                </div>
-                <div v-if="loading" class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">加载中...</span>
-                    </div>
-                </div>
-
-                <div v-else-if="products.length === 0" class="text-center py-5">
-                    <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
-                    <p class="text-muted mt-3">暂无符合条件的商品</p>
-                </div>
-
-                <div v-else class="row g-3">
-                    <div v-for="product in products" :key="product.productId" class="col-6 col-md-4 col-xl-3">
-                        <a :href="'/products/' + product.productId" class="card text-decoration-none h-100 product-card">
-                            <div class="position-relative">
-                                <img :src="product.mainImage" class="card-img-top" alt="商品图片" style="height: 200px; object-fit: cover;">
-                                <span v-if="product.status === 2" class="badge bg-warning position-absolute top-2 end-2">预售</span>
-                            </div>
-                            <div class="card-body">
-                                <h5 class="card-title h6 mb-2 text-truncate" :title="product.name">{{ product.name }}</h5>
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="text-danger fw-bold">¥{{ product.priceMin.toFixed(2) }}</span>
-                                    <span class="text-muted small">销量 {{ product.salesCount }}</span>
-                                </div>
-                                <div class="d-flex align-items-center">
-                                    <div class="text-warning small">
-                                        <i v-for="n in 5" :key="n" class="bi"
-                                           :class="n <= Math.round(product.avgRating) ? 'bi-star-fill' : 'bi-star'"></i>
-                                    </div>
-                                    <span class="text-muted small ms-1">{{ product.avgRating.toFixed(1) }}</span>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                </div>
-
-                <nav v-if="pagination.totalPages > 1" aria-label="商品分页" class="mt-4">
-                    <ul class="pagination justify-content-center">
-                        <li class="page-item" :class="{ disabled: pagination.pageIndex === 1 }">
-                            <button class="page-link" v-on:click="loadProducts(pagination.pageIndex - 1)">上一页</button>
-                        </li>
-                        <li class="page-item" :class="{ active: pagination.pageIndex === page }" v-for="page in pageNumbers" :key="page">
-                            <button class="page-link" v-on:click="loadProducts(page)">{{ page }}</button>
-                        </li>
-                        <li class="page-item" :class="{ disabled: pagination.pageIndex >= pagination.totalPages }">
-                            <button class="page-link" v-on:click="loadProducts(pagination.pageIndex + 1)">下一页</button>
-                        </li>
-                    </ul>
-                </nav>
-            </div>
-        </div>
+            <nav v-if="pagination.totalPages > 1" aria-label="商品分页" class="mt-4">
+                <ul class="pagination justify-content-center flex-wrap">
+                    <li class="page-item" v-bind:class="{ disabled: pagination.pageIndex === 1 }"><button class="page-link" type="button" v-on:click="loadProducts(pagination.pageIndex - 1)">上一页</button></li>
+                    <li class="page-item" v-bind:class="{ active: pagination.pageIndex === page }" v-for="page in pageNumbers" v-bind:key="page"><button class="page-link" type="button" v-on:click="loadProducts(page)">{{ page }}</button></li>
+                    <li class="page-item" v-bind:class="{ disabled: pagination.pageIndex >= pagination.totalPages }"><button class="page-link" type="button" v-on:click="loadProducts(pagination.pageIndex + 1)">下一页</button></li>
+                </ul>
+            </nav>
+        </section>
     </div>
 </div>
 
 @section Scripts {
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="~/js/products.js" asp-append-version="true"></script>
 }
