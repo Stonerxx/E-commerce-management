@@ -1,0 +1,32 @@
+@{
+    var isAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
+    var path = Context.Request.Path.Value?.ToLowerInvariant() ?? "/admin";
+}
+<nav class="admin-navigation" aria-label="后台导航">
+    <div class="admin-nav-section">概览</div>
+    <a class="admin-nav-link @(path == "/admin" || path == "/admin/dashboard" ? "active" : "")" href="/admin">
+        <i class="fa-solid fa-gauge-high"></i><span>数据概览</span>
+    </a>
+    <a class="admin-nav-link @(path.StartsWith("/admin/orders") ? "active" : "")" href="/admin/orders">
+        <i class="fa-solid fa-receipt"></i><span>订单管理</span>
+    </a>
+    @if (isAdmin)
+    {
+        <div class="admin-nav-section">商品与库存</div>
+        <a class="admin-nav-link @(path.StartsWith("/admin/categories") ? "active" : "")" href="/admin/categories"><i class="fa-solid fa-layer-group"></i><span>分类管理</span></a>
+        <a class="admin-nav-link @(path.StartsWith("/admin/products") ? "active" : "")" href="/admin/products"><i class="fa-solid fa-box-open"></i><span>商品管理</span></a>
+        <a class="admin-nav-link @(path.StartsWith("/admin/skus") ? "active" : "")" href="/admin/skus"><i class="fa-solid fa-barcode"></i><span>SKU 管理</span></a>
+        <a class="admin-nav-link @(path.StartsWith("/admin/inventory/warnings") ? "active" : "")" href="/admin/inventory/warnings"><i class="fa-solid fa-triangle-exclamation"></i><span>库存预警</span></a>
+        <a class="admin-nav-link @(path.StartsWith("/admin/inventory/logs") ? "active" : "")" href="/admin/inventory/logs"><i class="fa-solid fa-clock-rotate-left"></i><span>库存日志</span></a>
+
+        <div class="admin-nav-section">营销与服务</div>
+        <a class="admin-nav-link @(path.StartsWith("/admin/coupons") ? "active" : "")" href="/admin/coupons"><i class="fa-solid fa-ticket"></i><span>优惠券</span></a>
+        <a class="admin-nav-link @(path.StartsWith("/admin/reviews") ? "active" : "")" href="/admin/reviews"><i class="fa-solid fa-star"></i><span>评价审核</span></a>
+        <a class="admin-nav-link @(path.StartsWith("/admin/statistics") ? "active" : "")" href="/admin/statistics"><i class="fa-solid fa-chart-line"></i><span>统计报表</span></a>
+
+        <div class="admin-nav-section">系统治理</div>
+        <a class="admin-nav-link @(path.StartsWith("/admin/users") ? "active" : "")" href="/admin/users"><i class="fa-solid fa-users"></i><span>用户管理</span></a>
+        <a class="admin-nav-link @(path.StartsWith("/admin/permissions") ? "active" : "")" href="/admin/permissions"><i class="fa-solid fa-key"></i><span>权限管理</span></a>
+        <a class="admin-nav-link @(path.StartsWith("/admin/operation-logs") ? "active" : "")" href="/admin/operation-logs"><i class="fa-solid fa-shield-halved"></i><span>操作日志</span></a>
+    }
+</nav>

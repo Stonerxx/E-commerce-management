@@ -59,15 +59,21 @@
                     orderCounts: [],
                     salesAmounts: []
                 },
-                chartInstance: null
+                chartInstance: null,
+                themeChangeHandler: null
             };
         },
         mounted() {
             this.refreshAll();
             window.addEventListener("resize", this.resizeChart);
+            this.themeChangeHandler = () => this.renderChart();
+            window.addEventListener("app:theme-changed", this.themeChangeHandler);
         },
         beforeUnmount() {
             window.removeEventListener("resize", this.resizeChart);
+            if (this.themeChangeHandler) {
+                window.removeEventListener("app:theme-changed", this.themeChangeHandler);
+            }
             if (this.chartInstance) {
                 this.chartInstance.dispose();
                 this.chartInstance = null;
@@ -171,9 +177,15 @@
                 }
 
                 const hasData = this.trendData.dates.length > 0;
+                const dark = window.appTheme?.current() === "dark";
+                const textColor = dark ? "#a2a8bb" : "#687086";
+                const gridColor = dark ? "#303344" : "#e2e5ef";
                 this.chartInstance.setOption({
+                    backgroundColor: "transparent",
+                    color: [dark ? "#818cf8" : "#4f46e5", dark ? "#34d399" : "#059669"],
+                    textStyle: { color: textColor },
                     tooltip: { trigger: "axis" },
-                    legend: { top: 0 },
+                    legend: { top: 0, textStyle: { color: textColor } },
                     grid: {
                         left: "3%",
                         right: "4%",
@@ -183,11 +195,13 @@
                     },
                     xAxis: {
                         type: "category",
-                        data: hasData ? this.trendData.dates : ["暂无数据"]
+                        data: hasData ? this.trendData.dates : ["暂无数据"],
+                        axisLabel: { color: textColor },
+                        axisLine: { lineStyle: { color: gridColor } }
                     },
                     yAxis: [
-                        { type: "value", name: "订单数" },
-                        { type: "value", name: "销售额" }
+                        { type: "value", name: "订单数", nameTextStyle: { color: textColor }, axisLabel: { color: textColor }, splitLine: { lineStyle: { color: gridColor } } },
+                        { type: "value", name: "销售额", nameTextStyle: { color: textColor }, axisLabel: { color: textColor }, splitLine: { show: false } }
                     ],
                     series: [
                         {
@@ -203,7 +217,7 @@
                             data: hasData ? this.trendData.salesAmounts : [0]
                         }
                     ]
-                });
+                }, true);
             },
 
             resizeChart() {
@@ -218,7 +232,7 @@
             },
 
             formatDateInput(date) {
-                return date.toISOString().slice(0, 10);
+                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
             },
 
             formatTrendDate(value) {

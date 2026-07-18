@@ -3,125 +3,168 @@
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
     var isCustomer = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.User);
     var isAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
-    var canUseAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Service) || isAdmin;
+    var isService = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Service);
+    var userName = User.Identity?.Name ?? "新朋友";
+    var homeRole = isAdmin ? "admin" : isService ? "service" : isCustomer ? "customer" : "guest";
+    var loadCatalog = !isAuthenticated || isCustomer;
 }
 
-<div class="home-page py-4">
-    <section class="border rounded bg-light p-4 p-lg-5 mb-4">
-        <div class="row align-items-center g-4">
-            <div class="col-lg-8">
-                <p class="text-uppercase text-muted small fw-semibold mb-2">ECommerce Management</p>
-                <h1 class="display-6 fw-semibold mb-3">电商购物平台</h1>
-                <p class="lead text-muted mb-0">
-                    服务器部署成功后可以从这里进入当前账号可用的页面。
-                    普通用户看到购物流程和地址管理，客服和管理员看到后台入口。
-                </p>
-            </div>
-            <div class="col-lg-4">
-                <div class="d-grid gap-2">
-                    @if (!isAuthenticated)
-                    {
-                        <a class="btn btn-primary btn-lg" href="/account/login">登录演示账号</a>
-                        <a class="btn btn-outline-success btn-lg" href="/account/register">注册</a>
-                    }
-                    @if (isCustomer)
-                    {
-                        <a class="btn btn-primary btn-lg" href="/cart">进入购物车</a>
-                        <a class="btn btn-outline-primary btn-lg" href="/orders">查看我的订单</a>
-                        <a class="btn btn-outline-primary btn-lg" href="/addresses">管理收货地址</a>
-                    }
-                    @if (canUseAdmin)
-                    {
-                        <a class="btn btn-primary btn-lg" href="/admin/orders">后台订单管理</a>
-                        <a class="btn btn-outline-secondary btn-lg" href="/admin">后台首页</a>
-                    }
+<div id="homeApp" class="home-page" v-cloak data-role="@homeRole" data-load-catalog="@loadCatalog.ToString().ToLowerInvariant()">
+    @if (!isAuthenticated)
+    {
+        <section class="home-hero">
+            <div class="home-hero-content">
+                <span class="hero-badge"><i class="bi bi-stars"></i> 精选好物，简单放心</span>
+                <h1 class="mb-4">让每一次挑选，<br />都更值得。</h1>
+                <p class="lead mb-4">发现热销商品、真实评价与透明库存，从浏览到收货，每一步都有清晰反馈。</p>
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-primary btn-lg rounded-pill px-4" href="/products">开始选购 <i class="bi bi-arrow-right ms-1"></i></a>
+                    <a class="btn btn-outline-primary btn-lg rounded-pill px-4" href="/account/register">免费注册</a>
+                </div>
+                <div class="d-flex flex-wrap gap-4 mt-4 small text-muted">
+                    <span><i class="bi bi-check-circle-fill text-success me-1"></i> 实时库存</span>
+                    <span><i class="bi bi-check-circle-fill text-success me-1"></i> 优惠券抵扣</span>
+                    <span><i class="bi bi-check-circle-fill text-success me-1"></i> 物流追踪</span>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <div class="row g-3 mb-4">
-        @if (isCustomer)
-        {
-            <div class="col-md-6 col-xl-3">
-                <div class="border rounded p-3 h-100 bg-white">
-                    <h2 class="h5">前台用户</h2>
-                    <p class="text-muted small">面向普通用户的购物、结算、地址和订单页面。</p>
-                    <div class="d-grid gap-2">
-                        <a class="btn btn-outline-primary" href="/cart">购物车</a>
-                        <a class="btn btn-outline-primary" href="/orders">我的订单</a>
-                        <a class="btn btn-outline-primary" href="/addresses">我的地址</a>
+        <section class="home-section">
+            <div class="home-section-heading">
+                <div><div class="page-kicker">SHOP BY CATEGORY</div><h2 class="h3 mb-0">逛逛热门分类</h2></div>
+                <a class="btn btn-sm btn-link text-decoration-none" href="/products">查看全部 <i class="bi bi-arrow-right"></i></a>
+            </div>
+            <div class="d-flex flex-wrap gap-2" v-if="categories.length">
+                <a v-for="category in categories" v-bind:key="category.categoryId"
+                   v-bind:href="'/products?categoryId=' + category.categoryId" class="btn btn-outline-primary rounded-pill px-3">
+                    <i class="bi bi-grid me-1"></i>{{ category.name }}
+                </a>
+            </div>
+            <div v-else-if="catalogLoading" class="d-flex gap-2">
+                <span class="placeholder col-2 rounded-pill" v-for="n in 4" v-bind:key="n" style="height: 38px"></span>
+            </div>
+        </section>
+    }
+    else if (isCustomer)
+    {
+        <section class="home-hero">
+            <div class="home-hero-content">
+                <span class="hero-badge"><i class="bi bi-person-heart"></i> @userName 的专属首页</span>
+                <h1 class="mb-4">欢迎回来，<br />继续发现心仪好物。</h1>
+                <p class="lead mb-4">你的购物、订单、优惠券和地址都已集中到这里。今日推荐依据综合热度实时呈现。</p>
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-primary btn-lg rounded-pill px-4" href="/products?sortBy=hot">查看推荐</a>
+                    <a class="btn btn-outline-primary btn-lg rounded-pill px-4" href="/orders">追踪订单</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="home-section">
+            <div class="home-section-heading"><div><div class="page-kicker">MY SERVICES</div><h2 class="h3 mb-0">我的服务</h2></div></div>
+            <div class="row g-3">
+                <div class="col-6 col-lg-3">
+                    <a class="quick-action-card" href="/cart"><span class="quick-action-icon"><i class="bi bi-cart3"></i></span><span><strong class="d-block">购物车</strong><small class="text-muted">核对选购商品</small></span></a>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <a class="quick-action-card" href="/orders"><span class="quick-action-icon"><i class="bi bi-receipt"></i></span><span><strong class="d-block">我的订单</strong><small class="text-muted">支付与物流进度</small></span></a>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <a class="quick-action-card" href="/coupons"><span class="quick-action-icon"><i class="bi bi-ticket-perforated"></i></span><span><strong class="d-block">优惠券</strong><small class="text-muted">领取并查看状态</small></span></a>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <a class="quick-action-card" href="/addresses"><span class="quick-action-icon"><i class="bi bi-geo-alt"></i></span><span><strong class="d-block">收货地址</strong><small class="text-muted">管理默认地址</small></span></a>
+                </div>
+            </div>
+        </section>
+    }
+    else if (isService && !isAdmin)
+    {
+        <section class="role-workspace">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-7">
+                    <div class="page-kicker text-info">CUSTOMER SERVICE</div>
+                    <h1 class="display-5 fw-bold mb-3">客服工作台</h1>
+                    <p class="lead text-muted mb-4">你好，@userName。今天从待处理订单开始，快速核实状态、维护发货信息并跟进物流。</p>
+                    <a class="btn btn-light btn-lg rounded-pill px-4" href="/admin/orders">进入订单队列 <i class="bi bi-arrow-right ms-1"></i></a>
+                </div>
+                <div class="col-lg-5">
+                    <div class="row g-3">
+                        <div class="col-12"><a class="quick-action-card" href="/admin/orders"><span class="quick-action-icon"><i class="bi bi-headset"></i></span><span><strong class="d-block">订单服务</strong><small class="text-muted">查询、取消与物流维护</small></span></a></div>
+                        <div class="col-12"><a class="quick-action-card" href="/admin"><span class="quick-action-icon"><i class="bi bi-speedometer2"></i></span><span><strong class="d-block">服务概览</strong><small class="text-muted">查看今日订单与待办</small></span></a></div>
                     </div>
                 </div>
             </div>
-        }
-
-        @if (canUseAdmin)
-        {
-            <div class="col-md-6 col-xl-3">
-                <div class="border rounded p-3 h-100 bg-white">
-                    <h2 class="h5">后台管理</h2>
-                    <p class="text-muted small">面向客服和管理员的后台入口。</p>
-                    <div class="d-grid gap-2">
-                        <a class="btn btn-outline-secondary" href="/admin">后台首页</a>
-                        <a class="btn btn-outline-secondary" href="/admin/orders">订单管理</a>
+        </section>
+    }
+    else if (isAdmin)
+    {
+        <section class="role-workspace">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-7">
+                    <div class="page-kicker text-warning">ADMIN CONSOLE</div>
+                    <h1 class="display-5 fw-bold mb-3">管理员驾驶舱</h1>
+                    <p class="lead text-muted mb-4">你好，@userName。销售、订单、库存和系统治理入口已按运营流程集中编排。</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a class="btn btn-light btn-lg rounded-pill px-4" href="/admin">查看数据概览</a>
+                        <a class="btn btn-outline-light btn-lg rounded-pill px-4" href="/admin/statistics">统计报表</a>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="row g-3">
+                        <div class="col-12"><a class="quick-action-card" href="/admin/products"><span class="quick-action-icon"><i class="bi bi-box-seam"></i></span><span><strong class="d-block">商品与库存</strong><small class="text-muted">商品、SKU 和库存预警</small></span></a></div>
+                        <div class="col-12"><a class="quick-action-card" href="/admin/operation-logs"><span class="quick-action-icon"><i class="bi bi-shield-check"></i></span><span><strong class="d-block">权限与审计</strong><small class="text-muted">用户角色和操作日志</small></span></a></div>
                     </div>
                 </div>
             </div>
-        }
+        </section>
+    }
 
-        @if (isAdmin)
-        {
-            <div class="col-md-6 col-xl-3">
-                <div class="border rounded p-3 h-100 bg-white">
-                    <h2 class="h5">权限审计</h2>
-                    <p class="text-muted small">member2 提供的用户、角色、权限和操作日志入口。</p>
-                    <div class="d-grid gap-2">
-                        <a class="btn btn-outline-secondary" href="/admin/users">用户管理</a>
-                        <a class="btn btn-outline-secondary" href="/admin/permissions">权限管理</a>
-                        <a class="btn btn-outline-secondary" href="/admin/operation-logs">操作日志</a>
-                    </div>
+    @if (loadCatalog)
+    {
+        <section class="home-section">
+            <div class="home-section-heading">
+                <div><div class="page-kicker">TRENDING NOW</div><h2 class="h3 mb-0">@((isCustomer ? "今日为你推荐" : "大家都在买"))</h2></div>
+                <a class="btn btn-sm btn-link text-decoration-none" href="/products?sortBy=hot">更多商品 <i class="bi bi-arrow-right"></i></a>
+            </div>
+
+            <div v-if="catalogError" class="alert alert-warning d-flex justify-content-between align-items-center gap-3">
+                <span><i class="bi bi-exclamation-triangle me-2"></i>{{ catalogError }}</span>
+                <button class="btn btn-sm btn-outline-warning" type="button" v-on:click="loadCatalog">重试</button>
+            </div>
+            <div v-else-if="catalogLoading" class="row g-3">
+                <div class="col-6 col-md-4 col-xl-3" v-for="n in 8" v-bind:key="n">
+                    <div class="surface-card overflow-hidden"><div class="placeholder col-12" style="aspect-ratio:1/1"></div><div class="p-3"><span class="placeholder col-8"></span><span class="placeholder col-5 mt-3"></span></div></div>
                 </div>
             </div>
-        }
-
-        @if (!isAuthenticated)
-        {
-            <div class="col-md-6 col-xl-3">
-                <div class="border rounded p-3 h-100 bg-white">
-                    <h2 class="h5">账号入口</h2>
-                    <p class="text-muted small">登录和注册页面仍保留统一入口。</p>
-                    <div class="d-grid gap-2">
-                        <a class="btn btn-outline-success" href="/account/login">登录</a>
-                        <a class="btn btn-outline-success" href="/account/register">注册</a>
-                    </div>
+            <div v-else-if="hotProducts.length" class="row g-3">
+                <div v-for="product in hotProducts" v-bind:key="product.productId" class="col-6 col-md-4 col-xl-3">
+                    <a v-bind:href="'/products/' + product.productId" class="commerce-card text-decoration-none h-100 d-block">
+                        <div class="product-image-wrap">
+                            <img v-bind:src="product.mainImage" v-bind:alt="product.name" loading="lazy" />
+                            <span v-if="product.status === 2" class="badge text-bg-warning position-absolute top-0 end-0 m-2">预售</span>
+                        </div>
+                        <div class="p-3">
+                            <div class="fw-semibold text-truncate mb-2" v-bind:title="product.name">{{ product.name }}</div>
+                            <div class="d-flex justify-content-between align-items-end gap-2">
+                                <span class="price-current">¥{{ formatMoney(product.priceMin) }}</span>
+                                <span class="small text-muted">已售 {{ product.salesCount }}</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-1 mt-2 small"><span class="rating-stars"><i class="bi bi-star-fill"></i></span><span>{{ Number(product.avgRating || 0).toFixed(1) }}</span><span class="text-muted">综合推荐</span></div>
+                        </div>
+                    </a>
                 </div>
             </div>
-        }
-
-        <div class="col-md-6 col-xl-3">
-            <div class="border rounded p-3 h-100 bg-white">
-                <h2 class="h5">系统检查</h2>
-                <p class="text-muted small">部署后优先确认服务和数据库连接。</p>
-                <div class="d-grid gap-2">
-                    <a class="btn btn-outline-dark" href="/health">健康检查</a>
-                    <a class="btn btn-outline-dark" href="/api/v1/system/db-check">数据库检查</a>
-                </div>
+            <div v-else class="surface-card empty-state">
+                <div class="empty-state-icon"><i class="bi bi-bag"></i></div>
+                <h3 class="h5">商品正在上架中</h3>
+                <p class="text-muted">稍后再来看看，或进入商品中心浏览。</p>
+                <a class="btn btn-primary" href="/products">进入商品中心</a>
             </div>
-        </div>
-    </div>
-
-    <section class="border rounded p-3 mb-4">
-        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
-            <div>
-                <h2 class="h5 mb-1">开发文档</h2>
-                <p class="text-muted mb-0">需要确认分支、接口、权限和页面路由时，可以直接打开这些文档。</p>
-            </div>
-            <div class="d-flex flex-wrap gap-2 align-items-start">
-                <a class="btn btn-sm btn-outline-secondary" href="/docs/team-guide">组员开工指南</a>
-                <a class="btn btn-sm btn-outline-secondary" href="/docs/development-spec">开发规范</a>
-                <a class="btn btn-sm btn-outline-secondary" href="/docs/demo-flow">演示流程</a>
-            </div>
-        </div>
-    </section>
+        </section>
+    }
 </div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/home.js" asp-append-version="true"></script>
+}
