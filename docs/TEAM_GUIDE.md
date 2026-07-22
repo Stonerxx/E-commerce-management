@@ -31,6 +31,7 @@ src/ECommerce.Domain
 src/ECommerce.Infrastructure
 src/ECommerce.Shared
 tests/ECommerce.Tests
+tests/ECommerce.OracleIntegrationTests
 ```
 
 常用子目录也已经预建好：
@@ -115,7 +116,7 @@ http://localhost:5052/docs/development-spec
 
 ## 4. 当前阶段是什么状态
 
-现在项目处在“业务闭环已接通、等待环境联调与发布验收”的阶段。
+当前业务闭环已接通，进入演示回归和 `main` 发布验收阶段。
 
 已完成：
 
@@ -135,12 +136,12 @@ http://localhost:5052/docs/development-spec
 
 | 内容 | 当前表现 | 负责分支 |
 | --- | --- | --- |
-| 登录注册 | 已接入 member2 真实 AuthService；演示账号使用 PBKDF2 seed 密码哈希 | `feat-member2-user-permission-address-log` |
-| 商品分类/SKU/库存 | 已接入 member3 数据库实现 | `feat-member3-product-category-sku-inventory` |
-| 购物车/订单 | 已接入 member4 核心流程 | `feat-member4-cart-order-core` |
-| 支付/优惠券/物流/评价 | 持久化模拟支付、原子核销、物流轨迹和评价审核均已接通 | `feat-member1-foundation-oracle-deploy` |
-| 统计/导出/后台首页 | 已接入 member6 统计 Dashboard 和 Excel 导出基础 | `feat-member6-stats-export-ui-docs` |
-| 部署 | 配置样例已提供，还需要真实服务器环境变量、访问验证和部署截图 | `feat-member1-foundation-oracle-deploy` |
+| 登录注册 | 真实 `AuthService`；演示账号使用 PBKDF2 seed 密码哈希 | 账号登录、角色权限 |
+| 商品分类/SKU/库存 | Oracle 持久化、库存预警和变动日志已接通 | 商品、SKU、库存页面与 API |
+| 购物车/订单 | 预览、创建、取消、确认和状态日志已接通 | 用户订单与后台订单 |
+| 支付/优惠券/物流/评价 | 持久化模拟支付、原子核销、物流轨迹和评价审核已接通 | 前后台业务闭环 |
+| 统计/导出/后台首页 | 日/月统计、Dashboard、订单与库存 Excel 导出已接通 | 后台统计和导出 |
+| 部署 | GitHub Actions、systemd、Nginx 和运行时环境变量样例已提供 | `main` 自动部署与线上健康检查 |
 
 技术负责人验收骨架时，看这几项即可：
 
@@ -173,26 +174,28 @@ demo_buyer    USER
 src/ECommerce.Web/appsettings.json
 ```
 
-不要提交真实数据库密码，也不要把真实密码写进 `appsettings.json`。数据库用户按用途区分：
+不要提交真实数据库密码，也不要把真实密码写进 `appsettings.json`。项目已经创建两个 Oracle 用户（Schema）：
 
 | 用户 | 用途 |
 | --- | --- |
-| `ECOMMERCE_DEV` | 开发联调。组员在自己电脑上运行后端时连接这个用户。 |
-| `ECOMMERCE_DEMO` | 最终演示。部署演示环境时连接这个用户，避免演示数据被开发过程污染。 |
+| `ECOMMERCE_DEV` | 日常开发联调，以及需要写入临时数据的 Oracle 集成测试。 |
+| `ECOMMERCE_DEMO` | 最终演示和业务服务器部署，以及演示基线的只读检查。 |
 
-后端代码不需要因为“本地数据库”或“远程数据库”而修改；区别只在连接字符串的 `Data Source`。开发时 `Data Source` 写服务器 IP 或域名，服务器部署时可以写 `127.0.0.1`、内网地址或服务器域名。
+项目没有单独的 `ECOMMERCE_TEST` 用户，也不要求新增。测试项目中的 `DEV`、`DEMO` 环境变量应分别指向上面两个现有用户。
+
+后端代码不需要因为“本地数据库”或“远程数据库”而修改；区别只在连接字符串的 `Data Source`。本机连接云数据库时填写服务器公网 IP，应用和 Oracle 同机部署时才可写 `127.0.0.1`。
 
 推荐用环境变量：
 
 ```powershell
-$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEV;Password=我们的开发库密码;Data Source=数据库服务器IP:1521/服务名"
+$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEV;Password=数据库密码;Data Source=数据库服务器IP:1521/服务名"
 dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj
 ```
 
-演示环境示例：
+业务服务器或最终演示环境使用：
 
 ```powershell
-$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEMO;Password=我们的演示库密码;Data Source=127.0.0.1:1521/服务名"
+$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEMO;Password=演示库密码;Data Source=127.0.0.1:1521/服务名"
 ```
 
 检查 Oracle 是否连通：
@@ -201,7 +204,7 @@ $env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEMO;Password=我们的演示
 Invoke-RestMethod http://localhost:5052/api/v1/system/db-check
 ```
 
-如果没有配置真实连接串，接口会返回 `configured: false`，这是正常提示，不是程序崩溃。配置正确后，期望看到 `connected: true`。同时检查 `sessionUser` 和 `currentSchema`：开发时应该是 `ECOMMERCE_DEV`，演示时应该是 `ECOMMERCE_DEMO`。
+如果没有配置真实连接串，接口会返回 `configured: false`，这是正常提示，不是程序崩溃。配置正确后，期望看到 `connected: true`；开发时 `sessionUser`、`currentSchema` 应为 `ECOMMERCE_DEV`，演示服务器应为 `ECOMMERCE_DEMO`。
 
 数据库初始化脚本：
 
@@ -210,7 +213,7 @@ migration/init_database.sql
 migration/database_objects.sql
 ```
 
-第 1 人做 Oracle 时按这个顺序验收：
+初始化或重建 Oracle Schema 时按这个顺序验收：
 
 1. 本地 Oracle 建库或确认服务器 Oracle 可连。
 2. 执行 `migration/init_database.sql`。
@@ -280,16 +283,16 @@ docs/DEVELOPMENT_SPEC.md
 提交信息格式：
 
 ```text
-<type>(<scope>)：中文说明
+<type>(<scope>): 中文说明
 ```
 
 例子：
 
 ```text
-feat(product)：新增商品分类维护页面
-fix(order)：修复取消订单未释放锁定库存
-docs(workflow)：整理组员开工文档
-test(cart)：新增购物车数量校验测试
+feat(product): 新增商品分类维护页面
+fix(order): 修复取消订单未释放锁定库存
+docs(workflow): 整理组员开工文档
+test(cart): 新增购物车数量校验测试
 ```
 
 常用 `type`：
@@ -316,18 +319,19 @@ git status
 
 ```powershell
 git add 相关文件
-git commit -m "feat(product)：新增商品分类维护页面"
+git commit -m "feat(product): 新增商品分类维护页面"
 git push origin 当前分支名
 ```
 
 ## 9. 合并流程
 
-`main` 分支受保护，不能直接推送。功能完成后：
+`main` 分支受保护，不能直接推送。成员功能完成后先进入 `merging` 统一回归，再由 `merging` 向 `main` 提交 PR：
 
 1. 推送自己的 `feat-member...` 分支。
-2. 在 GitHub 创建 Pull Request。
-3. PR 描述写清楚完成内容、测试结果、截图位置。
-4. 由组长或负责集成的人检查后合并。
+2. 由集成人员依次合入 `merging`，每次解决冲突后执行构建和测试。
+3. `merging` 完成前后台、Oracle 和演示流程回归。
+4. 从 `merging` 向 `main` 创建 PR，描述完成内容、测试结果和截图位置。
+5. 审查通过后合并到 `main`，触发业务服务器部署。
 
 合并顺序建议：
 

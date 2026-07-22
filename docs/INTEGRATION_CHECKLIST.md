@@ -1,4 +1,4 @@
-# Member1-6 统合集成清单
+# 最终统合与发布检查清单
 
 本文用于 `merging` 统合分支。每次只合并一个成员分支，合并后先构建、测试、检查入口，再继续下一个分支。
 
@@ -12,7 +12,7 @@ merging
 
 基础规则：
 
-- `merging` 从最新 `main` 或已同步 `main` 的 member1 基础分支创建。
+- `merging` 从最新 `main` 创建，并在合并成员分支前先同步远端。
 - 成员分支不要互相合并，统一由 `merging` 做最终整合。
 - 每次合并前先 `git fetch origin --prune`。
 - 每次只处理一个成员分支，冲突解决、构建、测试通过后再合下一个。
@@ -29,14 +29,14 @@ merging
 6. feat-member6-stats-export-ui-docs
 ```
 
-说明：member4 已合入 `main` 时，不需要重复合 member4；只需要确认它和后续真实服务实现的接线。
+已在目标基线中的提交不要重复合并；用 `git log --graph --oneline --all` 确认祖先关系后再继续。
 
 ## 2. 每次合并命令
 
 ```powershell
 git switch merging
 git fetch origin --prune
-git merge origin/目标成员分支
+git merge --no-ff origin/目标成员分支
 dotnet restore ECommerce.sln
 dotnet build ECommerce.sln -c Release --no-restore
 dotnet test ECommerce.sln -c Release --no-build --no-restore
@@ -46,16 +46,16 @@ git status
 提交信息使用项目规范：
 
 ```text
-feat(foundation)：统合成员基础功能
-fix(order)：修复订单统合冲突
-docs(workflow)：更新统合集成清单
+feat(foundation): 统合成员基础功能
+fix(order): 修复订单统合冲突
+docs(workflow): 更新统合集成清单
 ```
 
 ## 3. 当前模块状态
 
 | 成员 | 分支 | 模块 | 统合重点 | 状态 |
 | --- | --- | --- | --- | --- |
-| member1 | `feat-member1-foundation-oracle-deploy` | Oracle、部署、首页入口 | 环境变量、systemd、GitHub Actions、默认页导航 | 已有基础 |
+| member1 | `feat-member1-foundation-oracle-deploy` | Oracle、部署、首页入口 | 环境变量、systemd、GitHub Actions、默认页导航 | 已统合 |
 | member2 | `feat-member2-user-permission-address-log` | 用户、权限、地址、操作日志 | Cookie 登录、角色、地址服务、日志服务 | 已统合 |
 | member3 | `feat-member3-product-category-sku-inventory` | 分类、商品、SKU、库存 | 商品 API、SKU 服务、库存扣减/回滚 | 已统合 |
 | member4 | `feat-member4-cart-order-core` | 购物车、订单 | 事务、订单状态流转 | 已统合 |
@@ -101,38 +101,13 @@ migration/init_database.sql
 - Service 实现方法签名。
 - 测试里的构造参数和断言。
 
-### 5.1 member2/member3 预审记录
-
-预审时间：2026-07-09。只读审查命令：
-
-```powershell
-git fetch origin --prune
-git diff --name-status HEAD..origin/feat-member2-user-permission-address-log -- src/ECommerce.Application/DTOs src/ECommerce.Application/Services src/ECommerce.Shared/Constants/AuthConstants.cs migration/init_database.sql
-git diff --name-status HEAD..origin/feat-member3-product-category-sku-inventory -- src/ECommerce.Application/DTOs src/ECommerce.Application/Services src/ECommerce.Shared/Constants/AuthConstants.cs migration/init_database.sql
-```
-
-member2 当前公共文件差异：
-
-- 新增 `src/ECommerce.Application/DTOs/PermissionDtos.cs`。
-- 新增 `src/ECommerce.Application/Services/IPermissionService.cs`。
-- 未改 `AuthConstants.cs` 和 `migration/init_database.sql`。
-- 初判低风险；合并时重点确认角色 ID 类型使用 `int` 是否和数据库表、真实 Repository 一致。
-
-member3 当前公共文件差异：
-
-- 修改 `src/ECommerce.Application/Services/ISkuService.cs`，新增 `DeleteByProductAsync(long productId, CancellationToken cancellationToken = default)`。
-- 修改 `migration/init_database.sql`：`CATEGORY`、`PRODUCT_SPEC`、`SKU` 增加创建/更新时间字段；`INVENTORY_LOG.change_type` 扩展 `ORDER_LOCK`、`ORDER_RELEASE`、`ORDER_DEDUCT`。
-- 统合期间曾在临时 `MockSkuService` 中预先补同名方法；当前已由真实 `SkuService` 接管。
-- 已在 `InventoryChangeType` 中预先补 `OrderLock`、`OrderRelease`、`OrderDeduct` 常量。
-- 合并时重点确认 `seed_demo_data.sql` 的 `SKU`、`PRODUCT_SPEC`、`CATEGORY` 插入语句是否依赖默认时间字段；当前字段有默认值，理论上无需补列。
-
 ## 6. 数据库统合检查
 
 每合一个成员分支后检查：
 
 - 是否修改 `migration/init_database.sql`。
 - 是否新增表、字段、索引、约束、触发器或序列。
-- 是否影响已有 DEV/DEMO 数据。
+- 是否影响当前开发或演示 Schema 中的已有数据。
 - 是否需要 seed 数据支撑演示。
 - 是否包含真实密码或本地连接字符串。
 
@@ -142,7 +117,7 @@ member3 当前公共文件差异：
 SELECT COUNT(*) FROM USER_TABLES;
 ```
 
-DEV 和 DEMO 用户都应完成同一套结构初始化或迁移。
+`ECOMMERCE_DEV` 与 `ECOMMERCE_DEMO` 都应包含完整的 24 张表和数据库对象：前者供开发联调及可写集成测试使用，后者供最终演示、业务服务器和只读基线检查使用。项目不创建额外的 `ECOMMERCE_TEST` 用户。
 
 演示/联调用测试数据单独放在：
 
@@ -173,11 +148,7 @@ demo_user     USER
 demo_buyer    USER
 ```
 
-member2 合入真实注册登录后必须处理：
-
-- `AccountController` 已调用真实 `IAuthService`。
-- `seed_demo_data.sql` 中的演示账号已替换为真实 PBKDF2 密码哈希。
-- 登录后应写入 `NameIdentifier`、`Name`、`Role` claims。
+登录链路验收时确认 `AccountController` 调用真实 `IAuthService`，演示账号使用 PBKDF2 哈希，并写入 `NameIdentifier`、`Name`、`Role` claims。
 
 最终统合前必须运行：
 
@@ -195,6 +166,10 @@ rg -n "TEMP_DEMO_" src docs README.md
 GET /
 GET /account/login
 GET /account/register
+GET /products
+GET /products/{productId}
+GET /addresses
+GET /coupons
 GET /cart
 GET /orders
 GET /orders/{orderId}
@@ -207,6 +182,16 @@ GET /payment/{orderId}
 ```text
 GET /admin
 GET /admin/dashboard
+GET /admin/statistics
+GET /admin/users
+GET /admin/permissions
+GET /admin/operation-logs
+GET /admin/products
+GET /admin/skus
+GET /admin/inventory/warnings
+GET /admin/inventory/logs
+GET /admin/coupons
+GET /admin/reviews
 GET /admin/orders
 GET /admin/orders/{orderId}
 ```
@@ -225,7 +210,7 @@ GET /docs/demo-flow
 - 首页、登录、注册、健康检查公开。
 - 购物车、我的订单、创建订单使用 `CustomerOnly`。
 - 后台订单和后台首页使用 `ServiceOrAdmin`。
-- 管理员专属统计、导出、用户管理使用 `AdminOnly`。
+- 管理员专属统计、导出、用户权限、商品库存、优惠券、评价和审计日志使用 `AdminOnly`。
 - 导航和首页只展示当前角色可用入口：`USER` 显示购物车和我的订单，`SERVICE`/`ADMIN` 显示后台入口，未登录显示登录和注册入口。
 
 ## 9. 页面和 API 联调检查
@@ -235,10 +220,15 @@ GET /docs/demo-flow
 ```text
 /
 /account/login
+/products
+/addresses
+/coupons
 /cart
 /orders
 /admin
 /admin/orders
+/admin/statistics
+/admin/operation-logs
 /health
 /api/v1/system/db-check
 ```
@@ -274,16 +264,16 @@ dotnet test ECommerce.sln -c Release --no-build --no-restore
 systemctl status ecommerce --no-pager
 journalctl -u ecommerce -n 100 --no-pager
 curl -i http://127.0.0.1:5000/
-curl -i http://127.0.0.1:5000/health
+curl -i http://127.0.0.1:5000/health/ready
 curl -i http://127.0.0.1:5000/api/v1/system/db-check
 ```
 
 浏览器检查：
 
 ```text
-http://服务器IP/
-http://服务器IP/account/login
-http://服务器IP/admin/orders
+http://服务器公网IP/
+http://服务器公网IP/account/login
+http://服务器公网IP/admin/orders
 ```
 
 如果发布失败，优先看：
@@ -307,4 +297,4 @@ http://服务器IP/admin/orders
 - 支付记录、物流记录、评价。
 - 后台统计和导出样例数据。
 
-当前基础演示数据脚本已覆盖上述核心对象，后续成员合并真实功能后按实际字段继续维护 `migration/seed_demo_data.sql`。
+`migration/seed_demo_data.sql` 已覆盖上述核心对象；数据库字段或业务状态变化时，必须在同一次提交中同步维护该脚本。
