@@ -24,6 +24,11 @@ public sealed class AccountController : Controller
     [AllowAnonymous]
     public IActionResult Login([FromQuery] string? returnUrl = null)
     {
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return RedirectAfterAuthentication();
+        }
+
         SetLoginViewData(returnUrl);
         return View();
     }
@@ -65,6 +70,11 @@ public sealed class AccountController : Controller
     [AllowAnonymous]
     public IActionResult Register()
     {
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return RedirectAfterAuthentication();
+        }
+
         return View();
     }
 
@@ -144,6 +154,13 @@ public sealed class AccountController : Controller
             || string.Equals(role, AuthConstants.Roles.Service, StringComparison.OrdinalIgnoreCase))
             ? "/admin"
             : "/";
+    }
+
+    private IActionResult RedirectAfterAuthentication()
+    {
+        return Redirect(User.IsInRole(AuthConstants.Roles.Admin) || User.IsInRole(AuthConstants.Roles.Service)
+            ? "/admin"
+            : "/");
     }
 
     private void SetLoginViewData(string? returnUrl)

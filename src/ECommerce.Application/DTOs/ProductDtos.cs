@@ -101,6 +101,29 @@ public sealed record SkuDto(
     int Status,
     int ProductStatus = 1);
 
+public sealed record AdminSkuQuery : PageQuery
+{
+    public long? SkuId { get; init; }
+
+    public string? Keyword { get; init; }
+
+    public int? Status { get; init; }
+
+    public bool LowStock { get; init; }
+}
+
+public sealed record AdminSkuListItemDto(
+    long SkuId,
+    long ProductId,
+    string ProductName,
+    string ProductImage,
+    string SpecDescJson,
+    decimal Price,
+    int Stock,
+    int LockedStock,
+    int WarningStock,
+    int Status);
+
 public sealed record ProductDetailDto(
     long ProductId,
     int CategoryId,
