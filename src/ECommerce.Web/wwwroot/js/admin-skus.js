@@ -8,6 +8,7 @@
             const keyword = ref('');
             const status = ref(null);
             const lowStock = ref(null);
+            const errorMsg = ref('');
 
             const pagination = ref({
                 currentPage: 1,
@@ -54,82 +55,50 @@
                 const pageNum = typeof page === 'number' && !isNaN(page) && page > 0 ? page : 1;
                 pagination.value.currentPage = pageNum;
                 loading.value = true;
+                errorMsg.value = '';
                 try {
-                    // 1. 加载所有商品用于展示名称
-                    const productList = [];
-                    let productPage = 1;
-                    while (true) {
-                        const resp = await fetch(`/api/v1/admin/products?pageIndex=${productPage}&pageSize=100`, {
-                            headers: { 'Accept': 'application/json' }
-                        });
-                        const data = await resp.json();
-                        if (data.success && data.data && data.data.items) {
-                            for (const p of data.data.items) productList.push(p);
-                            if (productPage >= data.data.totalPages || data.data.totalPages === 0) break;
-                            productPage++;
-                        } else break;
-                    }
-
-                    // 2. 加载每个商品的 SKU
-                    const allSkus = [];
-                    for (const product of productList) {
-                        const skuResp = await fetch(`/api/v1/admin/products/${product.productId}/skus`, {
-                            headers: { 'Accept': 'application/json' }
-                        });
-                        const skuData = await skuResp.json();
-                        if (skuData.success && skuData.data) {
-                            for (const sku of skuData.data) {
-                                allSkus.push({
-                                    skuId: sku.skuId,
-                                    productId: sku.productId,
-                                    productName: product.name,
-                                    specDesc: formatSpec(sku.specDescJson),
-                                    specDescJson: sku.specDescJson,
-                                    price: sku.price,
-                                    stock: sku.stock,
-                                    lockedStock: sku.lockedStock || 0,
-                                    warningStock: sku.warningStock || 0,
-                                    status: sku.status
-                                });
-                            }
-                        }
-                    }
-
-                    // 3. 过滤
-                    let filtered = allSkus;
-                    if (keyword.value) {
-                        const kw = keyword.value.toLowerCase();
-                        filtered = filtered.filter(r =>
-                            (r.productName && r.productName.toLowerCase().includes(kw)) ||
-                            (r.specDesc && r.specDesc.toLowerCase().includes(kw))
-                        );
-                    }
-                    if (status.value != null) filtered = filtered.filter(r => r.status === status.value);
-                    if (lowStock.value === 1) filtered = filtered.filter(
-                        r => r.stock - r.lockedStock <= r.warningStock);
-
-                    // 4. 分页（搜索或筛选后重置到第1页）
-                    const total = filtered.length;
-                    const totalPages = Math.max(1, Math.ceil(total / pagination.value.pageSize));
-                    const targetPage = Math.min(pageNum, totalPages);
-                    const start = (targetPage - 1) * pagination.value.pageSize;
-                    rows.value = filtered.slice(start, start + pagination.value.pageSize);
-                    pagination.value.total = total;
-                    pagination.value.totalPages = totalPages;
-                    pagination.value.currentPage = targetPage;
-
                     const hashMatch = /^#adjust-(\d+)$/.exec(window.location.hash);
-                    if (hashMatch) {
-                        const targetSkuId = Number(hashMatch[1]);
-                        const targetSku = allSkus.find(sku => sku.skuId === targetSkuId);
-                        if (targetSku) {
-                            openAdjustModal(targetSku);
-                            history.replaceState(null, '', window.location.pathname);
-                        }
+                    const params = new URLSearchParams({
+                        pageIndex: String(hashMatch ? 1 : pageNum),
+                        pageSize: String(hashMatch ? 1 : pagination.value.pageSize)
+                    });
+                    if (hashMatch) params.set('skuId', hashMatch[1]);
+                    if (keyword.value.trim()) params.set('keyword', keyword.value.trim());
+                    if (status.value != null) params.set('status', String(status.value));
+                    if (lowStock.value === 1) params.set('lowStock', 'true');
+
+                    const response = await fetch(`/api/v1/admin/skus?${params.toString()}`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const payload = await response.json();
+                    if (!response.ok || !payload.success || !payload.data) {
+                        throw new Error(payload.message || `请求失败（${response.status}）`);
+                    }
+
+                    const data = payload.data;
+                    rows.value = (data.items || []).map(sku => ({
+                        ...sku,
+                        price: Number(sku.price || 0),
+                        stock: Number(sku.stock || 0),
+                        lockedStock: Number(sku.lockedStock || 0),
+                        warningStock: Number(sku.warningStock || 0),
+                        specDesc: formatSpec(sku.specDescJson)
+                    }));
+                    pagination.value.currentPage = data.pageIndex || pageNum;
+                    pagination.value.pageSize = data.pageSize || pagination.value.pageSize;
+                    pagination.value.total = Number(data.totalCount || 0);
+                    pagination.value.totalPages = Number(data.totalPages || 0);
+
+                    if (hashMatch && rows.value.length === 1) {
+                        openAdjustModal(rows.value[0]);
+                        history.replaceState(null, '', window.location.pathname);
                     }
                 } catch (err) {
                     console.error('加载SKU失败:', err);
-                    alert('加载SKU失败：' + err.message);
+                    rows.value = [];
+                    pagination.value.total = 0;
+                    pagination.value.totalPages = 0;
+                    errorMsg.value = err.message || 'SKU 数据加载失败，请稍后重试';
                 } finally {
                     loading.value = false;
                 }
@@ -155,6 +124,13 @@
                 }
             }
 
+            function resetFilters() {
+                keyword.value = '';
+                status.value = null;
+                lowStock.value = null;
+                loadSkus(1);
+            }
+
             function openAdjustModal(row) {
                 adjustForm.value = {
                     skuId: row.skuId,
@@ -172,18 +148,20 @@
 
             async function submitAdjust() {
                 adjustError.value = '';
-                if (!adjustForm.value.changeQty || adjustForm.value.changeQty < 0) {
+                const quantity = Number(adjustForm.value.changeQty);
+                if (!Number.isFinite(quantity) || quantity < 0 || (adjustForm.value.changeType !== 3 && quantity === 0)) {
                     adjustError.value = '请输入有效的数量';
                     return;
                 }
-                if (adjustForm.value.changeType === 2 && adjustForm.value.changeQty > adjustForm.value.currentStock) {
+                if (adjustForm.value.changeType === 2 && quantity > adjustForm.value.currentStock) {
                     adjustError.value = '出库数量不能超过当前库存';
                     return;
                 }
                 adjusting.value = true;
                 try {
-                    let qty = adjustForm.value.changeQty;
+                    let qty = quantity;
                     if (adjustForm.value.changeType === 2) qty = -qty; // 出库传负数
+                    if (adjustForm.value.changeType === 3) qty = quantity - adjustForm.value.currentStock;
                     const resp = await fetch(`/api/v1/admin/skus/${adjustForm.value.skuId}/inventory-adjustments`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -211,9 +189,9 @@
             });
 
             return {
-                loading, rows, keyword, status, lowStock, pagination, pageNumbers,
+                loading, rows, keyword, status, lowStock, errorMsg, pagination, pageNumbers,
                 adjustForm, adjusting, adjustError,
-                loadSkus, toggleStatus, openAdjustModal, submitAdjust
+                loadSkus, resetFilters, toggleStatus, openAdjustModal, submitAdjust
             };
         }
     }).mount('#skusApp');
