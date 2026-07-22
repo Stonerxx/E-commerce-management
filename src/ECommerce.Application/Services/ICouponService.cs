@@ -7,6 +7,8 @@ public interface ICouponService
 {
     Task<PagedResult<CouponTemplateDto>> SearchTemplatesAsync(CouponTemplateQuery query, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<CouponTemplateDto>> GetAvailableTemplatesAsync(long userId, CancellationToken cancellationToken = default);
+
     Task<int> CreateTemplateAsync(CouponTemplateRequest request, long operatorId, CancellationToken cancellationToken = default);
 
     Task UpdateTemplateAsync(int templateId, CouponTemplateRequest request, long operatorId, CancellationToken cancellationToken = default);
@@ -19,5 +21,13 @@ public interface ICouponService
 
     Task<CouponValidationDto> ValidateAsync(long userId, long userCouponId, decimal orderAmount, CancellationToken cancellationToken = default);
 
-    Task UseForOrderAsync(long userId, long userCouponId, long orderId, decimal orderAmount, CancellationToken cancellationToken = default);
+    Task UseForOrderAsync(
+        long userId,
+        long userCouponId,
+        long orderId,
+        decimal orderAmount,
+        decimal expectedDiscountAmount,
+        CancellationToken cancellationToken = default);
+
+    Task RestoreForOrderAsync(long userId, long userCouponId, long orderId, CancellationToken cancellationToken = default);
 }

@@ -30,14 +30,9 @@
             async initPage() {
                 this.loading = true;
                 try {
-                    // 并行加载地址、优惠券和预览数据
-                    await Promise.all([
-                        this.loadAddresses(),
-                        this.loadCoupons(),
-                        this.loadPreview()
-                    ]);
+                    await this.loadAddresses();
+                    await this.loadCoupons();
 
-                    // 自动选择默认地址
                     const defaultAddr = this.addresses.find(a => a.isDefault);
                     if (defaultAddr) {
                         this.selectedAddressId = defaultAddr.addressId;
@@ -45,8 +40,9 @@
                         this.selectedAddressId = this.addresses[0].addressId;
                     }
 
-                    // 重新计算预览（如果有优惠券或地址变化，预览会变化）
-                    // 但预览在 loadPreview 中已用当前优惠券计算，无需重复
+                    if (this.selectedAddressId) {
+                        await this.loadPreview();
+                    }
                 } catch (error) {
                     console.error('初始化页面失败:', error);
                 } finally {
@@ -77,8 +73,7 @@
                     });
                     const result = await response.json();
                     if (result.success && result.data) {
-                        // 只显示未使用的优惠券
-                        this.coupons = result.data.filter(c => c.status === 0);
+                        this.coupons = result.data.filter(coupon => coupon.status === 0);
                     } else {
                         console.warn('加载优惠券失败:', result.message);
                     }
@@ -88,10 +83,15 @@
             },
 
             async loadPreview() {
+                if (!this.selectedAddressId) {
+                    this.previewData = null;
+                    return;
+                }
+
                 try {
                     const requestBody = {
-                        addressId: this.selectedAddressId || 0,
-                        userCouponId: this.selectedCouponId || null,
+                        addressId: this.selectedAddressId,
+                        userCouponId: this.selectedCouponId,
                         cartItemIds: idList,
                         remark: this.remark
                     };
@@ -133,7 +133,7 @@
                 try {
                     const requestBody = {
                         addressId: this.selectedAddressId,
-                        userCouponId: this.selectedCouponId || null,
+                        userCouponId: this.selectedCouponId,
                         cartItemIds: idList,
                         remark: this.remark
                     };
@@ -151,7 +151,6 @@
                     if (result.success && result.data) {
                         const orderId = result.data.orderId;
                         alert('订单创建成功！');
-                        // 跳转到支付页（Member5 负责）
                         window.location.href = `/payment/${orderId}`;
                     } else {
                         alert(result.message || '创建订单失败，请重试');
@@ -162,12 +161,6 @@
                 } finally {
                     this.submitting = false;
                 }
-            },
-
-            formatCouponInfo(coupon) {
-                // 假设 coupon 包含 couponTemplateId 和金额信息，具体字段以实际 DTO 为准
-                // 这里做兼容处理
-                return '可用优惠券';
             }
         },
         watch: {
@@ -178,8 +171,7 @@
                 }
             },
             selectedCouponId() {
-                // 优惠券变化时重新计算金额
-                if (!this.loading) {
+                if (!this.loading && this.selectedAddressId) {
                     this.loadPreview();
                 }
             },

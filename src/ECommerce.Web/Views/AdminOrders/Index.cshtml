@@ -6,6 +6,9 @@
 <div id="adminOrdersApp" v-cloak>
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3">订单管理</h1>
+        <button type="button" class="btn btn-outline-success" v-on:click="exportOrders">
+            <i class="bi bi-file-earmark-excel"></i> 导出 Excel
+        </button>
     </div>
 
     <!-- 筛选条件 -->

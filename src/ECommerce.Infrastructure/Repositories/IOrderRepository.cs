@@ -12,7 +12,7 @@ public interface IOrderRepository
     Task InsertOrderLogAsync(OrderLog log, CancellationToken cancellationToken = default);
 
     // 更新
-    Task UpdateOrderStatusAsync(long orderId, int status, DateTime updatedAt, CancellationToken cancellationToken = default);
+    Task<bool> TryUpdateStatusAsync(long orderId, int expectedStatus, int targetStatus, DateTime updatedAt, CancellationToken cancellationToken = default);
 
     // 查询单条
     Task<OrderMain?> GetOrderByIdAsync(long orderId, CancellationToken cancellationToken = default);

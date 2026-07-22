@@ -1,0 +1,70 @@
+name: Build and Deploy ECommerce
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ecommerce-deploy
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      ARTIFACT_NAME: ecommerce-release.tar.gz
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore ECommerce.sln
+
+      - name: Build Release
+        run: dotnet build ECommerce.sln -c Release --no-restore
+
+      - name: Publish Web project
+        run: |
+          rm -rf ./publish
+          dotnet publish src/ECommerce.Web/ECommerce.Web.csproj \
+            -c Release \
+            -o ./publish \
+            --no-build \
+            --no-restore
+
+      - name: Pack artifact
+        run: |
+          tar -czf "$ARTIFACT_NAME" -C ./publish .
+          ls -lh "$ARTIFACT_NAME"
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "${{ secrets.SERVER_PORT }}" -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload artifact to server
+        run: |
+          scp -P "${{ secrets.SERVER_PORT }}" \
+            "$ARTIFACT_NAME" \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/$ARTIFACT_NAME"
+
+      - name: Deploy on server
+        run: |
+          ssh -p "${{ secrets.SERVER_PORT }}" \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "bash /root/E-commerce-management/deployment/linux/deploy-ecommerce-artifact.sh /tmp/$ARTIFACT_NAME"

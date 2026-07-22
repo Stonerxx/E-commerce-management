@@ -1,85 +1,47 @@
-﻿@{
+@{
     Layout = "_Layout";
     ViewData["Title"] = "我的订单";
 }
 
-<div id="ordersApp" v-cloak>
-    <div class="container py-4">
-        <h1 class="h3 mb-4">我的订单</h1>
+<div id="ordersApp" v-cloak class="py-3 py-lg-4">
+    <div class="page-heading d-flex flex-wrap justify-content-between align-items-end gap-3">
+        <div><div class="page-kicker">ORDER CENTER</div><h1 class="display-6 fw-bold mb-2">我的订单</h1><p class="text-muted mb-0">查看支付、发货与收货进度，共 {{ totalCount }} 条记录</p></div>
+        <a class="btn btn-outline-primary rounded-pill px-3" href="/products"><i class="bi bi-bag-plus me-1"></i>继续购物</a>
+    </div>
 
-        <!-- 筛选 -->
-        <div class="row g-3 mb-4">
-            <div class="col-12 col-md-4">
-                <select class="form-select" v-model="filters.status" v-on:change="loadOrders">
-                    <option value="">全部状态</option>
-                    <option value="0">待支付</option>
-                    <option value="1">已支付</option>
-                    <option value="2">已发货</option>
-                    <option value="3">已完成</option>
-                    <option value="4">已取消</option>
-                </select>
-            </div>
-            <div class="col-12 col-md-8 text-md-end">
-                <span class="text-muted small">共 {{ totalCount }} 条订单</span>
-            </div>
-        </div>
-
-        <!-- 订单列表 -->
-        <div v-if="loading" class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">加载中...</span>
-            </div>
-        </div>
-
-        <div v-else-if="orders.length === 0" class="text-center py-5">
-            <p class="text-muted">暂无订单</p>
-        </div>
-
-        <div v-else class="vstack gap-3">
-            <div v-for="order in orders" v-bind:key="order.orderId" class="border rounded p-3 bg-white">
-                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
-                    <div>
-                        <span class="text-muted small">订单号：</span>
-                        <strong>{{ order.orderNo }}</strong>
-                    </div>
-                    <div>
-                        <span class="badge" v-bind:class="getStatusBadge(order.status)">
-                            {{ getStatusText(order.status) }}
-                        </span>
-                        <span class="text-muted small ms-2">¥{{ order.payAmount.toFixed(2) }}</span>
-                    </div>
-                </div>
-                <div class="d-flex flex-wrap justify-content-between align-items-center">
-                    <div class="text-muted small">
-                        创建时间：{{ formatDate(order.createdAt) }}
-                    </div>
-                    <div class="d-flex gap-2">
-                        <a v-bind:href="'/orders/' + order.orderId" class="btn btn-sm btn-outline-primary">查看详情</a>
-                        <button v-if="order.status === 0" class="btn btn-sm btn-outline-danger" v-on:click="cancelOrder(order.orderId)">取消订单</button>
-                        <button v-if="order.status === 2" class="btn btn-sm btn-outline-success" v-on:click="confirmOrder(order.orderId)">确认收货</button>
-                        <button v-if="order.status === 0" class="btn btn-sm btn-primary" v-on:click="goPay(order.orderId)">去支付</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 分页 -->
-        <div v-if="totalPages > 1" class="mt-4">
-            <nav>
-                <ul class="pagination justify-content-center">
-                    <li class="page-item" v-bind:class="{ disabled: pageIndex === 1 }">
-                        <a class="page-link" href="#" v-on:click.prevent="goPage(pageIndex - 1)">上一页</a>
-                    </li>
-                    <li class="page-item" v-for="p in visiblePages" v-bind:key="p" v-bind:class="{ active: p === pageIndex }">
-                        <a class="page-link" href="#" v-on:click.prevent="goPage(p)">{{ p }}</a>
-                    </li>
-                    <li class="page-item" v-bind:class="{ disabled: pageIndex === totalPages }">
-                        <a class="page-link" href="#" v-on:click.prevent="goPage(pageIndex + 1)">下一页</a>
-                    </li>
-                </ul>
-            </nav>
+    <div class="surface-card p-3 mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-4 col-xl-3"><label class="form-label small fw-semibold" for="orderStatus">订单状态</label><select id="orderStatus" class="form-select" v-model="filters.status"><option value="">全部状态</option><option value="0">待支付</option><option value="1">已支付</option><option value="2">已发货</option><option value="3">已完成</option><option value="4">已取消</option></select></div>
+            <div class="col-6 col-md-3"><label class="form-label small fw-semibold" for="orderStartDate">开始日期</label><input id="orderStartDate" type="date" class="form-control" v-model="filters.startTime" /></div>
+            <div class="col-6 col-md-3"><label class="form-label small fw-semibold" for="orderEndDate">结束日期</label><input id="orderEndDate" type="date" class="form-control" v-model="filters.endTime" /></div>
+            <div class="col-12 col-md-2 col-xl-3 d-flex gap-2"><button class="btn btn-primary flex-grow-1" type="button" v-on:click="applyFilters"><i class="bi bi-search me-1"></i>查询</button><button class="btn btn-outline-secondary" type="button" v-on:click="resetFilters" aria-label="清除筛选"><i class="bi bi-arrow-counterclockwise"></i></button></div>
         </div>
     </div>
+
+    <div v-if="errorMessage" class="alert alert-warning d-flex justify-content-between align-items-center gap-3"><span><i class="bi bi-exclamation-triangle me-2"></i>{{ errorMessage }}</span><button class="btn btn-sm btn-outline-warning" type="button" v-on:click="loadOrders">重试</button></div>
+
+    <div v-if="loading" class="surface-card py-5 text-center" role="status"><div class="spinner-border text-primary"><span class="visually-hidden">加载中</span></div><p class="text-muted mt-3 mb-0">正在查询订单...</p></div>
+    <div v-else-if="orders.length === 0" class="surface-card empty-state"><div class="empty-state-icon"><i class="bi bi-receipt-cutoff"></i></div><h2 class="h4">没有符合条件的订单</h2><p class="text-muted">调整筛选条件，或去选购一件喜欢的商品。</p><a href="/products" class="btn btn-primary rounded-pill px-4">去逛逛</a></div>
+
+    <div v-else class="vstack gap-3">
+        <article v-for="order in orders" v-bind:key="order.orderId" class="order-card">
+            <div class="order-card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex flex-wrap align-items-center gap-2"><span class="badge" v-bind:class="getStatusBadge(order.status)">{{ getStatusText(order.status) }}</span><strong>{{ order.orderNo }}</strong></div>
+                <time class="text-muted small"><i class="bi bi-clock me-1"></i>{{ formatDate(order.createdAt) }}</time>
+            </div>
+            <div class="order-card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div><div class="small text-muted mb-1">订单实付</div><div class="price-current fs-4">¥{{ formatMoney(order.payAmount) }}</div></div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a v-bind:href="'/orders/' + order.orderId" class="btn btn-outline-primary"><i class="bi bi-eye me-1"></i>查看详情</a>
+                    <button v-if="Number(order.status) === 0" class="btn btn-outline-danger" type="button" v-on:click="cancelOrder(order)" v-bind:disabled="isBusy(order.orderId)">取消订单</button>
+                    <button v-if="Number(order.status) === 2" class="btn btn-outline-success" type="button" v-on:click="confirmOrder(order)" v-bind:disabled="isBusy(order.orderId)">确认收货</button>
+                    <button v-if="Number(order.status) === 0" class="btn btn-primary" type="button" v-on:click="goPay(order.orderId)">去支付 <i class="bi bi-arrow-right ms-1"></i></button>
+                </div>
+            </div>
+        </article>
+    </div>
+
+    <nav v-if="totalPages > 1" class="mt-4" aria-label="订单分页"><ul class="pagination justify-content-center flex-wrap"><li class="page-item" v-bind:class="{ disabled: pageIndex === 1 }"><button class="page-link" type="button" v-on:click="goPage(pageIndex - 1)">上一页</button></li><li class="page-item" v-for="page in visiblePages" v-bind:key="page" v-bind:class="{ active: page === pageIndex }"><button class="page-link" type="button" v-on:click="goPage(page)">{{ page }}</button></li><li class="page-item" v-bind:class="{ disabled: pageIndex === totalPages }"><button class="page-link" type="button" v-on:click="goPage(pageIndex + 1)">下一页</button></li></ul></nav>
 </div>
 
 @section Scripts {

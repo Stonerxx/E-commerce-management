@@ -1,89 +1,115 @@
 @{
     Layout = "_AdminLayout";
-    ViewData["Title"] = "Dashboard";
+    ViewData["Title"] = "数据概览";
+    var isAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
 }
 
-<div id="dashboardApp" v-cloak>
+<div id="dashboardApp" v-cloak data-is-admin="@isAdmin.ToString().ToLowerInvariant()">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
         <div>
-            <h1 class="h3 mb-1">后台 Dashboard 示例</h1>
-            <p class="text-muted mb-0">这是 Vue + Razor + Bootstrap 的页面样板，业务数据目前使用示例数据，后续统一改为调用 `/api/v1/...` 接口。</p>
+            <h1 class="h3 mb-1">数据概览</h1>
+            <p class="text-muted mb-0">订单、销售、库存和评价的运营摘要。最后更新：{{ lastUpdated }}</p>
         </div>
-        <button class="btn btn-primary" type="button" v-on:click="refreshSystemStatus" v-bind:disabled="loading">
+        <button class="btn btn-outline-primary" type="button" v-on:click="refreshAll" v-bind:disabled="loading">
             <span v-if="loading" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-            刷新系统状态
+            <i class="fa-solid fa-rotate"></i> 刷新
         </button>
     </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-12 col-md-6 col-xl-3" v-for="card in summaryCards" v-bind:key="card.key">
-            <div class="border rounded p-3 h-100 bg-white">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <p class="text-muted small mb-1">{{ card.label }}</p>
-                        <p class="h3 mb-0">{{ card.value }}</p>
+    <div v-if="errorMessage" class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>{{ errorMessage }}</span>
+    </div>
+
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-5 g-3 mb-4">
+        <div class="col" v-for="card in summaryCards" v-bind:key="card.key">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted small mb-1">{{ card.label }}</p>
+                            <p class="h3 mb-0">{{ card.value }}</p>
+                        </div>
+                        <span class="badge fs-6" v-bind:class="card.badgeClass">
+                            <i v-bind:class="card.icon"></i>
+                        </span>
                     </div>
-                    <span class="badge" v-bind:class="card.badgeClass">{{ card.badge }}</span>
+                    <p class="small text-muted mb-0 mt-3">{{ card.hint }}</p>
                 </div>
-                <p class="small text-muted mb-0 mt-3">{{ card.hint }}</p>
             </div>
         </div>
     </div>
 
-    <div class="row g-3">
-        <div class="col-12 col-xl-7">
-            <div class="border rounded p-3 bg-white h-100">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h2 class="h5 mb-0">模块开发进度</h2>
-                    <span class="text-muted small">示例数据，供页面结构参考</span>
-                </div>
-
-                <div class="vstack gap-3">
-                    <div v-for="module in moduleProgress" v-bind:key="module.branch">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <div>
-                                <strong>{{ module.name }}</strong>
-                                <span class="text-muted small ms-2">{{ module.branch }}</span>
-                            </div>
-                            <span class="small">{{ module.percent }}%</span>
-                        </div>
-                        <div class="progress" role="progressbar" v-bind:aria-valuenow="module.percent" aria-valuemin="0" aria-valuemax="100">
-                            <div class="progress-bar" v-bind:class="module.barClass" v-bind:style="{ width: module.percent + '%' }"></div>
-                        </div>
-                        <p class="text-muted small mb-0 mt-1">{{ module.nextStep }}</p>
+    <div class="row g-3 mb-4" v-if="isAdmin">
+        <div class="col-12 col-xl-8">
+            <div class="card h-100">
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h2 class="h5 mb-0">{{ trendTitle }}</h2>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="统计维度">
+                        <button type="button" class="btn"
+                                v-bind:class="trendDimension === 'day' ? 'btn-primary' : 'btn-outline-primary'"
+                                v-on:click="setTrendDimension('day')">按日</button>
+                        <button type="button" class="btn"
+                                v-bind:class="trendDimension === 'month' ? 'btn-primary' : 'btn-outline-primary'"
+                                v-on:click="setTrendDimension('month')">按月</button>
                     </div>
+                </div>
+                <div class="card-body">
+                    <div id="trendChart" style="width: 100%; height: 320px;"></div>
                 </div>
             </div>
         </div>
 
-        <div class="col-12 col-xl-5">
-            <div class="border rounded p-3 bg-white mb-3">
-                <h2 class="h5 mb-3">接口联通检查</h2>
-                <div class="list-group list-group-flush">
-                    <div class="list-group-item px-0 d-flex justify-content-between align-items-start" v-for="item in apiChecks" v-bind:key="item.url">
-                        <div>
-                            <code>{{ item.url }}</code>
-                            <p class="small text-muted mb-0">{{ item.message }}</p>
+        <div class="col-12 col-xl-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">热销商品 Top 10</h2>
+                    <span class="small text-muted">近 30 日</span>
+                </div>
+                <div class="card-body">
+                    <div v-if="topProducts.length === 0" class="text-center text-muted py-4">
+                        <i class="fa-regular fa-folder-open fs-2 d-block mb-2"></i>
+                        暂无商品统计数据
+                    </div>
+                    <div v-else class="list-group list-group-flush">
+                        <div class="list-group-item px-0 d-flex justify-content-between align-items-center"
+                             v-for="(item, index) in topProducts"
+                             v-bind:key="item.productId">
+                            <div class="d-flex align-items-center gap-2 overflow-hidden">
+                                <span class="badge text-bg-secondary">{{ index + 1 }}</span>
+                                <span class="text-truncate">{{ item.productName }}</span>
+                            </div>
+                            <span class="small fw-semibold">{{ item.salesCount }} 件 / {{ formatMoney(item.salesAmount) }}</span>
                         </div>
-                        <span class="badge" v-bind:class="item.badgeClass">{{ item.status }}</span>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <div class="border rounded p-3 bg-white">
-                <h2 class="h5 mb-3">页面开发约定</h2>
-                <ul class="mb-0">
-                    <li>Razor 负责页面路由和首屏结构。</li>
-                    <li>Vue 负责列表、状态切换、筛选、局部交互。</li>
-                    <li>业务数据通过 `/api/v1/...` 获取，响应统一按 `ApiResponse&lt;T&gt;` 解析。</li>
-                    <li>提交前至少运行 `dotnet build ECommerce.sln` 和 `dotnet test ECommerce.sln`。</li>
-                </ul>
-            </div>
+    <div class="card">
+        <div class="card-header">
+            <h2 class="h5 mb-0">快捷入口</h2>
+        </div>
+        <div class="card-body d-flex flex-wrap gap-2">
+            <a href="/admin/orders" class="btn btn-outline-primary">
+                <i class="fa-solid fa-receipt"></i> 订单管理
+            </a>
+            <a v-if="isAdmin" href="/admin/products" class="btn btn-outline-primary">
+                <i class="fa-solid fa-box"></i> 商品管理
+            </a>
+            <a v-if="isAdmin" href="/admin/inventory/warnings" class="btn btn-outline-warning">
+                <i class="fa-solid fa-triangle-exclamation"></i> 库存预警
+            </a>
+            <a v-if="isAdmin" href="/admin/inventory/logs" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-clock-rotate-left"></i> 库存日志
+            </a>
         </div>
     </div>
 </div>
 
 @section Scripts {
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <script src="~/js/admin-dashboard.js" asp-append-version="true"></script>
 }

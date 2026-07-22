@@ -6,7 +6,11 @@
         data() {
             return {
                 loading: false,
-                order: null
+                order: null,
+                logistics: null,
+                logisticsLoading: false,
+                reviewForm: null,
+                submittingReview: false
             };
         },
         mounted() {
@@ -25,6 +29,11 @@
 
                     if (result.success && result.data) {
                         this.order = result.data;
+                        if (this.order.status === 2 || this.order.status === 3) {
+                            await this.loadLogistics();
+                        } else {
+                            this.logistics = null;
+                        }
                     } else {
                         console.error('加载订单详情失败:', result.message);
                     }
@@ -131,6 +140,63 @@
                 } catch (error) {
                     console.error('确认收货异常:', error);
                     alert('确认收货失败，请稍后重试');
+                }
+            },
+
+            async loadLogistics() {
+                this.logisticsLoading = true;
+                try {
+                    const response = await fetch(`/api/v1/logistics/${orderId}`, { headers: { 'Accept': 'application/json' } });
+                    const result = await response.json();
+                    this.logistics = response.ok && result.success ? result.data : null;
+                } catch (error) {
+                    console.error('加载物流失败:', error);
+                    this.logistics = null;
+                } finally {
+                    this.logisticsLoading = false;
+                }
+            },
+
+            logisticsStatusText(status) {
+                return ({ 0: '已揽收', 1: '运输中', 2: '派送中', 3: '已签收' })[status] || '未知';
+            },
+
+            openReview(item) {
+                this.reviewForm = {
+                    productId: item.productId,
+                    productName: item.productName,
+                    rating: 5,
+                    content: '',
+                    imageUrls: '',
+                    isAnonymous: false
+                };
+            },
+
+            async submitReview() {
+                if (!this.reviewForm) return;
+                this.submittingReview = true;
+                const images = this.reviewForm.imageUrls.split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+                try {
+                    const response = await fetch('/api/v1/reviews', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({
+                            orderId,
+                            productId: this.reviewForm.productId,
+                            rating: this.reviewForm.rating,
+                            content: this.reviewForm.content || null,
+                            images,
+                            isAnonymous: this.reviewForm.isAnonymous
+                        })
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) throw new Error(result.message || '评价提交失败');
+                    alert('评价已提交，审核通过后将在商品页展示。');
+                    this.reviewForm = null;
+                } catch (error) {
+                    alert(error.message || '评价提交失败');
+                } finally {
+                    this.submittingReview = false;
                 }
             },
 

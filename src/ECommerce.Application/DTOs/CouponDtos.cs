@@ -39,7 +39,9 @@ public sealed record UserCouponDto(
     int Status,
     DateTime ReceivedAt,
     DateTime? UsedAt,
-    long? OrderId);
+    long? OrderId,
+    DateTime StartTime,
+    DateTime EndTime);
 
 public sealed record CouponValidationRequest(decimal OrderAmount);
 

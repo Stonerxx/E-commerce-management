@@ -1,46 +1,173 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+@{
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var isCustomer = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.User);
+    var isAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
+    var isService = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Service);
+    var canUseAdmin = isService || isAdmin;
+    var currentUserName = User.Identity?.Name ?? "已登录用户";
+    var currentRoleName = isAdmin ? "管理员" : isService ? "客服" : isCustomer ? "会员" : "访客";
+    var currentPath = Context.Request.Path.Value?.ToLowerInvariant() ?? "/";
+}
+<!DOCTYPE html>
+<html lang="zh-CN">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - ECommerce.Web</title>
+    <meta name="theme-color" content="#4f46e5" />
+    <title>@ViewData["Title"] - 电商管理系统DEMO</title>
+    <script>
+        (function () {
+            try {
+                var savedTheme = localStorage.getItem("ecommerce-theme");
+                var theme = savedTheme || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+                document.documentElement.setAttribute("data-theme", theme);
+            } catch (_) { }
+        })();
+    </script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/ECommerce.Web.styles.css" asp-append-version="true" />
 </head>
-<body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">ECommerce.Web</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
+<body class="storefront-body">
+    <header class="storefront-header sticky-top">
+        <div class="shipping-strip d-none d-md-block">
+            <div class="app-container d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-shield-check me-1"></i> 正品保障 · 安全支付 · 全程可追踪</span>
+                <span>欢迎使用电商管理系统DEMO</span>
+            </div>
+        </div>
+        <nav class="navbar navbar-expand-lg app-navbar" aria-label="主导航">
+            <div class="app-container">
+                <a class="navbar-brand app-brand" href="/" aria-label="电商管理系统DEMO首页">
+                    <span class="brand-mark"><i class="bi bi-bag-heart-fill"></i></span>
+                    <span><strong>电商管理系统</strong><small>DEMO</small></span>
+                </a>
+
+                <div class="d-flex align-items-center gap-2 order-lg-3">
+                    <button class="btn icon-button" type="button" data-theme-toggle aria-label="切换深浅色模式" title="切换深浅色模式">
+                        <i class="bi bi-moon-stars" data-theme-icon></i>
+                    </button>
+                    @if (isCustomer)
+                    {
+                        <a class="btn icon-button position-relative" href="/cart" aria-label="购物车" title="购物车">
+                            <i class="bi bi-cart3"></i>
+                        </a>
+                    }
+                    <button class="navbar-toggler border-0 p-2" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
+                            aria-controls="mainNavbar" aria-expanded="false" aria-label="切换导航">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                </div>
+
+                <div class="collapse navbar-collapse order-lg-2" id="mainNavbar">
+                    <form class="navbar-search mx-lg-auto my-3 my-lg-0" method="get" action="/products" role="search">
+                        <i class="bi bi-search" aria-hidden="true"></i>
+                        <input name="keyword" type="search" autocomplete="off" placeholder="搜索商品、品类或关键词" aria-label="搜索商品" />
+                        <button type="submit">搜索</button>
+                    </form>
+
+                    <ul class="navbar-nav align-items-lg-center ms-lg-4 gap-lg-1">
+                        <li class="nav-item"><a class="nav-link @(currentPath == "/" ? "active" : "")" href="/">首页</a></li>
+                        <li class="nav-item"><a class="nav-link @(currentPath.StartsWith("/products") ? "active" : "")" href="/products">全部商品</a></li>
+                        @if (isCustomer)
+                        {
+                            <li class="nav-item"><a class="nav-link @(currentPath.StartsWith("/orders") ? "active" : "")" href="/orders">订单</a></li>
+                            <li class="nav-item"><a class="nav-link @(currentPath.StartsWith("/coupons") ? "active" : "")" href="/coupons">优惠券</a></li>
+                        }
+                        @if (canUseAdmin)
+                        {
+                            <li class="nav-item"><a class="nav-link" href="/admin"><i class="bi bi-speedometer2 me-1"></i>工作台</a></li>
+                        }
+                        @if (isAuthenticated)
+                        {
+                            <li class="nav-item dropdown ms-lg-1">
+                                <button class="btn user-menu dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span class="user-avatar">@currentUserName.Substring(0, 1).ToUpperInvariant()</span>
+                                    <span class="d-lg-none d-xl-inline">@currentUserName</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                    <li class="px-3 py-2">
+                                        <div class="fw-semibold">@currentUserName</div>
+                                        <div class="small text-muted">@currentRoleName</div>
+                                    </li>
+                                    @if (isCustomer)
+                                    {
+                                        <li><hr class="dropdown-divider" /></li>
+                                        <li><a class="dropdown-item" href="/orders"><i class="bi bi-receipt me-2"></i>我的订单</a></li>
+                                        <li><a class="dropdown-item" href="/addresses"><i class="bi bi-geo-alt me-2"></i>收货地址</a></li>
+                                        <li><a class="dropdown-item" href="/coupons"><i class="bi bi-ticket-perforated me-2"></i>优惠券</a></li>
+                                    }
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li>
+                                        <form method="post" action="/account/logout">
+                                            @Html.AntiForgeryToken()
+                                            <button class="dropdown-item text-danger" type="submit"><i class="bi bi-box-arrow-right me-2"></i>退出登录</button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item d-flex gap-2 mt-2 mt-lg-0 ms-lg-2">
+                                <a class="btn btn-link nav-auth-link" href="/account/login">登录</a>
+                                <a class="btn btn-primary btn-sm rounded-pill px-3" href="/account/register">免费注册</a>
+                            </li>
+                        }
                     </ul>
                 </div>
             </div>
         </nav>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - ECommerce.Web - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+    <main role="main" class="app-main">
+        <div class="app-container">
+            @RenderBody()
+        </div>
+    </main>
+
+    <footer class="storefront-footer">
+        <div class="app-container">
+            <div class="row g-4 align-items-start">
+                <div class="col-12 col-lg-5">
+                    <a class="app-brand footer-brand" href="/">
+                        <span class="brand-mark"><i class="bi bi-bag-heart-fill"></i></span>
+                        <span><strong>电商管理系统</strong><small>DEMO</small></span>
+                    </a>
+                    <p class="small text-muted mt-3 mb-0">从发现好物到订单履约，为每一次购物提供清晰、可靠的服务体验。</p>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <div class="footer-heading">购物服务</div>
+                    <a href="/products">商品中心</a>
+                    @if (isCustomer) { <a href="/orders">我的订单</a> }
+                </div>
+                <div class="col-6 col-lg-2">
+                    <div class="footer-heading">账户服务</div>
+                    @if (isCustomer)
+                    {
+                        <a href="/addresses">地址管理</a>
+                        <a href="/coupons">我的优惠券</a>
+                    }
+                    else
+                    {
+                        <a href="/account/login">账号登录</a>
+                        <a href="/account/register">免费注册</a>
+                    }
+                </div>
+                <div class="col-12 col-lg-3">
+                    <div class="footer-heading">服务承诺</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="service-pill"><i class="bi bi-patch-check"></i> 品质保障</span>
+                        <span class="service-pill"><i class="bi bi-truck"></i> 物流可查</span>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">&copy; 2026 电商管理系统DEMO · ECommerce Management</div>
         </div>
     </footer>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="appToastContainer" aria-live="polite" aria-atomic="true"></div>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

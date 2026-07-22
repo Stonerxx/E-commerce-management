@@ -6,7 +6,7 @@
 
 - 模式：B/S。
 - 后端：ASP.NET Core MVC，目标框架 `net8.0`。
-- 数据库：Oracle，建表脚本在 `migration/init_database.sql`。
+- 数据库：Oracle；建表脚本在 `migration/init_database.sql`，函数、过程、视图和触发器在 `migration/database_objects.sql`。
 - 前端页面：Razor Views + Bootstrap。
 - JSON API：统一使用 `/api/v1/...` 前缀。
 
@@ -31,6 +31,7 @@ src/ECommerce.Domain
 src/ECommerce.Infrastructure
 src/ECommerce.Shared
 tests/ECommerce.Tests
+tests/ECommerce.OracleIntegrationTests
 ```
 
 常用子目录也已经预建好：
@@ -111,11 +112,11 @@ http://localhost:5052/docs/development-spec
 
 如果终端回到 PowerShell 提示符，说明服务已经停止，需要重新运行 `dotnet run`。
 
-当前能看到的是项目状态页、健康检查、登录/注册占位页、Vue Dashboard 示例页和两份文档。业务页面和业务接口还没有实现，大多数 `/api/v1/...` 接口会返回 `501 NOT_IMPLEMENTED`。
+当前可演示真实登录、商品浏览、购物车、下单、持久化模拟支付、优惠券、物流、评价，以及后台商品、订单、库存、优惠券、评价、统计和导出流程。
 
 ## 4. 当前阶段是什么状态
 
-现在项目处在“可运行骨架 + 接口格式已定”的阶段，不是完整业务系统。
+当前业务闭环已接通，进入演示回归和 `main` 发布验收阶段。
 
 已完成：
 
@@ -124,33 +125,46 @@ http://localhost:5052/docs/development-spec
 | 解决方案 | `ECommerce.sln` 已包含 Web、Application、Domain、Infrastructure、Shared、Tests |
 | 目录结构 | 五层目录已经建好，各层项目引用已经配置 |
 | 公共约定 | 统一响应、分页、错误码、权限常量、状态枚举已定义 |
-| 业务接口 | DTO 和 Service 接口已放在 `src/ECommerce.Application`，表示格式和方法名先定好了 |
-| API 入口 | `/api/v1/...` Controller 路由骨架已占位，表示地址先定好了 |
-| 页面入口 | 首页、登录页、注册页、后台布局、Vue Dashboard 示例页已占位 |
+| 业务接口 | 核心 DTO、Service、Repository 和事务规则已接通 |
+| API 入口 | `/api/v1/...` Controller 已调用真实业务服务 |
+| 页面入口 | 前后台核心业务页面和管理入口已提供 |
 | 数据库入口 | Oracle 连接、数据库健康检查、UnitOfWork 事务基础已提供 |
 | 部署入口 | `deployment/` 已提供发布脚本、systemd 和 Nginx 样例 |
 | 测试入口 | `tests/ECommerce.Tests` 已能运行 |
 
-未完成：
+模块状态：
 
 | 内容 | 当前表现 | 负责分支 |
 | --- | --- | --- |
-| 登录注册 | 页面能打开，提交后还没有真实认证 | `feat-member2-user-permission-address-log` |
-| 商品分类/SKU/库存 | API 路由已占位，未连数据库 | `feat-member3-product-category-sku-inventory` |
-| 购物车/订单 | API 路由已占位，未实现业务事务 | `feat-member4-cart-order-core` |
-| 支付/优惠券/物流/评价 | API 路由已占位，未实现状态流转 | `feat-member5-payment-coupon-logistics-review` |
-| 统计/导出/后台首页 | API 路由已占位，Vue Dashboard 示例页已提供，未实现统计和 Excel | `feat-member6-stats-export-ui-docs` |
-| 部署 | 配置样例已提供，还需要真实服务器环境变量、访问验证和部署截图 | `feat-member1-foundation-oracle-deploy` |
+| 登录注册 | 真实 `AuthService`；演示账号使用 PBKDF2 seed 密码哈希 | 账号登录、角色权限 |
+| 商品分类/SKU/库存 | Oracle 持久化、库存预警和变动日志已接通 | 商品、SKU、库存页面与 API |
+| 购物车/订单 | 预览、创建、取消、确认和状态日志已接通 | 用户订单与后台订单 |
+| 支付/优惠券/物流/评价 | 持久化模拟支付、原子核销、物流轨迹和评价审核已接通 | 前后台业务闭环 |
+| 统计/导出/后台首页 | 日/月统计、Dashboard、订单与库存 Excel 导出已接通 | 后台统计和导出 |
+| 部署 | GitHub Actions、systemd、Nginx 和运行时环境变量样例已提供 | `main` 自动部署与线上健康检查 |
 
 技术负责人验收骨架时，看这几项即可：
 
 1. `dotnet build ECommerce.sln` 成功。
 2. `dotnet test ECommerce.sln` 成功。
 3. `dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj` 后终端保持运行。
-4. 浏览器能打开 `http://localhost:5052/`，看到“电商购物平台 - 项目状态”。
+4. 浏览器能打开 `http://localhost:5052/`，看到电商购物平台入口页。
 5. 浏览器能打开 `http://localhost:5052/health`，返回 `success: true`。
 6. 浏览器能打开 `http://localhost:5052/account/login`。
-7. 访问业务 API 如果返回 `501 NOT_IMPLEMENTED`，这在当前阶段是正常的，表示“接口已占位，等待对应成员实现”。
+
+演示登录账号：
+
+```text
+密码统一为 demo123
+
+demo_admin    ADMIN
+demo_service  SERVICE
+demo_user     USER
+demo_buyer    USER
+```
+
+注意：这些账号走真实 AuthService 登录，密码哈希来自 `migration/seed_demo_data.sql`。
+7. 模拟支付 API 会创建 `PAYMENT` 记录；匿名模拟回调必须使用 `Payment__SimulatedCallbackSecret` 生成 HMAC-SHA256 签名。
 
 ## 5. Oracle 怎么配
 
@@ -160,26 +174,28 @@ http://localhost:5052/docs/development-spec
 src/ECommerce.Web/appsettings.json
 ```
 
-不要提交真实数据库密码，也不要把真实密码写进 `appsettings.json`。数据库用户按用途区分：
+不要提交真实数据库密码，也不要把真实密码写进 `appsettings.json`。项目已经创建两个 Oracle 用户（Schema）：
 
 | 用户 | 用途 |
 | --- | --- |
-| `ECOMMERCE_DEV` | 开发联调。组员在自己电脑上运行后端时连接这个用户。 |
-| `ECOMMERCE_DEMO` | 最终演示。部署演示环境时连接这个用户，避免演示数据被开发过程污染。 |
+| `ECOMMERCE_DEV` | 日常开发联调，以及需要写入临时数据的 Oracle 集成测试。 |
+| `ECOMMERCE_DEMO` | 最终演示和业务服务器部署，以及演示基线的只读检查。 |
 
-后端代码不需要因为“本地数据库”或“远程数据库”而修改；区别只在连接字符串的 `Data Source`。开发时 `Data Source` 写服务器 IP 或域名，服务器部署时可以写 `127.0.0.1`、内网地址或服务器域名。
+项目没有单独的 `ECOMMERCE_TEST` 用户，也不要求新增。测试项目中的 `DEV`、`DEMO` 环境变量应分别指向上面两个现有用户。
+
+后端代码不需要因为“本地数据库”或“远程数据库”而修改；区别只在连接字符串的 `Data Source`。本机连接云数据库时填写服务器公网 IP，应用和 Oracle 同机部署时才可写 `127.0.0.1`。
 
 推荐用环境变量：
 
 ```powershell
-$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEV;Password=我们的开发库密码;Data Source=数据库服务器IP:1521/服务名"
+$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEV;Password=数据库密码;Data Source=数据库服务器IP:1521/服务名"
 dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj
 ```
 
-演示环境示例：
+业务服务器或最终演示环境使用：
 
 ```powershell
-$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEMO;Password=我们的演示库密码;Data Source=127.0.0.1:1521/服务名"
+$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEMO;Password=演示库密码;Data Source=127.0.0.1:1521/服务名"
 ```
 
 检查 Oracle 是否连通：
@@ -188,21 +204,23 @@ $env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEMO;Password=我们的演示
 Invoke-RestMethod http://localhost:5052/api/v1/system/db-check
 ```
 
-如果没有配置真实连接串，接口会返回 `configured: false`，这是正常提示，不是程序崩溃。配置正确后，期望看到 `connected: true`。同时检查 `sessionUser` 和 `currentSchema`：开发时应该是 `ECOMMERCE_DEV`，演示时应该是 `ECOMMERCE_DEMO`。
+如果没有配置真实连接串，接口会返回 `configured: false`，这是正常提示，不是程序崩溃。配置正确后，期望看到 `connected: true`；开发时 `sessionUser`、`currentSchema` 应为 `ECOMMERCE_DEV`，演示服务器应为 `ECOMMERCE_DEMO`。
 
 数据库初始化脚本：
 
 ```text
 migration/init_database.sql
+migration/database_objects.sql
 ```
 
-第 1 人做 Oracle 时按这个顺序验收：
+初始化或重建 Oracle Schema 时按这个顺序验收：
 
 1. 本地 Oracle 建库或确认服务器 Oracle 可连。
 2. 执行 `migration/init_database.sql`。
-3. 设置 `Oracle__ConnectionString` 环境变量。
-4. 启动 Web 项目。
-5. 访问 `/api/v1/system/db-check`，截图保留 `connected: true`。
+3. 执行 `migration/database_objects.sql`。
+4. 设置 `Oracle__ConnectionString` 环境变量。
+5. 启动 Web 项目。
+6. 访问 `/api/v1/system/db-check`，截图保留 `connected: true`。
 
 ## 5.1 部署怎么准备
 
@@ -265,16 +283,16 @@ docs/DEVELOPMENT_SPEC.md
 提交信息格式：
 
 ```text
-<type>(<scope>)：中文说明
+<type>(<scope>): 中文说明
 ```
 
 例子：
 
 ```text
-feat(product)：新增商品分类维护页面
-fix(order)：修复取消订单未释放锁定库存
-docs(workflow)：整理组员开工文档
-test(cart)：新增购物车数量校验测试
+feat(product): 新增商品分类维护页面
+fix(order): 修复取消订单未释放锁定库存
+docs(workflow): 整理组员开工文档
+test(cart): 新增购物车数量校验测试
 ```
 
 常用 `type`：
@@ -301,18 +319,19 @@ git status
 
 ```powershell
 git add 相关文件
-git commit -m "feat(product)：新增商品分类维护页面"
+git commit -m "feat(product): 新增商品分类维护页面"
 git push origin 当前分支名
 ```
 
 ## 9. 合并流程
 
-`main` 分支受保护，不能直接推送。功能完成后：
+`main` 分支受保护，不能直接推送。成员功能完成后先进入 `merging` 统一回归，再由 `merging` 向 `main` 提交 PR：
 
 1. 推送自己的 `feat-member...` 分支。
-2. 在 GitHub 创建 Pull Request。
-3. PR 描述写清楚完成内容、测试结果、截图位置。
-4. 由组长或负责集成的人检查后合并。
+2. 由集成人员依次合入 `merging`，每次解决冲突后执行构建和测试。
+3. `merging` 完成前后台、Oracle 和演示流程回归。
+4. 从 `merging` 向 `main` 创建 PR，描述完成内容、测试结果和截图位置。
+5. 审查通过后合并到 `main`，触发业务服务器部署。
 
 合并顺序建议：
 

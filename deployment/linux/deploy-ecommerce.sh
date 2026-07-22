@@ -13,7 +13,7 @@ PUBLISH_BAD="${PUBLISH_BAD:-/var/www/ecommerce-bad}"
 APP_OWNER="${APP_OWNER:-www-data:www-data}"
 
 HOME_URL="${HOME_URL:-http://127.0.0.1:5000/}"
-HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:5000/health}"
+HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:5000/health/ready}"
 RUN_TESTS="${RUN_TESTS:-0}"
 PULL_CODE="${PULL_CODE:-1}"
 ALLOW_DIRTY="${ALLOW_DIRTY:-0}"
@@ -29,7 +29,7 @@ Usage:
 
 Examples:
   /root/E-commerce-management/deployment/linux/deploy-ecommerce.sh
-  /root/E-commerce-management/deployment/linux/deploy-ecommerce.sh feat-member1-foundation-oracle-deploy
+  /root/E-commerce-management/deployment/linux/deploy-ecommerce.sh main
   RUN_TESTS=1 /root/E-commerce-management/deployment/linux/deploy-ecommerce.sh
   /root/E-commerce-management/deployment/linux/deploy-ecommerce.sh --rollback
 
@@ -38,7 +38,7 @@ Environment overrides:
   SERVICE_NAME=ecommerce
   PUBLISH_CURRENT=/var/www/ecommerce
   HOME_URL=http://127.0.0.1:5000/
-  HEALTH_URL=http://127.0.0.1:5000/health
+  HEALTH_URL=http://127.0.0.1:5000/health/ready
   RUN_TESTS=0|1
   PULL_CODE=0|1
   ALLOW_DIRTY=0|1
@@ -104,9 +104,11 @@ show_service_tail() {
 }
 
 wait_for_health() {
-  local attempt
+  local attempt body
   for attempt in {1..15}; do
-    if curl -fsS "$HEALTH_URL" >/dev/null; then
+    if body="$(curl -fsSL --max-time 10 "$HEALTH_URL")" \
+      && grep -Eq '"success"[[:space:]]*:[[:space:]]*true' <<<"$body" \
+      && grep -Eq '"connected"[[:space:]]*:[[:space:]]*true' <<<"$body"; then
       return 0
     fi
     sleep 2
@@ -189,7 +191,7 @@ build_and_publish() {
   log "Publish to temporary directory"
   rm -rf "$PUBLISH_NEW"
   mkdir -p "$PUBLISH_NEW"
-  dotnet publish "$WEB_CSPROJ" -c Release -o "$PUBLISH_NEW" --no-restore
+  dotnet publish "$WEB_CSPROJ" -c Release -o "$PUBLISH_NEW" --no-build --no-restore
 }
 
 replace_current() {

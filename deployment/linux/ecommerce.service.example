@@ -10,9 +10,7 @@ RestartSec=10
 KillSignal=SIGINT
 SyslogIdentifier=ecommerce
 User=www-data
-Environment="ASPNETCORE_ENVIRONMENT=Production"
-Environment="ASPNETCORE_URLS=http://127.0.0.1:5000"
-Environment="Oracle__ConnectionString=User Id=ECOMMERCE_DEMO;Password=change_me;Data Source=127.0.0.1:1521/XEPDB1"
+EnvironmentFile=/etc/ecommerce/ecommerce.env
 
 [Install]
 WantedBy=multi-user.target

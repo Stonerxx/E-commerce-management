@@ -45,19 +45,24 @@
             this.loadOrders();
         },
         methods: {
+            buildFilterParams(includePagination = false) {
+                const params = new URLSearchParams();
+                if (includePagination) {
+                    params.set('pageIndex', this.pageIndex);
+                    params.set('pageSize', this.pageSize);
+                }
+                if (this.filters.orderNo) params.append('orderNo', this.filters.orderNo);
+                if (this.filters.userId) params.append('userId', this.filters.userId);
+                if (this.filters.status !== '') params.append('status', this.filters.status);
+                if (this.filters.startTime) params.append('startTime', this.filters.startTime);
+                if (this.filters.endTime) params.append('endTime', this.filters.endTime);
+                return params;
+            },
+
             async loadOrders() {
                 this.loading = true;
                 try {
-                    const params = new URLSearchParams({
-                        pageIndex: this.pageIndex,
-                        pageSize: this.pageSize
-                    });
-
-                    if (this.filters.orderNo) params.append('orderNo', this.filters.orderNo);
-                    if (this.filters.userId) params.append('userId', this.filters.userId);
-                    if (this.filters.status) params.append('status', this.filters.status);
-                    if (this.filters.startTime) params.append('startTime', this.filters.startTime);
-                    if (this.filters.endTime) params.append('endTime', this.filters.endTime);
+                    const params = this.buildFilterParams(true);
 
                     const response = await fetch(`/api/v1/admin/orders?${params.toString()}`, {
                         headers: { 'Accept': 'application/json' }
@@ -77,6 +82,11 @@
                 } finally {
                     this.loading = false;
                 }
+            },
+
+            exportOrders() {
+                const params = this.buildFilterParams();
+                window.location.assign(`/api/v1/admin/exports/orders?${params.toString()}`);
             },
 
             calculateStatusCounts() {
@@ -106,13 +116,13 @@
 
             getStatusBadge(status) {
                 const map = {
-                    0: 'text-bg-warning',
-                    1: 'text-bg-info',
-                    2: 'text-bg-primary',
-                    3: 'text-bg-success',
-                    4: 'text-bg-secondary'
+                    0: 'bg-warning text-dark',    // 待支付：黄底黑字
+                    1: 'bg-info text-white',      // 已支付：蓝底白字（或 'bg-info text-dark' 更清晰）
+                    2: 'bg-primary text-white',   // 已发货：深蓝底白字
+                    3: 'bg-success text-white',   // 已完成：绿底白字
+                    4: 'bg-secondary text-white'  // 已取消：灰底白字
                 };
-                return map[status] || 'text-bg-secondary';
+                return map[status] || 'bg-secondary text-white';
             },
 
             formatDate(dateStr) {

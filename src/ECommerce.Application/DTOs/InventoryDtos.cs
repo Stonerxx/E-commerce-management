@@ -31,7 +31,10 @@ public sealed record InventoryLogDto(
     long? OperatorId,
     long? RefOrderId,
     string? Remark,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    long ProductId = 0,
+    string? ProductName = null,
+    string? OperatorName = null);
 
 public sealed record InventoryWarningDto(
     long SkuId,

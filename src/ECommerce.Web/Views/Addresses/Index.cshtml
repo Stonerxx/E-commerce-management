@@ -1,0 +1,52 @@
+@{
+    ViewData["Title"] = "收货地址";
+}
+
+<div id="addressesApp" v-cloak class="py-3 py-lg-4">
+    <div class="page-heading d-flex flex-wrap justify-content-between align-items-end gap-3">
+        <div><div class="page-kicker">DELIVERY ADDRESS</div><h1 class="display-6 fw-bold mb-2">收货地址</h1><p class="text-muted mb-0">管理常用收货信息，系统会确保每位用户只有一个默认地址</p></div>
+        <button class="btn btn-outline-primary rounded-pill px-3" type="button" v-on:click="loadAddresses" v-bind:disabled="loading"><span v-if="loading" class="spinner-border spinner-border-sm me-1"></span><i v-else class="bi bi-arrow-clockwise me-1"></i>刷新</button>
+    </div>
+
+    <div v-if="error" class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i>{{ error }}</div>
+
+    <div class="row g-4 align-items-start">
+        <div class="col-12 col-lg-5 col-xl-4">
+            <div class="form-panel position-lg-sticky" style="top:108px">
+                <div class="d-flex justify-content-between align-items-center mb-3"><div><div class="page-kicker mb-1">ADDRESS FORM</div><h2 class="h4 mb-0">{{ form.addressId ? '修改地址' : '新增地址' }}</h2></div><button v-if="form.addressId" class="btn btn-sm btn-link text-decoration-none" type="button" v-on:click="resetForm">取消编辑</button></div>
+                <div class="row g-3">
+                    <div class="col-12"><label class="form-label fw-semibold" for="receiverName">收货人</label><input class="form-control" id="receiverName" v-model.trim="form.receiverName" maxlength="50" placeholder="请输入姓名" required /></div>
+                    <div class="col-12"><label class="form-label fw-semibold" for="receiverPhone">手机号</label><input class="form-control" id="receiverPhone" v-model.trim="form.receiverPhone" maxlength="20" inputmode="tel" placeholder="用于配送联系" required /></div>
+                    <div class="col-4"><label class="form-label fw-semibold" for="province">省</label><input class="form-control" id="province" v-model.trim="form.province" maxlength="50" /></div>
+                    <div class="col-4"><label class="form-label fw-semibold" for="city">市</label><input class="form-control" id="city" v-model.trim="form.city" maxlength="50" /></div>
+                    <div class="col-4"><label class="form-label fw-semibold" for="district">区/县</label><input class="form-control" id="district" v-model.trim="form.district" maxlength="50" /></div>
+                    <div class="col-12"><label class="form-label fw-semibold" for="detailAddress">详细地址</label><textarea class="form-control" id="detailAddress" rows="3" v-model.trim="form.detailAddress" maxlength="500" placeholder="街道、门牌号、楼层等" required></textarea></div>
+                    <div class="col-12"><div class="form-check"><input class="form-check-input" id="isDefault" type="checkbox" v-model="form.isDefault" /><label class="form-check-label" for="isDefault">设为默认地址</label></div></div>
+                    <div class="col-12 d-flex gap-2"><button class="btn btn-primary flex-grow-1" type="button" v-on:click="saveAddress" v-bind:disabled="saving"><span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>{{ form.addressId ? '保存修改' : '添加地址' }}</button><button class="btn btn-outline-secondary" type="button" v-on:click="resetForm" v-bind:disabled="saving">清空</button></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-7 col-xl-8">
+            <div v-if="loading" class="surface-card py-5 text-center"><div class="spinner-border text-primary"></div><p class="text-muted mt-3 mb-0">正在加载地址...</p></div>
+            <div v-else-if="items.length === 0" class="surface-card empty-state"><div class="empty-state-icon"><i class="bi bi-geo-alt"></i></div><h3 class="h5">还没有收货地址</h3><p class="text-muted mb-0">填写左侧表单，新增第一条常用地址。</p></div>
+            <div v-else>
+                <div class="surface-card overflow-hidden d-none d-md-block">
+                    <div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th class="ps-3">收货人</th><th>联系方式</th><th>完整地址</th><th>状态</th><th class="text-end pe-3">操作</th></tr></thead><tbody><tr v-for="item in items" v-bind:key="item.addressId"><td class="ps-3 fw-semibold">{{ item.receiverName }}</td><td>{{ item.receiverPhone }}</td><td style="min-width:260px">{{ fullAddress(item) }}</td><td><span class="badge" v-bind:class="item.isDefault ? 'text-bg-success' : 'text-bg-secondary'">{{ item.isDefault ? '默认地址' : '普通地址' }}</span></td><td class="text-end pe-3 text-nowrap"><button class="btn btn-sm btn-link text-decoration-none" type="button" v-on:click="editAddress(item)">编辑</button><button class="btn btn-sm btn-link text-success text-decoration-none" type="button" v-on:click="setDefault(item)" v-bind:disabled="item.isDefault || saving">设默认</button><button class="btn btn-sm btn-link text-danger text-decoration-none" type="button" v-on:click="deleteAddress(item)" v-bind:disabled="saving">删除</button></td></tr></tbody></table></div>
+                </div>
+                <div class="d-md-none vstack gap-3">
+                    <article v-for="item in items" v-bind:key="item.addressId" class="surface-card p-3">
+                        <div class="d-flex justify-content-between gap-2"><div><strong>{{ item.receiverName }}</strong><span class="ms-2 text-muted">{{ item.receiverPhone }}</span></div><span v-if="item.isDefault" class="badge text-bg-success">默认</span></div>
+                        <p class="text-muted mt-2 mb-3"><i class="bi bi-geo-alt me-1"></i>{{ fullAddress(item) }}</p>
+                        <div class="d-flex justify-content-end gap-2 pt-2 border-top"><button class="btn btn-sm btn-outline-primary" type="button" v-on:click="editAddress(item)">编辑</button><button class="btn btn-sm btn-outline-success" type="button" v-on:click="setDefault(item)" v-bind:disabled="item.isDefault">设默认</button><button class="btn btn-sm btn-outline-danger" type="button" v-on:click="deleteAddress(item)">删除</button></div>
+                    </article>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/addresses.js" asp-append-version="true"></script>
+}

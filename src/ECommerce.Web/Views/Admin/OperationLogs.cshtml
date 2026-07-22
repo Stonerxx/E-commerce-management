@@ -1,0 +1,89 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "操作日志";
+}
+
+<div id="operationLogsApp" v-cloak>
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+        <div>
+            <h1 class="h3 mb-1">管理员操作日志</h1>
+            <p class="text-muted mb-0">查看后台关键写操作记录，包括用户状态、角色分配和角色权限绑定。</p>
+        </div>
+        <button class="btn btn-primary" type="button" v-on:click="loadLogs" v-bind:disabled="loading">
+            <span v-if="loading" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+            查询
+        </button>
+    </div>
+
+    <div class="border rounded bg-white p-3 mb-3 shadow-sm">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-3">
+                <label class="form-label" for="module">模块</label>
+                <input class="form-control" id="module" v-model.trim="filters.module" placeholder="例如：用户管理" />
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label" for="operatorId">操作员 ID</label>
+                <input class="form-control" id="operatorId" v-model.number="filters.operatorId" type="number" min="1" />
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label" for="startTime">开始时间</label>
+                <input class="form-control" id="startTime" v-model="filters.startTime" type="datetime-local" />
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label" for="endTime">结束时间</label>
+                <input class="form-control" id="endTime" v-model="filters.endTime" type="datetime-local" />
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-danger" v-if="error">{{ error }}</div>
+
+    <div class="table-responsive border rounded bg-white shadow-sm">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>操作员</th>
+                    <th>模块</th>
+                    <th>动作</th>
+                    <th>详情</th>
+                    <th>IP</th>
+                    <th>结果</th>
+                    <th>时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-if="items.length === 0">
+                    <td class="text-center text-muted py-4" colspan="8">暂无日志</td>
+                </tr>
+                <tr v-for="item in items" v-bind:key="item.logId">
+                    <td>{{ item.logId }}</td>
+                    <td>{{ item.operatorName }}（{{ item.operatorId }}）</td>
+                    <td>{{ item.module }}</td>
+                    <td>{{ item.action }}</td>
+                    <td>{{ item.description || '-' }}</td>
+                    <td>{{ item.ipAddress }}</td>
+                    <td>
+                        <span class="badge" v-bind:class="item.result === 1 ? 'text-bg-success' : 'text-bg-danger'">
+                            {{ item.result === 1 ? '成功' : '失败' }}
+                        </span>
+                    </td>
+                    <td>{{ formatDate(item.createdAt) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <span class="text-muted small">共 {{ totalCount }} 条，第 {{ pageIndex }} / {{ totalPages || 1 }} 页</span>
+        <div class="btn-group">
+            <button class="btn btn-outline-secondary" type="button" v-on:click="changePage(pageIndex - 1)" v-bind:disabled="pageIndex <= 1">上一页</button>
+            <button class="btn btn-outline-secondary" type="button" v-on:click="changePage(pageIndex + 1)" v-bind:disabled="pageIndex >= totalPages">下一页</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/admin-operation-logs.js" asp-append-version="true"></script>
+}

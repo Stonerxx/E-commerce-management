@@ -1,0 +1,98 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "用户管理";
+}
+
+<div id="adminUsersApp" v-cloak>
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+        <div>
+            <h1 class="h3 mb-1">后台用户管理</h1>
+            <p class="text-muted mb-0">查询用户、启用或禁用账号、为用户分配 USER / SERVICE / ADMIN 角色。</p>
+        </div>
+        <button class="btn btn-primary" type="button" v-on:click="loadUsers" v-bind:disabled="loading">
+            <span v-if="loading" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+            查询
+        </button>
+    </div>
+
+    <div class="border rounded bg-white p-3 mb-3 shadow-sm">
+        <div class="row g-3">
+            <div class="col-12 col-md-4">
+                <label class="form-label" for="keyword">关键字</label>
+                <input class="form-control" id="keyword" v-model.trim="filters.keyword" placeholder="用户名 / 手机号 / 邮箱" />
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label" for="status">状态</label>
+                <select class="form-select" id="status" v-model="filters.status">
+                    <option value="">全部</option>
+                    <option value="1">正常</option>
+                    <option value="0">禁用</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label" for="role">角色</label>
+                <select class="form-select" id="role" v-model="filters.role">
+                    <option value="">全部</option>
+                    <option v-for="role in roles" v-bind:key="role.roleId" v-bind:value="role.roleName">{{ role.roleName }}</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-danger" v-if="error">{{ error }}</div>
+    <div class="alert alert-success" v-if="message">{{ message }}</div>
+
+    <div class="table-responsive border rounded bg-white shadow-sm">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>用户名</th>
+                    <th>手机号</th>
+                    <th>邮箱</th>
+                    <th>状态</th>
+                    <th>角色</th>
+                    <th>注册时间</th>
+                    <th class="text-end">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-if="items.length === 0">
+                    <td class="text-center text-muted py-4" colspan="8">暂无用户</td>
+                </tr>
+                <tr v-for="item in items" v-bind:key="item.userId">
+                    <td>{{ item.userId }}</td>
+                    <td>{{ item.username }}</td>
+                    <td>{{ item.phone || '-' }}</td>
+                    <td>{{ item.email || '-' }}</td>
+                    <td>
+                        <span class="badge" v-bind:class="item.status === 1 ? 'text-bg-success' : 'text-bg-danger'">
+                            {{ item.status === 1 ? '正常' : '禁用' }}
+                        </span>
+                    </td>
+                    <td>{{ item.roles.join(', ') || '-' }}</td>
+                    <td>{{ formatDate(item.createdAt) }}</td>
+                    <td class="text-end text-nowrap">
+                        <button class="btn btn-sm btn-outline-warning me-1" type="button" v-on:click="toggleStatus(item)">
+                            {{ item.status === 1 ? '禁用' : '启用' }}
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" type="button" v-on:click="assignRoles(item)">分配角色</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <span class="text-muted small">共 {{ totalCount }} 条，第 {{ pageIndex }} / {{ totalPages || 1 }} 页</span>
+        <div class="btn-group">
+            <button class="btn btn-outline-secondary" type="button" v-on:click="changePage(pageIndex - 1)" v-bind:disabled="pageIndex <= 1">上一页</button>
+            <button class="btn btn-outline-secondary" type="button" v-on:click="changePage(pageIndex + 1)" v-bind:disabled="pageIndex >= totalPages">下一页</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/admin-users.js" asp-append-version="true"></script>
+}

@@ -1,4 +1,4 @@
-新版本代码部署发布：
+# 发布说明
 
 服务器上的关键路径：
 
@@ -6,215 +6,217 @@
 源码目录：/root/E-commerce-management
 发布目录：/var/www/ecommerce
 服务名：ecommerce
-Web 项目：src/ECommerce.Web/ECommerce.Web.csproj
-解决方案：ECommerce.sln
 后端监听：127.0.0.1:5000
-Nginx：转发公网 80 → 127.0.0.1:5000
+Nginx：公网 80 转发到 127.0.0.1:5000
+环境变量：/etc/ecommerce/ecommerce.env 或 ecommerce.service
 ```
 
-## 一、最常用的发布流程
+## 公网 IP 与 Nginx
 
-如果要部署当前分支的新代码：
+当前演示环境只使用服务器公网 IP，不配置域名和 HTTPS 证书。应用的 Production 管道不会强制跳转 HTTPS，Nginx 直接在 80 端口把请求转发到 Kestrel：
 
 ```bash
-cd /root/E-commerce-management
-
-git status
-git pull
-
-dotnet restore ECommerce.sln
-dotnet build ECommerce.sln -c Release
-
-rm -rf /var/www/ecommerce-new
-mkdir -p /var/www/ecommerce-new
-
-dotnet publish src/ECommerce.Web/ECommerce.Web.csproj \
-  -c Release \
-  -o /var/www/ecommerce-new
-
-systemctl stop ecommerce
-
-rm -rf /var/www/ecommerce-old
-mv /var/www/ecommerce /var/www/ecommerce-old
-mv /var/www/ecommerce-new /var/www/ecommerce
-
-chown -R www-data:www-data /var/www/ecommerce
-
-systemctl start ecommerce
-systemctl status ecommerce --no-pager
+sudo cp deployment/linux/nginx-ecommerce.conf.example /etc/nginx/sites-available/ecommerce
+sudo ln -s /etc/nginx/sites-available/ecommerce /etc/nginx/sites-enabled/ecommerce
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
-然后测试：
+如果 `/etc/nginx/sites-enabled/default` 仍占用默认站点，先停用该链接再执行 `nginx -t`。部署完成后使用 `http://服务器公网IP/` 访问，不要写虚构域名或 `https://`。
 
-```bash
-curl -i http://127.0.0.1:5000/
-curl -i http://127.0.0.1:5000/health
-```
+## 一、推荐发布流程：GitHub Actions 编译，服务器只部署
 
-浏览器访问：
+现在推荐流程是：
 
 ```text
-http://服务器IP/
+GitHub Actions restore/build/publish
+-> 打包 ecommerce-release.tar.gz
+-> 通过 SSH 上传到服务器 /tmp
+-> 服务器解压到 /var/www/ecommerce
+-> 重启 ecommerce systemd 服务
+-> 检查 /health/ready
 ```
 
-如果网页正常，新代码就部署完成了。
+服务器不再执行 `dotnet restore`、`dotnet build` 或 `dotnet publish`，只负责运行发布好的文件。
 
-## 二、如果要切换到某个分支再部署
+仓库里的工作流：
 
-比如要部署 `member1` 分支或者别人的功能分支：
+```text
+.github/workflows/deploy.yml
+```
+
+触发方式：
+
+```text
+push 到 main
+GitHub Actions 页面手动 Run workflow（选择 main）
+```
+
+`merging` 分支只触发 `.github/workflows/build.yml` 的 build/test 检查，不部署服务器。
+
+## 二、服务器准备 artifact 部署脚本
+
+仓库提供脚本：
+
+```text
+deployment/linux/deploy-ecommerce-artifact.sh
+```
+
+第一次在服务器上执行：
 
 ```bash
 cd /root/E-commerce-management
-
-git fetch --all --prune
-git branch -a
+git pull
+chmod +x deployment/linux/deploy-ecommerce-artifact.sh
 ```
 
-看到目标分支后切换：
+以后 GitHub Actions 会执行：
 
 ```bash
-git switch 分支名
-git pull --ff-only
+bash /root/E-commerce-management/deployment/linux/deploy-ecommerce-artifact.sh /tmp/ecommerce-release.tar.gz
 ```
 
-如果是第一次切远程分支，比如：
+这个脚本会：
+
+1. 校验 tar.gz 可以解压。
+2. 解压到 `/var/www/ecommerce-new`。
+3. 检查 `ECommerce.Web.dll` 是否存在。
+4. 停止 `ecommerce`。
+5. 把旧版移动到 `/var/www/ecommerce-old`。
+6. 把新版移动到 `/var/www/ecommerce`。
+7. `chown -R www-data:www-data /var/www/ecommerce`。
+8. 重启服务并检查 `/health/ready`。
+9. 如果启动或健康检查失败，自动回滚上一版。
+
+如果服务器路径以后变了，可以用环境变量覆盖：
 
 ```bash
-git switch --track origin/feat-member1-foundation-oracle-deploy
+SERVICE_NAME=ecommerce \
+PUBLISH_CURRENT=/var/www/ecommerce \
+HEALTH_URL=http://127.0.0.1:5000/health/ready \
+bash /root/E-commerce-management/deployment/linux/deploy-ecommerce-artifact.sh /tmp/ecommerce-release.tar.gz
 ```
 
-然后再走发布流程：
+## 三、GitHub Actions 需要的 Secrets
+
+进入：
+
+```text
+GitHub 仓库 -> Settings -> Secrets and variables -> Actions -> New repository secret
+```
+
+添加：
+
+```text
+SERVER_HOST       服务器公网 IP
+SERVER_PORT       22
+SERVER_USER       root
+SERVER_SSH_KEY    GitHub Actions 专用 SSH 私钥全文
+```
+
+推荐生成专用 key：
 
 ```bash
-dotnet restore ECommerce.sln
-dotnet build ECommerce.sln -c Release
-
-rm -rf /var/www/ecommerce-new
-mkdir -p /var/www/ecommerce-new
-
-dotnet publish src/ECommerce.Web/ECommerce.Web.csproj \
-  -c Release \
-  -o /var/www/ecommerce-new
-
-systemctl stop ecommerce
-
-rm -rf /var/www/ecommerce-old
-mv /var/www/ecommerce /var/www/ecommerce-old
-mv /var/www/ecommerce-new /var/www/ecommerce
-
-chown -R www-data:www-data /var/www/ecommerce
-
-systemctl start ecommerce
-systemctl status ecommerce --no-pager
+ssh-keygen -t ed25519 -C "github-actions-ecommerce" -f ecommerce_deploy_key
 ```
 
-## 三、如果发布后挂了，怎么回滚
-
-如果新代码启动失败，先看日志：
+把公钥追加到服务器：
 
 ```bash
-journalctl -u ecommerce -n 100 --no-pager
+mkdir -p /root/.ssh
+nano /root/.ssh/authorized_keys
+chmod 700 /root/.ssh
+chmod 600 /root/.ssh/authorized_keys
 ```
 
-如果短时间内修不了，直接回滚上一版：
+`SERVER_SSH_KEY` 填 `ecommerce_deploy_key` 私钥全文，不是 `.pub` 公钥。
+
+## 四、数据库连接仍然在服务器
+
+GitHub Actions 只上传编译后的代码文件，不需要数据库密码。
+
+数据库连接仍然由服务器运行时配置决定，通常在：
+
+```text
+/etc/ecommerce/ecommerce.env
+```
+
+或者：
+
+```text
+/etc/systemd/system/ecommerce.service
+```
+
+示例：
 
 ```bash
-systemctl stop ecommerce
-
-rm -rf /var/www/ecommerce-bad
-mv /var/www/ecommerce /var/www/ecommerce-bad
-mv /var/www/ecommerce-old /var/www/ecommerce
-
-chown -R www-data:www-data /var/www/ecommerce
-
-systemctl start ecommerce
-systemctl status ecommerce --no-pager
+Oracle__ConnectionString="User Id=ECOMMERCE_DEMO;Password=change_me;Data Source=127.0.0.1:1521/FREEPDB1"
 ```
 
-这样至少网站能恢复到上一版。
+持久写入环境变量的推荐方式：
 
-## 四、封装好的一键发布脚本
+```bash
+sudo install -d -m 0750 /etc/ecommerce
+sudo install -m 0640 -o root -g www-data \
+  /root/E-commerce-management/deployment/env.example \
+  /etc/ecommerce/ecommerce.env
+sudo nano /etc/ecommerce/ecommerce.env
+sudo systemctl daemon-reload
+sudo systemctl restart ecommerce
+```
 
-仓库已经提供可重复运行的发布脚本：
+`ecommerce.service` 通过 `EnvironmentFile=/etc/ecommerce/ecommerce.env` 读取该文件；不要把真实密码提交到仓库。
+
+业务服务器固定连接已创建的 `ECOMMERCE_DEMO`，不要指向日常开发使用的 `ECOMMERCE_DEV`。修改演示库连接信息后只需重启服务：
+
+```bash
+systemctl restart ecommerce
+```
+
+不需要重新跑 GitHub Actions。
+
+## 五、SSH 安全组和登录方式
+
+GitHub Actions runner 需要能 SSH 到服务器。如果云服务器安全组只允许你自己的 IP 访问 22 端口，Actions 会连不上。
+
+课程项目最简单做法：
+
+```text
+22 端口允许 GitHub Actions 访问
+服务器禁止密码登录，只允许密钥登录
+```
+
+建议检查 `/etc/ssh/sshd_config`：
+
+```text
+PasswordAuthentication no
+PubkeyAuthentication yes
+PermitRootLogin prohibit-password
+```
+
+修改后：
+
+```bash
+systemctl restart ssh
+```
+
+## 六、备用：服务器本地编译发布脚本
+
+仓库仍保留备用脚本：
 
 ```text
 deployment/linux/deploy-ecommerce.sh
 ```
 
-第一次在服务器上拉到脚本后，给它执行权限：
+它会在服务器本地拉代码、编译、发布和重启服务。正常发布优先使用 GitHub Actions；如果 GitHub Actions 临时不可用，可以用它救急：
 
 ```bash
-cd /root/E-commerce-management
-chmod +x deployment/linux/deploy-ecommerce.sh
-ln -sf /root/E-commerce-management/deployment/linux/deploy-ecommerce.sh /root/deploy-ecommerce.sh
+/root/E-commerce-management/deployment/linux/deploy-ecommerce.sh main
 ```
 
-以后发布当前分支新代码：
+备用脚本已经改成 `build` 后 `publish --no-build`，不会再因为 publish 阶段重复编译。
 
-```bash
-/root/deploy-ecommerce.sh
-```
-
-发布指定分支：
-
-```bash
-/root/deploy-ecommerce.sh feat-member1-foundation-oracle-deploy
-```
-
-发布前顺便跑测试：
-
-```bash
-RUN_TESTS=1 /root/deploy-ecommerce.sh
-```
-
-如果刚发布的新版本有问题，回滚到上一版：
-
-```bash
-/root/deploy-ecommerce.sh --rollback
-```
-
-脚本做的事情：
-
-1. 检查 Git 工作区是否干净。
-2. 拉取当前分支或指定分支最新代码。
-3. `dotnet restore`、`dotnet build -c Release`。
-4. 发布到 `/var/www/ecommerce-new`。
-5. 停止 `ecommerce` 服务。
-6. 把旧版本移到 `/var/www/ecommerce-old`。
-7. 把新版本切到 `/var/www/ecommerce`。
-8. 启动服务并检查 `/health`。
-9. 如果启动或健康检查失败，自动回滚上一版。
-
-如果服务器路径以后变了，不用改脚本，可以用环境变量覆盖：
-
-```bash
-PROJECT_DIR=/root/E-commerce-management \
-PUBLISH_CURRENT=/var/www/ecommerce \
-SERVICE_NAME=ecommerce \
-HEALTH_URL=http://127.0.0.1:5000/health \
-/root/deploy-ecommerce.sh
-```
-
-## 五、数据库变更不要混在普通发布里
-
-普通代码发布不会重置数据库。
-只有当后端同学改了表结构，比如新增字段、改表名、加触发器、加存储过程，才需要额外执行 SQL。
-
-建议规则：
-
-```text
-普通代码更新：
-git pull → build → publish → restart
-
-数据库结构更新：
-先备份/确认
-再由你执行 migration SQL
-不要让每个人随便执行 init_database.sql
-```
-
-尤其不要随便重新跑完整 `init_database.sql`，因为它如果包含 `DROP TABLE`，会把大家测试数据清掉。
-
-## 六、日常检查命令
+## 七、日常检查命令
 
 看服务状态：
 
@@ -234,37 +236,17 @@ journalctl -u ecommerce -n 100 --no-pager
 journalctl -u ecommerce -f
 ```
 
-看后端端口：
+测试服务：
 
 ```bash
-ss -lntp | grep 5000
+curl -i http://127.0.0.1:5000/
+curl -i http://127.0.0.1:5000/health/live
+curl -i http://127.0.0.1:5000/health/ready
+curl -i http://127.0.0.1:5000/api/v1/system/db-check
 ```
 
-看 Nginx 状态：
+看 Nginx：
 
 ```bash
 systemctl status nginx --no-pager
 ```
-
-看 Oracle 容器：
-
-```bash
-docker ps
-```
-
-看 Oracle 表：
-
-```bash
-docker exec -it oracle-free bash -lc 'sqlplus ECOMMERCE_DEV/"我们的开发库密码"@localhost:1521/FREEPDB1'
-```
-
-进去后：
-
-```sql
-SELECT COUNT(*) FROM USER_TABLES;
-EXIT;
-```
-
-## 七、以后发布时记住
-
-**先 build，后 publish；先发布到新目录，再停服务替换；出问题就看 journalctl，必要时回滚 `/var/www/ecommerce-old`。**

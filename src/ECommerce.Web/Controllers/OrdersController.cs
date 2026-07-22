@@ -43,10 +43,10 @@ public sealed class OrdersController : Controller
     /// 订单确认/结算页
     /// </summary>
     [HttpGet("/orders/create")]
-    public IActionResult Create([FromQuery] string cartItemIds)
+    public IActionResult Create([FromQuery] long[] cartItemIds)
     {
         // 将选中的购物车项 ID 传给前端，用于预览和提交
-        ViewData["CartItemIds"] = cartItemIds;
+        ViewData["CartItemIds"] = string.Join(",", cartItemIds.Where(x => x > 0));
         return View();
     }
 }

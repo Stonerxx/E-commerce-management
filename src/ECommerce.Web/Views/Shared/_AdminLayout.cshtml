@@ -1,31 +1,85 @@
+@{
+    var isAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
+    var roleName = isAdmin ? "系统管理员" : "客服专员";
+    var userName = User.Identity?.Name ?? roleName;
+}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - ECommerce Admin</title>
+    <meta name="theme-color" content="#171827" />
+    <title>@ViewData["Title"] - 电商管理系统DEMO</title>
+    <script>
+        (function () {
+            try {
+                var savedTheme = localStorage.getItem("ecommerce-theme");
+                var theme = savedTheme || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+                document.documentElement.setAttribute("data-theme", theme);
+            } catch (_) { }
+        })();
+    </script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body>
-    <header class="border-bottom">
-        <nav class="navbar navbar-expand-sm navbar-light bg-white">
-            <div class="container-fluid">
-                <a class="navbar-brand" href="/admin">ECommerce Admin</a>
-                <div class="navbar-nav">
-                    <a class="nav-link" href="/admin/products">Products</a>
-                    <a class="nav-link" href="/admin/orders">Orders</a>
-                    <a class="nav-link" href="/admin/statistics">Statistics</a>
-                    <a class="nav-link" href="/admin/operation-logs">Logs</a>
+<body class="admin-body">
+    <aside class="admin-sidebar d-none d-lg-flex">
+        <a class="admin-brand" href="/admin">
+            <span class="brand-mark"><i class="fa-solid fa-chart-simple"></i></span>
+            <span><strong>电商管理系统DEMO</strong><small>@roleName</small></span>
+        </a>
+        <partial name="_AdminNavigation" />
+        <div class="admin-sidebar-footer">
+            <a href="/" class="admin-nav-link"><i class="fa-solid fa-arrow-left"></i><span>返回商品浏览</span></a>
+        </div>
+    </aside>
+
+    <div class="admin-shell">
+        <header class="admin-topbar sticky-top">
+            <button class="btn icon-button d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#adminMenu" aria-controls="adminMenu" aria-label="打开后台菜单">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div class="admin-page-context">
+                <span class="small text-muted d-none d-sm-block">运营工作台</span>
+                <strong>@ViewData["Title"]</strong>
+            </div>
+            <div class="ms-auto d-flex align-items-center gap-2">
+                <a class="btn icon-button" href="/health" aria-label="健康检查" title="健康检查"><i class="fa-solid fa-heart-pulse"></i></a>
+                <button class="btn icon-button" type="button" data-theme-toggle aria-label="切换深浅色模式" title="切换深浅色模式">
+                    <i class="fa-solid fa-moon" data-theme-icon></i>
+                </button>
+                <div class="admin-account">
+                    <span class="user-avatar">@userName.Substring(0, 1).ToUpperInvariant()</span>
+                    <span class="d-none d-sm-block"><strong>@userName</strong><small>@roleName</small></span>
                 </div>
             </div>
-        </nav>
-    </header>
-    <main class="container-fluid py-3">
-        @RenderBody()
-    </main>
+        </header>
+
+        <main class="admin-content">
+            @RenderBody()
+        </main>
+    </div>
+
+    <div class="offcanvas offcanvas-start admin-offcanvas" tabindex="-1" id="adminMenu" aria-labelledby="adminMenuLabel">
+        <div class="offcanvas-header">
+            <a class="admin-brand" id="adminMenuLabel" href="/admin">
+                <span class="brand-mark"><i class="fa-solid fa-chart-simple"></i></span>
+                <span><strong>电商管理系统DEMO</strong><small>@roleName</small></span>
+            </a>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="关闭"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column">
+            <partial name="_AdminNavigation" />
+            <a href="/" class="admin-nav-link mt-auto"><i class="fa-solid fa-arrow-left"></i><span>返回商品浏览</span></a>
+        </div>
+    </div>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="appToastContainer" aria-live="polite" aria-atomic="true"></div>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

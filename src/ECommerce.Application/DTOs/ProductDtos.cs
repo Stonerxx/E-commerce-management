@@ -29,6 +29,13 @@ public sealed record ProductSpecRequest(
     string SpecValue,
     int SortOrder);
 
+/// <summary>
+/// SKU 规格选择项：用户从商品的 ProductSpec 定义中选择规格名和对应的值
+/// </summary>
+public sealed record SkuSpecSelection(
+    string SpecName,
+    string SpecValue);
+
 public sealed record ProductSaveRequest(
     int CategoryId,
     string Name,
@@ -40,13 +47,14 @@ public sealed record ProductSaveRequest(
     IReadOnlyList<SkuSaveRequest> Skus);
 
 public sealed record SkuSaveRequest(
-    string SpecDescJson,
+    IReadOnlyList<SkuSpecSelection> SpecSelections,
     decimal Price,
     decimal? OriginalPrice,
     int Stock,
     int WarningStock,
     string? SkuImage,
-    int Status);
+    int Status,
+    long? SkuId = null);
 
 public sealed record ProductQuery : PageQuery
 {
@@ -55,6 +63,8 @@ public sealed record ProductQuery : PageQuery
     public string? Keyword { get; init; }
 
     public int? Status { get; init; }
+
+    public string? SortBy { get; init; }
 }
 
 public sealed record ProductListItemDto(
@@ -88,6 +98,30 @@ public sealed record SkuDto(
     int LockedStock,
     int WarningStock,
     string? SkuImage,
+    int Status,
+    int ProductStatus = 1);
+
+public sealed record AdminSkuQuery : PageQuery
+{
+    public long? SkuId { get; init; }
+
+    public string? Keyword { get; init; }
+
+    public int? Status { get; init; }
+
+    public bool LowStock { get; init; }
+}
+
+public sealed record AdminSkuListItemDto(
+    long SkuId,
+    long ProductId,
+    string ProductName,
+    string ProductImage,
+    string SpecDescJson,
+    decimal Price,
+    int Stock,
+    int LockedStock,
+    int WarningStock,
     int Status);
 
 public sealed record ProductDetailDto(

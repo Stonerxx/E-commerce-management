@@ -72,15 +72,15 @@
                 <div class="border rounded p-3 bg-white sticky-top" style="top: 20px;">
                     <h2 class="h6 mb-3">订单摘要</h2>
 
-                    <!-- 优惠券选择 -->
-                    <div class="mb-3" v-if="coupons.length > 0">
-                        <label class="form-label small">优惠券</label>
-                        <select class="form-select form-select-sm" v-model="selectedCouponId">
-                            <option value="">不使用优惠券</option>
-                            <option v-for="c in coupons" v-bind:key="c.userCouponId" v-bind:value="c.userCouponId">
-                                {{ c.couponName }}（{{ formatCouponInfo(c) }}）
+                    <div class="mb-3">
+                        <label for="checkoutCoupon" class="form-label small text-muted">优惠券</label>
+                        <select id="checkoutCoupon" class="form-select form-select-sm" v-model="selectedCouponId">
+                            <option v-bind:value="null">不使用优惠券</option>
+                            <option v-for="coupon in coupons" v-bind:key="coupon.userCouponId" v-bind:value="coupon.userCouponId">
+                                {{ coupon.couponName }}
                             </option>
                         </select>
+                        <div v-if="coupons.length === 0" class="form-text">暂无可用优惠券</div>
                     </div>
 
                     <!-- 金额 -->

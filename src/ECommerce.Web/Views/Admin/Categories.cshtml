@@ -1,0 +1,180 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "分类管理";
+}
+
+<div id="categoriesApp" class="admin-catalog-page" v-cloak>
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
+        <div>
+            <div class="page-kicker">CATALOG STRUCTURE</div>
+            <h1 class="h2 mb-2">分类管理</h1>
+            <p class="text-muted mb-0">维护商品目录层级、展示顺序和启用状态。</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" type="button" v-on:click="loadCategories" v-bind:disabled="loading">
+                <i class="bi bi-arrow-clockwise me-1"></i>刷新
+            </button>
+            <button class="btn btn-primary" type="button" v-on:click="openCreateModal(null)">
+                <i class="bi bi-plus-lg me-1"></i>新增根分类
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-4">
+            <div class="catalog-metric-card">
+                <span class="catalog-metric-icon"><i class="bi bi-diagram-3"></i></span>
+                <span><small>根分类</small><strong>{{ rootCount }}</strong></span>
+            </div>
+        </div>
+        <div class="col-6 col-sm-4">
+            <div class="catalog-metric-card">
+                <span class="catalog-metric-icon is-success"><i class="bi bi-check2-circle"></i></span>
+                <span><small>启用中</small><strong>{{ activeCount }}</strong></span>
+            </div>
+        </div>
+        <div class="col-6 col-sm-4">
+            <div class="catalog-metric-card">
+                <span class="catalog-metric-icon is-muted"><i class="bi bi-slash-circle"></i></span>
+                <span><small>已停用</small><strong>{{ disabledCount }}</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <section class="card overflow-hidden">
+        <div class="card-header p-3 p-lg-4">
+            <div class="row g-3 align-items-center">
+                <div class="col-12 col-lg-7">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input class="form-control" type="search" v-model="keyword" placeholder="搜索分类名称" aria-label="搜索分类名称" />
+                    </div>
+                </div>
+                <div class="col-12 col-lg-5 d-flex justify-content-lg-end">
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" id="showDisabledCategories" type="checkbox" v-model="showDisabled" v-on:change="loadCategories" />
+                        <label class="form-check-label" for="showDisabledCategories">显示已停用分类</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="loadError" class="alert alert-warning m-3 m-lg-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span><i class="bi bi-exclamation-triangle me-2"></i>{{ loadError }}</span>
+            <button class="btn btn-sm btn-outline-warning" type="button" v-on:click="loadCategories">重新加载</button>
+        </div>
+
+        <div v-if="loading" class="catalog-loading" aria-live="polite">
+            <div class="spinner-border text-primary" role="status"></div>
+            <span>正在整理分类层级…</span>
+        </div>
+
+        <div v-else-if="displayedCategories.length" class="category-tree" role="tree" aria-label="商品分类层级">
+            <article v-for="item in displayedCategories" :key="item.categoryId" class="category-tree-row"
+                     :class="{ 'is-disabled': item.status === 0 }" role="treeitem"
+                     :style="{ paddingLeft: `${16 + Math.max(0, item.treeLevel - 1) * 22}px` }">
+                <div class="category-tree-main">
+                    <button v-if="item.children && item.children.length" class="category-expand-button" type="button"
+                            v-on:click="toggleExpand(item)" :aria-label="item.expanded === false ? '展开子分类' : '收起子分类'">
+                        <i class="bi" :class="item.expanded === false ? 'bi-chevron-right' : 'bi-chevron-down'"></i>
+                    </button>
+                    <span v-else class="category-expand-spacer"></span>
+                    <span class="category-symbol"><i class="bi" :class="item.treeLevel === 1 ? 'bi-folder2-open' : 'bi-tag'"></i></span>
+                    <div class="min-w-0">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <h2 class="h6 mb-0 text-truncate">{{ item.name }}</h2>
+                            <span class="badge rounded-pill" :class="item.status === 1 ? 'text-bg-success' : 'text-bg-secondary'">
+                                {{ item.status === 1 ? '启用' : '停用' }}
+                            </span>
+                        </div>
+                        <div class="category-meta">
+                            <span>层级 {{ item.treeLevel }}</span>
+                            <span>排序 {{ item.sortOrder }}</span>
+                            <span v-if="item.children && item.children.length">{{ item.children.length }} 个子分类</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="category-actions">
+                    <button class="btn btn-sm btn-outline-primary" type="button" v-on:click="openCreateModal(item)">
+                        <i class="bi bi-plus-lg me-1"></i>子分类
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" v-on:click="openEditModal(item)">
+                        <i class="bi bi-pencil me-1"></i>编辑
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" type="button" v-on:click="deleteCategory(item)">
+                        <i class="bi bi-trash3 me-1"></i>删除
+                    </button>
+                </div>
+            </article>
+        </div>
+
+        <div v-else-if="!loadError" class="empty-state">
+            <div class="empty-state-icon"><i class="bi bi-folder2-open"></i></div>
+            <h2 class="h5">{{ keyword ? '没有匹配的分类' : '还没有分类' }}</h2>
+            <p class="text-muted">{{ keyword ? '换一个关键词试试。' : '先创建根分类，再按商品结构添加子分类。' }}</p>
+            <button v-if="!keyword" class="btn btn-primary" type="button" v-on:click="openCreateModal(null)">创建第一个分类</button>
+        </div>
+    </section>
+
+    <div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form v-on:submit.prevent="saveCategory">
+                    <div class="modal-header">
+                        <div>
+                            <div class="page-kicker mb-1">CATEGORY DETAILS</div>
+                            <h2 class="modal-title h5">{{ isEdit ? '编辑分类' : '新增分类' }}</h2>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="categoryName">分类名称</label>
+                            <input id="categoryName" class="form-control" type="text" v-model="form.name" maxlength="50" required placeholder="例如：数码产品" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="categoryParent">上级分类</label>
+                            <select id="categoryParent" class="form-select" v-model="form.parentId" v-on:change="updateTreeLevel">
+                                <option :value="null">无（根分类）</option>
+                                <option v-for="option in parentOptions" :key="option.categoryId" :value="option.categoryId"
+                                        :disabled="isEdit && option.categoryId === editingId">
+                                    {{ indentText(option.treeLevel) }}{{ option.name }}
+                                </option>
+                            </select>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <label class="form-label fw-semibold" for="categorySort">排序序号</label>
+                                <input id="categorySort" class="form-control" type="number" v-model.number="form.sortOrder" min="0" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold" for="categoryStatus">状态</label>
+                                <select id="categoryStatus" class="form-select" v-model.number="form.status">
+                                    <option :value="1">启用</option>
+                                    <option :value="0">停用</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label class="form-label fw-semibold" for="categoryIcon">图标地址 <span class="text-muted fw-normal">（可选）</span></label>
+                            <input id="categoryIcon" class="form-control" type="text" v-model="form.iconUrl" placeholder="/images/category-digital.svg" />
+                        </div>
+                        <div v-if="errorMsg" class="alert alert-danger mt-3 mb-0">{{ errorMsg }}</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="submit" class="btn btn-primary" v-bind:disabled="submitting">
+                            <span v-if="submitting" class="spinner-border spinner-border-sm me-1"></span>
+                            {{ isEdit ? '保存修改' : '创建分类' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/admin-categories.js" asp-append-version="true"></script>
+}

@@ -24,7 +24,7 @@ public sealed class CartController : Controller
     /// 购物车页面
     /// </summary>
     [HttpGet("/cart")]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken = default)
+    public IActionResult Index()
     {
         // 采用 Vue + API 方式
         return View();

@@ -90,40 +90,44 @@ public class CartServiceTests : ServiceTestBase
         ), It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task AddItemAsync_NonPositiveQuantity_ShouldThrow(int quantity)
+    {
+        var request = new CartItemRequest(SkuId: 100, Quantity: quantity);
+
+        var exception = await Assert.ThrowsAsync<BusinessException>(
+            () => _cartService.AddItemAsync(userId: 1, request));
+
+        Assert.Equal("INVALID_QUANTITY", exception.Code);
+        _skuServiceMock.Verify(x => x.GetByIdAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
+        _cartRepositoryMock.Verify(x => x.AddAsync(It.IsAny<Cart>(), It.IsAny<CancellationToken>()), Times.Never);
+        _cartRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<Cart>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Fact]
-    public async Task AddItemAsync_ExistingItem_ShouldUpdateQuantity()
+    public async Task AddItemAsync_ExistingItem_ShouldAtomicallyIncreaseQuantity()
     {
         // Arrange
         var userId = 1L;
         var request = new CartItemRequest(SkuId: 100, Quantity: 2);
         var sku = CreateSkuDto(skuId: 100, stock: 100, lockedStock: 0);
-        var existingCart = new Cart
-        {
-            Id = 1,
-            UserId = userId,
-            SkuId = 100,
-            Quantity = 1,
-            Selected = 1,
-            CreatedAt = DateTime.Now.AddDays(-1),
-            UpdatedAt = DateTime.Now.AddDays(-1)
-        };
-
         _skuServiceMock
             .Setup(x => x.GetByIdAsync(request.SkuId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(sku);
 
         _cartRepositoryMock
-            .Setup(x => x.GetByUserAndSkuAsync(userId, request.SkuId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(existingCart);
+            .Setup(x => x.TryIncreaseQuantityAsync(userId, request.SkuId, request.Quantity, 100, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
 
         // Act
         await _cartService.AddItemAsync(userId, request);
 
         // Assert
-        _cartRepositoryMock.Verify(x => x.UpdateAsync(It.Is<Cart>(c =>
-            c.Id == existingCart.Id &&
-            c.Quantity == 3 // 1 + 2
-        ), It.IsAny<CancellationToken>()), Times.Once);
+        _cartRepositoryMock.Verify(x => x.TryIncreaseQuantityAsync(
+            userId, request.SkuId, request.Quantity, 100, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        _cartRepositoryMock.Verify(x => x.AddAsync(It.IsAny<Cart>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

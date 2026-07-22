@@ -1,6 +1,8 @@
 using ECommerce.Application.DTOs;
+using ECommerce.Application.Services;
 using ECommerce.Shared.Constants;
 using ECommerce.Shared.Contracts;
+using ECommerce.Web.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,21 +12,41 @@ namespace ECommerce.Web.Controllers.Api;
 [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
 public sealed class AdminUsersApiController : ApiControllerBase
 {
-    [HttpGet]
-    public ActionResult<ApiResponse<PagedResult<UserDto>>> Search([FromQuery] UserQuery query)
+    private readonly IUserService _userService;
+
+    public AdminUsersApiController(IUserService userService)
     {
-        return NotReady<PagedResult<UserDto>>("Admin user search endpoint is defined and awaiting implementation.");
+        _userService = userService;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<ApiResponse<PagedResult<UserDto>>>> Search(
+        [FromQuery] UserQuery query,
+        CancellationToken cancellationToken)
+    {
+        var users = await _userService.SearchUsersAsync(query, cancellationToken);
+        return ApiResponse<PagedResult<UserDto>>.Ok(users, HttpContext.TraceIdentifier);
     }
 
     [HttpPut("{userId:long}/status")]
-    public ActionResult<ApiResponse<object?>> SetStatus(long userId, [FromBody] StatusUpdateRequest request)
+    public async Task<ActionResult<ApiResponse<object?>>> SetStatus(
+        long userId,
+        [FromBody] StatusUpdateRequest request,
+        CancellationToken cancellationToken)
     {
-        return NotReady<object?>("User status endpoint is defined and awaiting implementation.");
+        await _userService.SetUserStatusAsync(userId, request.Status, User.GetUserId(), cancellationToken);
+
+        return ApiResponse<object?>.Ok(null, HttpContext.TraceIdentifier, "用户状态修改成功");
     }
 
     [HttpPut("{userId:long}/roles")]
-    public ActionResult<ApiResponse<object?>> AssignRoles(long userId, [FromBody] AssignRolesRequest request)
+    public async Task<ActionResult<ApiResponse<object?>>> AssignRoles(
+        long userId,
+        [FromBody] AssignRolesRequest request,
+        CancellationToken cancellationToken)
     {
-        return NotReady<object?>("User role assignment endpoint is defined and awaiting implementation.");
+        await _userService.AssignRolesAsync(userId, request.RoleIds, User.GetUserId(), cancellationToken);
+
+        return ApiResponse<object?>.Ok(null, HttpContext.TraceIdentifier, "用户角色分配成功");
     }
 }
