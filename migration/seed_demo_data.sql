@@ -147,50 +147,50 @@ INSERT ALL
 SELECT 1 FROM DUAL;
 
 INSERT ALL
-    INTO "CATEGORY" (id, parent_id, name, tree_level, sort_order, status, icon_url) VALUES (9001, NULL, '数码电子', 1, 10, 1, '/images/category-digital.png')
-    INTO "CATEGORY" (id, parent_id, name, tree_level, sort_order, status, icon_url) VALUES (9002, 9001, '手机通讯', 2, 10, 1, '/images/category-phone.png')
-    INTO "CATEGORY" (id, parent_id, name, tree_level, sort_order, status, icon_url) VALUES (9003, 9001, '电脑配件', 2, 20, 1, '/images/category-computer.png')
-    INTO "CATEGORY" (id, parent_id, name, tree_level, sort_order, status, icon_url) VALUES (9004, NULL, '食品饮料', 1, 20, 1, '/images/category-food.png')
-    INTO "CATEGORY" (id, parent_id, name, tree_level, sort_order, status, icon_url) VALUES (9005, 9004, '咖啡茶饮', 2, 10, 1, '/images/category-coffee.png')
-    INTO "CATEGORY" (id, parent_id, name, tree_level, sort_order, status, icon_url) VALUES (9006, NULL, '居家生活', 1, 30, 1, '/images/category-home.png')
-    INTO "CATEGORY" (id, parent_id, name, tree_level, sort_order, status, icon_url) VALUES (9007, 9006, '家居日用', 2, 10, 1, '/images/category-daily.png')
-    INTO "CATEGORY" (id, parent_id, name, tree_level, sort_order, status, icon_url) VALUES (9008, 9006, '收纳出行', 2, 20, 1, '/images/category-travel.png')
+    INTO "CATEGORY" (id, parent_id, name, tree_level, sort_order, status, icon_url) VALUES (9001, NULL, '数码电子', 1, 10, 1, '/images/demo-monitor.png')
+    INTO "CATEGORY" (id, parent_id, name, tree_level, sort_order, status, icon_url) VALUES (9002, 9001, '手机通讯', 2, 10, 1, '/images/demo-phone.png')
+    INTO "CATEGORY" (id, parent_id, name, tree_level, sort_order, status, icon_url) VALUES (9003, 9001, '电脑配件', 2, 20, 1, '/images/demo-keyboard.png')
+    INTO "CATEGORY" (id, parent_id, name, tree_level, sort_order, status, icon_url) VALUES (9004, NULL, '食品饮料', 1, 20, 1, '/images/demo-tea.png')
+    INTO "CATEGORY" (id, parent_id, name, tree_level, sort_order, status, icon_url) VALUES (9005, 9004, '咖啡茶饮', 2, 10, 1, '/images/demo-coffee.png')
+    INTO "CATEGORY" (id, parent_id, name, tree_level, sort_order, status, icon_url) VALUES (9006, NULL, '居家生活', 1, 30, 1, '/images/demo-lamp.png')
+    INTO "CATEGORY" (id, parent_id, name, tree_level, sort_order, status, icon_url) VALUES (9007, 9006, '家居日用', 2, 10, 1, '/images/demo-bottle.png')
+    INTO "CATEGORY" (id, parent_id, name, tree_level, sort_order, status, icon_url) VALUES (9008, 9006, '收纳出行', 2, 20, 1, '/images/demo-backpack.png')
 SELECT 1 FROM DUAL;
 
 INSERT ALL
     INTO PRODUCT (id, category_id, name, description, main_image, status, price_min, sales_count, view_count, avg_rating, created_at, updated_at)
-    VALUES (9001, 9002, '星河 X1 智能手机', '高刷屏、长续航，覆盖手机下单与多规格展示。', '/images/demo-phone.jpg', 1, 0, 0, 1280, 0, SYSDATE - 30, SYSDATE - 1)
+    VALUES (9001, 9002, '星河 X1 智能手机', '高刷屏、长续航，覆盖手机下单与多规格展示。', '/images/demo-phone.png', 1, 0, 0, 1280, 0, SYSDATE - 30, SYSDATE - 1)
     INTO PRODUCT (id, category_id, name, description, main_image, status, price_min, sales_count, view_count, avg_rating, created_at, updated_at)
-    VALUES (9002, 9003, '青轴机械键盘 K87', '87键机械键盘，覆盖库存、评价和订单明细。', '/images/demo-keyboard.jpg', 1, 0, 0, 960, 0, SYSDATE - 28, SYSDATE - 1)
+    VALUES (9002, 9003, '青轴机械键盘 K87', '87键机械键盘，覆盖库存、评价和订单明细。', '/images/demo-keyboard.png', 1, 0, 0, 960, 0, SYSDATE - 28, SYSDATE - 1)
     INTO PRODUCT (id, category_id, name, description, main_image, status, price_min, sales_count, view_count, avg_rating, created_at, updated_at)
-    VALUES (9003, 9005, '山谷冷萃咖啡礼盒', '组合装冷萃咖啡，覆盖低库存预警和已完成评价。', '/images/demo-coffee.jpg', 1, 0, 0, 820, 0, SYSDATE - 26, SYSDATE - 1)
+    VALUES (9003, 9005, '山谷冷萃咖啡礼盒', '组合装冷萃咖啡，覆盖低库存预警和已完成评价。', '/images/demo-coffee.png', 1, 0, 0, 820, 0, SYSDATE - 26, SYSDATE - 1)
     INTO PRODUCT (id, category_id, name, description, main_image, status, price_min, sales_count, view_count, avg_rating, created_at, updated_at)
-    VALUES (9004, 9003, '云听降噪耳机', '头戴式主动降噪耳机。', '/images/demo-headphone.jpg', 1, 0, 0, 650, 0, SYSDATE - 24, SYSDATE - 1)
+    VALUES (9004, 9003, '云听降噪耳机', '头戴式主动降噪耳机。', '/images/demo-headphone.png', 1, 0, 0, 650, 0, SYSDATE - 24, SYSDATE - 1)
     INTO PRODUCT (id, category_id, name, description, main_image, status, price_min, sales_count, view_count, avg_rating, created_at, updated_at)
-    VALUES (9005, 9003, '星幕 27英寸显示器', '2K高刷显示器，适合发货和物流演示。', '/images/demo-monitor.jpg', 1, 0, 0, 540, 0, SYSDATE - 22, SYSDATE - 1)
+    VALUES (9005, 9003, '星幕 27英寸显示器', '2K高刷显示器，适合发货和物流演示。', '/images/demo-monitor.png', 1, 0, 0, 540, 0, SYSDATE - 22, SYSDATE - 1)
     INTO PRODUCT (id, category_id, name, description, main_image, status, price_min, sales_count, view_count, avg_rating, created_at, updated_at)
-    VALUES (9006, 9007, '轻量保温水杯', '日常通勤水杯。', '/images/demo-bottle.jpg', 1, 0, 0, 430, 0, SYSDATE - 20, SYSDATE - 1)
+    VALUES (9006, 9007, '轻量保温水杯', '日常通勤水杯。', '/images/demo-bottle.png', 1, 0, 0, 430, 0, SYSDATE - 20, SYSDATE - 1)
     INTO PRODUCT (id, category_id, name, description, main_image, status, price_min, sales_count, view_count, avg_rating, created_at, updated_at)
-    VALUES (9007, 9008, '城市通勤双肩包', '通勤与短途出行双肩包。', '/images/demo-backpack.jpg', 1, 0, 0, 390, 0, SYSDATE - 18, SYSDATE - 1)
+    VALUES (9007, 9008, '城市通勤双肩包', '通勤与短途出行双肩包。', '/images/demo-backpack.png', 1, 0, 0, 390, 0, SYSDATE - 18, SYSDATE - 1)
     INTO PRODUCT (id, category_id, name, description, main_image, status, price_min, sales_count, view_count, avg_rating, created_at, updated_at)
-    VALUES (9008, 9007, '暖光阅读台灯', '三档调光阅读台灯。', '/images/demo-lamp.jpg', 1, 0, 0, 360, 0, SYSDATE - 16, SYSDATE - 1)
+    VALUES (9008, 9007, '暖光阅读台灯', '三档调光阅读台灯。', '/images/demo-lamp.png', 1, 0, 0, 360, 0, SYSDATE - 16, SYSDATE - 1)
     INTO PRODUCT (id, category_id, name, description, main_image, status, price_min, sales_count, view_count, avg_rating, created_at, updated_at)
-    VALUES (9009, 9005, '桂花乌龙茶礼盒', '十二泡茶礼盒。', '/images/demo-tea.jpg', 1, 0, 0, 310, 0, SYSDATE - 14, SYSDATE - 1)
+    VALUES (9009, 9005, '桂花乌龙茶礼盒', '十二泡茶礼盒。', '/images/demo-tea.png', 1, 0, 0, 310, 0, SYSDATE - 14, SYSDATE - 1)
     INTO PRODUCT (id, category_id, name, description, main_image, status, price_min, sales_count, view_count, avg_rating, created_at, updated_at)
-    VALUES (9010, 9003, '极光无线鼠标', '预售商品，用于前台预售状态展示。', '/images/demo-mouse.jpg', 2, 0, 0, 290, 0, SYSDATE - 8, SYSDATE - 1)
+    VALUES (9010, 9003, '极光无线鼠标', '预售商品，用于前台预售状态展示。', '/images/demo-mouse.png', 2, 0, 0, 290, 0, SYSDATE - 8, SYSDATE - 1)
 SELECT 1 FROM DUAL;
 
 INSERT ALL
-    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9001, 9001, '/images/demo-phone.jpg', 1, SYSDATE - 30)
-    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9002, 9002, '/images/demo-keyboard.jpg', 1, SYSDATE - 28)
-    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9003, 9003, '/images/demo-coffee.jpg', 1, SYSDATE - 26)
-    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9004, 9004, '/images/demo-headphone.jpg', 1, SYSDATE - 24)
-    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9005, 9005, '/images/demo-monitor.jpg', 1, SYSDATE - 22)
-    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9006, 9006, '/images/demo-bottle.jpg', 1, SYSDATE - 20)
-    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9007, 9007, '/images/demo-backpack.jpg', 1, SYSDATE - 18)
-    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9008, 9008, '/images/demo-lamp.jpg', 1, SYSDATE - 16)
-    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9009, 9009, '/images/demo-tea.jpg', 1, SYSDATE - 14)
-    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9010, 9010, '/images/demo-mouse.jpg', 1, SYSDATE - 8)
+    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9001, 9001, '/images/demo-phone.png', 1, SYSDATE - 30)
+    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9002, 9002, '/images/demo-keyboard.png', 1, SYSDATE - 28)
+    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9003, 9003, '/images/demo-coffee.png', 1, SYSDATE - 26)
+    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9004, 9004, '/images/demo-headphone.png', 1, SYSDATE - 24)
+    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9005, 9005, '/images/demo-monitor.png', 1, SYSDATE - 22)
+    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9006, 9006, '/images/demo-bottle.png', 1, SYSDATE - 20)
+    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9007, 9007, '/images/demo-backpack.png', 1, SYSDATE - 18)
+    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9008, 9008, '/images/demo-lamp.png', 1, SYSDATE - 16)
+    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9009, 9009, '/images/demo-tea.png', 1, SYSDATE - 14)
+    INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at) VALUES (9010, 9010, '/images/demo-mouse.png', 1, SYSDATE - 8)
 SELECT 1 FROM DUAL;
 
 INSERT ALL
@@ -209,37 +209,37 @@ SELECT 1 FROM DUAL;
 
 INSERT ALL
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9001, 9001, '{"颜色":"星河银","存储":"256GB"}', 3299.00, 3699.00, 80, 0, 10, '/images/demo-phone-silver.jpg', 1)
+    VALUES (9001, 9001, '{"颜色":"星河银","存储":"256GB"}', 3299.00, 3699.00, 80, 0, 10, '/images/demo-phone.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9002, 9001, '{"颜色":"深空黑","存储":"512GB"}', 3999.00, 4399.00, 45, 0, 8, '/images/demo-phone-black.jpg', 1)
+    VALUES (9002, 9001, '{"颜色":"深空黑","存储":"512GB"}', 3999.00, 4399.00, 45, 0, 8, '/images/demo-phone.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9003, 9002, '{"轴体":"青轴","配列":"87键"}', 399.00, 499.00, 120, 0, 20, '/images/demo-keyboard-blue.jpg', 1)
+    VALUES (9003, 9002, '{"轴体":"青轴","配列":"87键"}', 399.00, 499.00, 120, 0, 20, '/images/demo-keyboard.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9004, 9002, '{"轴体":"红轴","配列":"87键"}', 459.00, 529.00, 75, 0, 15, '/images/demo-keyboard-red.jpg', 1)
+    VALUES (9004, 9002, '{"轴体":"红轴","配列":"87键"}', 459.00, 529.00, 75, 0, 15, '/images/demo-keyboard.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9005, 9003, '{"规格":"12瓶装","口味":"原味"}', 129.00, 159.00, 26, 0, 30, '/images/demo-coffee-original.jpg', 1)
+    VALUES (9005, 9003, '{"规格":"12瓶装","口味":"原味"}', 129.00, 159.00, 26, 0, 30, '/images/demo-coffee.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9006, 9003, '{"规格":"12瓶装","口味":"低糖"}', 149.00, 169.00, 22, 0, 25, '/images/demo-coffee-low-sugar.jpg', 1)
+    VALUES (9006, 9003, '{"规格":"12瓶装","口味":"低糖"}', 149.00, 169.00, 22, 0, 25, '/images/demo-coffee.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9007, 9004, '{"颜色":"曜石黑","版本":"标准"}', 599.00, 699.00, 58, 0, 10, '/images/demo-headphone-black.jpg', 1)
+    VALUES (9007, 9004, '{"颜色":"曜石黑","版本":"标准"}', 599.00, 699.00, 58, 0, 10, '/images/demo-headphone.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9008, 9004, '{"颜色":"月光白","版本":"标准"}', 699.00, 799.00, 36, 0, 8, '/images/demo-headphone-white.jpg', 1)
+    VALUES (9008, 9004, '{"颜色":"月光白","版本":"标准"}', 699.00, 799.00, 36, 0, 8, '/images/demo-headphone.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9009, 9005, '{"尺寸":"27英寸","分辨率":"2K"}', 1899.00, 2099.00, 32, 0, 6, '/images/demo-monitor-27.jpg', 1)
+    VALUES (9009, 9005, '{"尺寸":"27英寸","分辨率":"2K"}', 1899.00, 2099.00, 32, 0, 6, '/images/demo-monitor.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9010, 9005, '{"尺寸":"32英寸","分辨率":"4K"}', 2499.00, 2799.00, 18, 0, 5, '/images/demo-monitor-32.jpg', 1)
+    VALUES (9010, 9005, '{"尺寸":"32英寸","分辨率":"4K"}', 2499.00, 2799.00, 18, 0, 5, '/images/demo-monitor.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9011, 9006, '{"颜色":"雾蓝","容量":"500ml"}', 79.00, 99.00, 100, 0, 15, '/images/demo-bottle-blue.jpg', 1)
+    VALUES (9011, 9006, '{"颜色":"雾蓝","容量":"500ml"}', 79.00, 99.00, 100, 0, 15, '/images/demo-bottle.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9012, 9007, '{"颜色":"深灰","容量":"22L"}', 269.00, 329.00, 40, 0, 8, '/images/demo-backpack-gray.jpg', 1)
+    VALUES (9012, 9007, '{"颜色":"深灰","容量":"22L"}', 269.00, 329.00, 40, 0, 8, '/images/demo-backpack.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9013, 9008, '{"颜色":"奶油白","光源":"暖光"}', 159.00, 199.00, 48, 0, 10, '/images/demo-lamp-white.jpg', 1)
+    VALUES (9013, 9008, '{"颜色":"奶油白","光源":"暖光"}', 159.00, 199.00, 48, 0, 10, '/images/demo-lamp.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9014, 9009, '{"口味":"桂花乌龙","规格":"12泡"}', 88.00, 108.00, 16, 0, 18, '/images/demo-tea-osmanthus.jpg', 1)
+    VALUES (9014, 9009, '{"口味":"桂花乌龙","规格":"12泡"}', 88.00, 108.00, 16, 0, 18, '/images/demo-tea.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9015, 9010, '{"颜色":"极光蓝","连接":"蓝牙"}', 159.00, 199.00, 65, 0, 12, '/images/demo-mouse-blue.jpg', 1)
+    VALUES (9015, 9010, '{"颜色":"极光蓝","连接":"蓝牙"}', 159.00, 199.00, 65, 0, 12, '/images/demo-mouse.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9016, 9010, '{"颜色":"曜石黑","连接":"蓝牙"}', 199.00, 239.00, 20, 0, 5, '/images/demo-mouse-black.jpg', 0)
+    VALUES (9016, 9010, '{"颜色":"曜石黑","连接":"蓝牙"}', 199.00, 239.00, 20, 0, 5, '/images/demo-mouse.png', 0)
 SELECT 1 FROM DUAL;
 
 -- 额外生成 140 个可见商品，配合上方 10 个重点演示商品，正好覆盖三页 50 条的商品流。
@@ -251,6 +251,7 @@ DECLARE
     v_warning     NUMBER(10);
     v_status      NUMBER(1);
     v_name        VARCHAR2(200);
+    v_image       VARCHAR2(500);
 BEGIN
     FOR i IN 1..140 LOOP
         v_product_id := 9100 + i;
@@ -265,6 +266,13 @@ BEGIN
         v_stock := CASE WHEN MOD(i, 25) = 0 THEN 8 ELSE 40 + MOD(i * 7, 60) END;
         v_warning := CASE WHEN MOD(i, 25) = 0 THEN 15 ELSE 5 + MOD(i, 10) END;
         v_status := CASE WHEN MOD(i, 20) = 0 THEN 2 ELSE 1 END;
+        v_image := CASE v_category_id
+            WHEN 9002 THEN '/images/demo-phone.png'
+            WHEN 9003 THEN CASE WHEN MOD(i, 3) = 0 THEN '/images/demo-monitor.png' WHEN MOD(i, 3) = 1 THEN '/images/demo-keyboard.png' ELSE '/images/demo-mouse.png' END
+            WHEN 9005 THEN CASE WHEN MOD(i, 2) = 0 THEN '/images/demo-coffee.png' ELSE '/images/demo-tea.png' END
+            WHEN 9007 THEN CASE WHEN MOD(i, 2) = 0 THEN '/images/demo-bottle.png' ELSE '/images/demo-lamp.png' END
+            ELSE '/images/demo-backpack.png'
+        END;
         v_name := CASE
             WHEN MOD(i, 5) = 0 THEN '灵感数码配件'
             WHEN MOD(i, 5) = 1 THEN '桌面效率好物'
@@ -279,14 +287,14 @@ BEGIN
         VALUES (
             v_product_id, v_category_id, v_name,
             '批量演示商品，用于商品列表、筛选、分页和无限滚动测试。',
-            '/images/demo-bulk-product-' || LPAD(i, 3, '0') || '.jpg',
+            v_image,
             v_status, v_price, 0, 30 + i * 3, 0,
             SYSDATE - MOD(i, 45), SYSDATE - MOD(i, 20));
 
         INSERT INTO PRODUCT_IMAGE (id, product_id, image_url, sort_order, created_at)
         VALUES (
             v_product_id, v_product_id,
-            '/images/demo-bulk-product-' || LPAD(i, 3, '0') || '.jpg',
+            v_image,
             1, SYSDATE - MOD(i, 45));
 
         INSERT INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order)
@@ -299,7 +307,7 @@ BEGIN
             v_product_id, v_product_id,
             '{"款式":"演示' || LPAD(i, 3, '0') || '","版本":"标准"}',
             v_price, v_price + 30, v_stock, 0, v_warning,
-            '/images/demo-bulk-product-' || LPAD(i, 3, '0') || '.jpg', 1);
+            v_image, 1);
     END LOOP;
 END;
 /
@@ -371,21 +379,21 @@ INSERT ALL
 SELECT 1 FROM DUAL;
 
 INSERT ALL
-    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9001, 9001, 9001, '星河 X1 智能手机', '{"颜色":"星河银","存储":"256GB"}', '/images/demo-phone-silver.jpg', 3299.00, 1, 3299.00)
-    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9002, 9002, 9003, '青轴机械键盘 K87', '{"轴体":"青轴","配列":"87键"}', '/images/demo-keyboard-blue.jpg', 399.00, 2, 798.00)
-    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9003, 9003, 9002, '星河 X1 智能手机', '{"颜色":"深空黑","存储":"512GB"}', '/images/demo-phone-black.jpg', 3999.00, 1, 3999.00)
-    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9004, 9004, 9005, '山谷冷萃咖啡礼盒', '{"规格":"12瓶装","口味":"原味"}', '/images/demo-coffee-original.jpg', 129.00, 1, 129.00)
-    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9005, 9005, 9001, '星河 X1 智能手机', '{"颜色":"星河银","存储":"256GB"}', '/images/demo-phone-silver.jpg', 3299.00, 1, 3299.00)
-    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9006, 9006, 9003, '青轴机械键盘 K87', '{"轴体":"青轴","配列":"87键"}', '/images/demo-keyboard-blue.jpg', 399.00, 2, 798.00)
-    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9007, 9007, 9007, '云听降噪耳机', '{"颜色":"曜石黑","版本":"标准"}', '/images/demo-headphone-black.jpg', 599.00, 1, 599.00)
-    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9008, 9007, 9015, '极光无线鼠标', '{"颜色":"极光蓝","连接":"蓝牙"}', '/images/demo-mouse-blue.jpg', 159.00, 1, 159.00)
-    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9009, 9008, 9009, '星幕 27英寸显示器', '{"尺寸":"27英寸","分辨率":"2K"}', '/images/demo-monitor-27.jpg', 1899.00, 1, 1899.00)
-    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9010, 9008, 9004, '青轴机械键盘 K87', '{"轴体":"红轴","配列":"87键"}', '/images/demo-keyboard-red.jpg', 459.00, 1, 459.00)
-    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9011, 9009, 9005, '山谷冷萃咖啡礼盒', '{"规格":"12瓶装","口味":"原味"}', '/images/demo-coffee-original.jpg', 129.00, 2, 258.00)
-    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9012, 9010, 9012, '城市通勤双肩包', '{"颜色":"深灰","容量":"22L"}', '/images/demo-backpack-gray.jpg', 269.00, 1, 269.00)
-    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9013, 9010, 9014, '桂花乌龙茶礼盒', '{"口味":"桂花乌龙","规格":"12泡"}', '/images/demo-tea-osmanthus.jpg', 88.00, 2, 176.00)
-    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9014, 9011, 9011, '轻量保温水杯', '{"颜色":"雾蓝","容量":"500ml"}', '/images/demo-bottle-blue.jpg', 79.00, 2, 158.00)
-    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9015, 9012, 9001, '星河 X1 智能手机', '{"颜色":"星河银","存储":"256GB"}', '/images/demo-phone-silver.jpg', 3299.00, 1, 3299.00)
+    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9001, 9001, 9001, '星河 X1 智能手机', '{"颜色":"星河银","存储":"256GB"}', '/images/demo-phone.png', 3299.00, 1, 3299.00)
+    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9002, 9002, 9003, '青轴机械键盘 K87', '{"轴体":"青轴","配列":"87键"}', '/images/demo-keyboard.png', 399.00, 2, 798.00)
+    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9003, 9003, 9002, '星河 X1 智能手机', '{"颜色":"深空黑","存储":"512GB"}', '/images/demo-phone.png', 3999.00, 1, 3999.00)
+    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9004, 9004, 9005, '山谷冷萃咖啡礼盒', '{"规格":"12瓶装","口味":"原味"}', '/images/demo-coffee.png', 129.00, 1, 129.00)
+    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9005, 9005, 9001, '星河 X1 智能手机', '{"颜色":"星河银","存储":"256GB"}', '/images/demo-phone.png', 3299.00, 1, 3299.00)
+    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9006, 9006, 9003, '青轴机械键盘 K87', '{"轴体":"青轴","配列":"87键"}', '/images/demo-keyboard.png', 399.00, 2, 798.00)
+    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9007, 9007, 9007, '云听降噪耳机', '{"颜色":"曜石黑","版本":"标准"}', '/images/demo-headphone.png', 599.00, 1, 599.00)
+    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9008, 9007, 9015, '极光无线鼠标', '{"颜色":"极光蓝","连接":"蓝牙"}', '/images/demo-mouse.png', 159.00, 1, 159.00)
+    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9009, 9008, 9009, '星幕 27英寸显示器', '{"尺寸":"27英寸","分辨率":"2K"}', '/images/demo-monitor.png', 1899.00, 1, 1899.00)
+    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9010, 9008, 9004, '青轴机械键盘 K87', '{"轴体":"红轴","配列":"87键"}', '/images/demo-keyboard.png', 459.00, 1, 459.00)
+    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9011, 9009, 9005, '山谷冷萃咖啡礼盒', '{"规格":"12瓶装","口味":"原味"}', '/images/demo-coffee.png', 129.00, 2, 258.00)
+    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9012, 9010, 9012, '城市通勤双肩包', '{"颜色":"深灰","容量":"22L"}', '/images/demo-backpack.png', 269.00, 1, 269.00)
+    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9013, 9010, 9014, '桂花乌龙茶礼盒', '{"口味":"桂花乌龙","规格":"12泡"}', '/images/demo-tea.png', 88.00, 2, 176.00)
+    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9014, 9011, 9011, '轻量保温水杯', '{"颜色":"雾蓝","容量":"500ml"}', '/images/demo-bottle.png', 79.00, 2, 158.00)
+    INTO ORDER_ITEM (id, order_id, sku_id, product_name_snap, spec_snap, main_image_snap, unit_price, quantity, subtotal) VALUES (9015, 9012, 9001, '星河 X1 智能手机', '{"颜色":"星河银","存储":"256GB"}', '/images/demo-phone.png', 3299.00, 1, 3299.00)
 SELECT 1 FROM DUAL;
 
 DECLARE

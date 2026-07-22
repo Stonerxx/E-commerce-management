@@ -1,8 +1,10 @@
 using System.Data.Common;
+using System.Text;
 using ECommerce.Application.DTOs;
 using ECommerce.Domain.Entities;
 using ECommerce.Infrastructure.Data;
 using ECommerce.Shared.Abstractions;
+using ECommerce.Shared.Contracts;
 
 namespace ECommerce.Infrastructure.Repositories;
 
@@ -11,6 +13,8 @@ public interface ISkuRepository
     Task<Sku?> GetByIdAsync(long skuId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<SkuDto>> GetByProductAsync(long productId, CancellationToken cancellationToken = default);
+
+    Task<PagedResult<AdminSkuListItemDto>> SearchAdminAsync(AdminSkuQuery query, CancellationToken cancellationToken = default);
 
     Task<long> CreateAsync(Sku sku, CancellationToken cancellationToken = default);
 
@@ -92,6 +96,94 @@ public sealed class SkuRepository : ISkuRepository
         }
 
         return skus;
+    }
+
+    public async Task<PagedResult<AdminSkuListItemDto>> SearchAdminAsync(AdminSkuQuery query, CancellationToken cancellationToken = default)
+    {
+        var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        var where = new StringBuilder(" WHERE 1 = 1");
+        var parameters = new List<(string Name, object Value)>();
+
+        if (query.SkuId.HasValue)
+        {
+            where.Append(" AND s.\"ID\" = :skuId");
+            parameters.Add((":skuId", query.SkuId.Value));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Keyword))
+        {
+            where.Append(" AND (INSTR(LOWER(p.\"NAME\"), LOWER(:keyword)) > 0 OR INSTR(LOWER(s.\"SPEC_DESC\"), LOWER(:keyword)) > 0)");
+            parameters.Add((":keyword", query.Keyword.Trim()));
+        }
+
+        if (query.Status is 0 or 1)
+        {
+            where.Append(" AND s.\"STATUS\" = :status");
+            parameters.Add((":status", query.Status.Value));
+        }
+
+        if (query.LowStock)
+        {
+            where.Append(" AND s.\"STOCK\" - s.\"LOCKED_STOCK\" <= s.\"WARNING_STOCK\"");
+        }
+
+        using var countCommand = connection.CreateCommand();
+        if (_unitOfWork.CurrentTransaction != null)
+        {
+            countCommand.Transaction = _unitOfWork.CurrentTransaction;
+        }
+        countCommand.CommandText = "SELECT COUNT(*) FROM \"SKU\" s INNER JOIN \"PRODUCT\" p ON p.\"ID\" = s.\"PRODUCT_ID\"" + where;
+        AddSearchParameters(countCommand, parameters);
+        var totalCount = Convert.ToInt64(await countCommand.ExecuteScalarAsync(cancellationToken));
+
+        if (totalCount == 0)
+        {
+            return PagedResult<AdminSkuListItemDto>.Empty(query.SafePageIndex, query.SafePageSize);
+        }
+
+        var sql = """
+            SELECT s."ID", s."PRODUCT_ID", p."NAME" AS "PRODUCT_NAME", p."MAIN_IMAGE" AS "PRODUCT_IMAGE",
+                   s."SPEC_DESC", s."PRICE", s."STOCK", s."LOCKED_STOCK", s."WARNING_STOCK", s."STATUS"
+            FROM "SKU" s
+            INNER JOIN "PRODUCT" p ON p."ID" = s."PRODUCT_ID"
+            """ + where + " ORDER BY s.\"UPDATED_AT\" DESC, s.\"ID\" DESC OFFSET :offset ROWS FETCH NEXT :pageSize ROWS ONLY";
+
+        using var command = connection.CreateCommand();
+        if (_unitOfWork.CurrentTransaction != null)
+        {
+            command.Transaction = _unitOfWork.CurrentTransaction;
+        }
+        command.CommandText = sql;
+        AddSearchParameters(command, parameters);
+
+        var offsetParameter = command.CreateParameter();
+        offsetParameter.ParameterName = ":offset";
+        offsetParameter.Value = (query.SafePageIndex - 1) * query.SafePageSize;
+        command.Parameters.Add(offsetParameter);
+
+        var pageSizeParameter = command.CreateParameter();
+        pageSizeParameter.ParameterName = ":pageSize";
+        pageSizeParameter.Value = query.SafePageSize;
+        command.Parameters.Add(pageSizeParameter);
+
+        var rows = new List<AdminSkuListItemDto>();
+        using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            rows.Add(new AdminSkuListItemDto(
+                SkuId: reader.GetInt64(reader.GetOrdinal("ID")),
+                ProductId: reader.GetInt64(reader.GetOrdinal("PRODUCT_ID")),
+                ProductName: reader.GetString(reader.GetOrdinal("PRODUCT_NAME")),
+                ProductImage: reader.GetString(reader.GetOrdinal("PRODUCT_IMAGE")),
+                SpecDescJson: reader.GetString(reader.GetOrdinal("SPEC_DESC")),
+                Price: reader.GetDecimal(reader.GetOrdinal("PRICE")),
+                Stock: reader.GetInt32(reader.GetOrdinal("STOCK")),
+                LockedStock: reader.GetInt32(reader.GetOrdinal("LOCKED_STOCK")),
+                WarningStock: reader.GetInt32(reader.GetOrdinal("WARNING_STOCK")),
+                Status: reader.GetInt32(reader.GetOrdinal("STATUS"))));
+        }
+
+        return new PagedResult<AdminSkuListItemDto>(rows, query.SafePageIndex, query.SafePageSize, totalCount);
     }
 
     public async Task<long> CreateAsync(Sku sku, CancellationToken cancellationToken = default)
@@ -336,6 +428,17 @@ public sealed class SkuRepository : ISkuRepository
         command.Parameters.Add(idParam);
 
         return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static void AddSearchParameters(DbCommand command, IEnumerable<(string Name, object Value)> parameters)
+    {
+        foreach (var (name, value) in parameters)
+        {
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = name;
+            parameter.Value = value;
+            command.Parameters.Add(parameter);
+        }
     }
 
     private static void AddParameters(DbCommand command, Sku sku)

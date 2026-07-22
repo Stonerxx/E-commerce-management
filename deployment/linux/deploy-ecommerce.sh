@@ -29,7 +29,7 @@ Usage:
 
 Examples:
   /root/E-commerce-management/deployment/linux/deploy-ecommerce.sh
-  /root/E-commerce-management/deployment/linux/deploy-ecommerce.sh feat-member1-foundation-oracle-deploy
+  /root/E-commerce-management/deployment/linux/deploy-ecommerce.sh main
   RUN_TESTS=1 /root/E-commerce-management/deployment/linux/deploy-ecommerce.sh
   /root/E-commerce-management/deployment/linux/deploy-ecommerce.sh --rollback
 

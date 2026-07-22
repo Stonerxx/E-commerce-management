@@ -7,24 +7,22 @@
 发布目录：/var/www/ecommerce
 服务名：ecommerce
 后端监听：127.0.0.1:5000
-Nginx：公网 80 跳转到 HTTPS，公网 443 转发到 127.0.0.1:5000
+Nginx：公网 80 转发到 127.0.0.1:5000
 环境变量：/etc/ecommerce/ecommerce.env 或 ecommerce.service
 ```
 
-## HTTPS 前置条件
+## 公网 IP 与 Nginx
 
-Production 会启用 HTTPS 重定向，因此不能只按 HTTP 反向代理部署。先为实际域名申请证书，再复制 [nginx-ecommerce.conf.example](../deployment/linux/nginx-ecommerce.conf.example) 并替换其中的 `example.com`：
+当前演示环境只使用服务器公网 IP，不配置域名和 HTTPS 证书。应用的 Production 管道不会强制跳转 HTTPS，Nginx 直接在 80 端口把请求转发到 Kestrel：
 
 ```bash
-sudo systemctl stop nginx
-sudo certbot certonly --standalone -d example.com
 sudo cp deployment/linux/nginx-ecommerce.conf.example /etc/nginx/sites-available/ecommerce
 sudo ln -s /etc/nginx/sites-available/ecommerce /etc/nginx/sites-enabled/ecommerce
 sudo nginx -t
-sudo systemctl start nginx
+sudo systemctl reload nginx
 ```
 
-示例中的 80 端口只跳转到 HTTPS；443 才会将请求转发给 Kestrel，并发送 `X-Forwarded-Proto: https`。
+如果 `/etc/nginx/sites-enabled/default` 仍占用默认站点，先停用该链接再执行 `nginx -t`。部署完成后使用 `http://服务器公网IP/` 访问，不要写虚构域名或 `https://`。
 
 ## 一、推荐发布流程：GitHub Actions 编译，服务器只部署
 
@@ -152,7 +150,7 @@ GitHub Actions 只上传编译后的代码文件，不需要数据库密码。
 示例：
 
 ```bash
-Oracle__ConnectionString="User Id=ECOMMERCE_DEV;Password=change_me;Data Source=127.0.0.1:1521/FREEPDB1"
+Oracle__ConnectionString="User Id=ECOMMERCE_DEMO;Password=change_me;Data Source=127.0.0.1:1521/FREEPDB1"
 ```
 
 持久写入环境变量的推荐方式：
@@ -169,7 +167,7 @@ sudo systemctl restart ecommerce
 
 `ecommerce.service` 通过 `EnvironmentFile=/etc/ecommerce/ecommerce.env` 读取该文件；不要把真实密码提交到仓库。
 
-答辩前如果要切 DEMO，只改服务器环境变量，然后重启服务：
+业务服务器固定连接已创建的 `ECOMMERCE_DEMO`，不要指向日常开发使用的 `ECOMMERCE_DEV`。修改演示库连接信息后只需重启服务：
 
 ```bash
 systemctl restart ecommerce
@@ -213,7 +211,7 @@ deployment/linux/deploy-ecommerce.sh
 它会在服务器本地拉代码、编译、发布和重启服务。正常发布优先使用 GitHub Actions；如果 GitHub Actions 临时不可用，可以用它救急：
 
 ```bash
-/root/E-commerce-management/deployment/linux/deploy-ecommerce.sh feat-member1-foundation-oracle-deploy
+/root/E-commerce-management/deployment/linux/deploy-ecommerce.sh main
 ```
 
 备用脚本已经改成 `build` 后 `publish --no-build`，不会再因为 publish 阶段重复编译。

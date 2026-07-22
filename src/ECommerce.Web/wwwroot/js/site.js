@@ -81,8 +81,42 @@
     window.appToast = toast;
 
     function useProductPlaceholder(image) {
-        if (!(image instanceof HTMLImageElement) || image.dataset.fallbackApplied === "true") return;
-        image.dataset.fallbackApplied = "true";
+        if (!(image instanceof HTMLImageElement)) return;
+
+        const source = image.getAttribute("src") || "";
+        if (image.dataset.fallbackStage === "placeholder" && /\/images\/product-placeholder\.svg$/i.test(source)) return;
+        const demoNames = ["phone", "keyboard", "coffee", "headphone", "monitor", "bottle", "backpack", "lamp", "tea", "mouse"];
+        const demoMatch = source.match(/\/images\/demo-(phone|keyboard|coffee|headphone|monitor|bottle|backpack|lamp|tea|mouse)(?:-[^/.]+)?\.(?:jpg|jpeg|png)$/i);
+        const bulkMatch = source.match(/\/images\/demo-bulk-product-(\d+)\.(?:jpg|jpeg|png)$/i);
+        const categoryMatch = source.match(/\/images\/category-(digital|phone|computer|food|coffee|home|daily|travel)\.(?:jpg|jpeg|png|svg)$/i);
+        const categoryImages = {
+            digital: "monitor",
+            phone: "phone",
+            computer: "keyboard",
+            food: "tea",
+            coffee: "coffee",
+            home: "lamp",
+            daily: "bottle",
+            travel: "backpack"
+        };
+
+        let localFallback = null;
+        if (demoMatch) {
+            localFallback = `/images/demo-${demoMatch[1].toLowerCase()}.png`;
+        } else if (bulkMatch) {
+            const index = Math.max(0, Number.parseInt(bulkMatch[1], 10) - 1) % demoNames.length;
+            localFallback = `/images/demo-${demoNames[index]}.png`;
+        } else if (categoryMatch) {
+            localFallback = `/images/demo-${categoryImages[categoryMatch[1].toLowerCase()]}.png`;
+        }
+
+        if (localFallback && source.toLowerCase() !== localFallback.toLowerCase()) {
+            image.dataset.fallbackStage = "local";
+            image.src = localFallback;
+            return;
+        }
+
+        image.dataset.fallbackStage = "placeholder";
         image.src = "/images/product-placeholder.svg";
     }
 

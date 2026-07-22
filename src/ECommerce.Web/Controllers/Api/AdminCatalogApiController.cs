@@ -127,6 +127,13 @@ public sealed class AdminCatalogApiController : ApiControllerBase
         return Ok(ApiResponse<IReadOnlyList<SkuDto>>.Ok(skus));
     }
 
+    [HttpGet("skus")]
+    public async Task<ActionResult<ApiResponse<PagedResult<AdminSkuListItemDto>>>> SearchSkus([FromQuery] AdminSkuQuery query, CancellationToken cancellationToken)
+    {
+        var result = await _skuService.SearchAdminAsync(query, cancellationToken);
+        return Ok(ApiResponse<PagedResult<AdminSkuListItemDto>>.Ok(result));
+    }
+
     [HttpPost("products/{productId:long}/skus")]
     public async Task<ActionResult<ApiResponse<long>>> CreateSku(long productId, [FromBody] SkuSaveRequest request, CancellationToken cancellationToken)
     {

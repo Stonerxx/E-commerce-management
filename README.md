@@ -1,4 +1,4 @@
-# 电商购物平台——订单与商品管理系统
+# 电商购物平台管理系统
 
 ## 协作基线
 
@@ -6,6 +6,9 @@
 
 - [组员开工指南](docs/TEAM_GUIDE.md)：分支、运行、提交、PR 和日常协作流程。
 - [开发规范](docs/DEVELOPMENT_SPEC.md)：项目结构、接口规范、代码规范、API 格式、路由、事务和跨模块协作。
+- [完整演示流程](docs/DEMO_FLOW.md)：按角色串联前台、后台和关键业务闭环。
+- [Oracle 集成测试](docs/ORACLE_INTEGRATION_TESTS.md)：连接串、跳过条件和真实数据库测试说明。
+- [发布说明](docs/PUBLISH.md)：GitHub Actions、systemd、Nginx 与服务器验收。
 - [Oracle 初始化脚本](migration/init_database.sql)：24 张业务表、约束和索引。
 - [Oracle 数据库对象脚本](migration/database_objects.sql)：库存函数、统计过程、报表视图，以及订单一致性/销量触发器。
 
@@ -21,6 +24,7 @@ src/ECommerce.Domain
 src/ECommerce.Infrastructure
 src/ECommerce.Shared
 tests/ECommerce.Tests
+tests/ECommerce.OracleIntegrationTests
 ```
 
 本地运行：
@@ -60,7 +64,7 @@ demo_user     USER，购物车和我的订单演示
 demo_buyer    USER，已完成订单和评价演示
 ```
 
-这些账号已在 `migration/seed_demo_data.sql` 中写入 member2 `AuthService` 可校验的 PBKDF2 密码哈希，不再依赖临时登录逻辑。
+这些账号已在 `migration/seed_demo_data.sql` 中写入 `AuthService` 可校验的 PBKDF2 密码哈希。
 
 当前项目状态：
 
@@ -68,22 +72,11 @@ demo_buyer    USER，已完成订单和评价演示
 - 前后台页面已覆盖优惠券领取与模板管理、订单评价与审核、物流发货与轨迹维护；模拟支付会写入 `PAYMENT` 并与订单状态、库存扣减使用同一事务。
 - `merging` 作为统合基线，功能收尾在成员分支验证后再进入 `main` 正式部署。
 
-Oracle 连接默认是占位配置，不要提交真实密码。本项目现在约定两个服务器数据库用户：
-
-- `ECOMMERCE_DEV`：开发联调用，组员在自己电脑上跑后端时连接这个用户。
-- `ECOMMERCE_DEMO`：最终演示用，部署演示环境时连接这个用户。
-
-后端代码不用区分本地库或远程库，只看 `Oracle__ConnectionString`。开发时把 `Data Source` 写成数据库服务器地址；以后后端部署到服务器上时，可以按实际网络环境写 `127.0.0.1`、内网地址或服务器域名。
+Oracle 连接默认是占位配置，不要提交真实密码。`User Id` 应填写实际执行过三份数据库脚本的 Schema；当前开发和演示共用 `ECOMMERCE_DEV` 用户。后端只读取 `Oracle__ConnectionString`，在本机连接云数据库时，`Data Source` 要填写云服务器 IP 或域名；只有 Oracle 与应用运行在同一台服务器上时才使用 `127.0.0.1`。
 
 ```powershell
-$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEV;Password=我们的开发库密码;Data Source=数据库服务器IP:1521/服务名"
+$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEV;Password=数据库密码;Data Source=数据库服务器IP:1521/服务名"
 dotnet run --project src/ECommerce.Web/ECommerce.Web.csproj
-```
-
-演示环境示例：
-
-```powershell
-$env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEMO;Password=我们的演示库密码;Data Source=127.0.0.1:1521/服务名"
 ```
 
 启动后可以验证：
@@ -92,16 +85,9 @@ $env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEMO;Password=我们的演示
 Invoke-RestMethod http://localhost:5052/api/v1/system/db-check
 ```
 
-返回结果里重点看 `connected`、`sessionUser`、`currentSchema`。如果 `sessionUser` 是 `ECOMMERCE_DEV`，说明连到开发库；如果是 `ECOMMERCE_DEMO`，说明连到演示库。
+返回结果里重点看 `connected`、`sessionUser`、`currentSchema`，确认应用连接的是预期 Schema。
 
-第 1 人基础设施当前交付：
-
-- `IUnitOfWork` 已提供 Oracle 连接复用、事务开启、提交、回滚和释放。
-- `/api/v1/system/db-check` 已能检查 Oracle 配置和连接耗时。
-- `deployment/` 下已提供发布脚本、环境变量样例、systemd 服务样例和 Nginx 反向代理样例。
-- 服务器最终验收还需要填真实 `Oracle__ConnectionString`，运行初始化脚本，截图证明服务器公网地址能访问。
-
-数据库首次初始化或重建时，按下面顺序执行：
+数据库首次初始化或明确允许重建时，按下面顺序手动执行。`init_database.sql` 会删除并重建 24 张业务表，不要在需要保留数据的 Schema 上误执行：
 
 ```powershell
 sqlplus 用户名/密码@//数据库地址:1521/服务名 @migration/init_database.sql
@@ -119,13 +105,14 @@ push main
 
 `merging` 分支只跑 build/test 检查，不部署服务器。
 
-详细步骤见 [发布说明](docs/PUBLISH.md)。本地发布包仍可手动生成：
+详细步骤见 [发布说明](docs/PUBLISH.md)。本地发布包也可手动生成：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File deployment/publish.ps1
 ```
 
 ### 项目功能点
+
 1. 用户注册/登录/权限控制
 2. 商品分类管理（增删改查）
 3. 商品信息管理（含上下架、图片、规格）
@@ -158,13 +145,3 @@ powershell -ExecutionPolicy Bypass -File deployment/publish.ps1
 2452688	余伟强
 2454339	张一诺
 2557326	庄辰和
-
-	
-	
-	
-	
-	
-	
-	
-	
-	
