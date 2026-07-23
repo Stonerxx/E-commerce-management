@@ -133,7 +133,12 @@ public class OrderServiceTests : ServiceTestBase
             .Setup(x => x.GetByIdAsync(100, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateSkuDto(skuId: 100, stock: 10, price: 600m));
         _couponServiceMock
-            .Setup(x => x.ValidateAsync(TestUserId, 1001, 600m, It.IsAny<CancellationToken>()))
+            .Setup(x => x.ValidateAsync(
+                TestUserId,
+                1001,
+                600m,
+                It.IsAny<IReadOnlyDictionary<int, decimal>>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateValidCouponValidation(50m));
 
         var result = await _orderService.PreviewAsync(TestUserId, request);
@@ -323,7 +328,12 @@ public class OrderServiceTests : ServiceTestBase
             .Setup(x => x.GetByIdAsync(100, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateSkuDto(skuId: 100, stock: 10, price: 600m));
         _couponServiceMock
-            .Setup(x => x.ValidateAsync(TestUserId, 1001, 600m, It.IsAny<CancellationToken>()))
+            .Setup(x => x.ValidateAsync(
+                TestUserId,
+                1001,
+                600m,
+                It.IsAny<IReadOnlyDictionary<int, decimal>>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateValidCouponValidation(50m));
         _orderRepositoryMock
             .Setup(x => x.InsertOrderMainAsync(It.IsAny<OrderMain>(), It.IsAny<CancellationToken>()))
@@ -344,6 +354,7 @@ public class OrderServiceTests : ServiceTestBase
             1001,
             TestOrderId,
             600m,
+            It.Is<IReadOnlyDictionary<int, decimal>>(amounts => amounts[1] == 600m),
             50m,
             It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -364,7 +375,12 @@ public class OrderServiceTests : ServiceTestBase
             .Setup(x => x.GetByIdAsync(100, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateSkuDto(skuId: 100, stock: 10, price: 600m));
         _couponServiceMock
-            .Setup(x => x.ValidateAsync(TestUserId, 1001, 600m, It.IsAny<CancellationToken>()))
+            .Setup(x => x.ValidateAsync(
+                TestUserId,
+                1001,
+                600m,
+                It.IsAny<IReadOnlyDictionary<int, decimal>>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateValidCouponValidation(50m));
         _orderRepositoryMock
             .Setup(x => x.InsertOrderMainAsync(It.IsAny<OrderMain>(), It.IsAny<CancellationToken>()))
@@ -375,6 +391,7 @@ public class OrderServiceTests : ServiceTestBase
                 1001,
                 TestOrderId,
                 600m,
+                It.IsAny<IReadOnlyDictionary<int, decimal>>(),
                 50m,
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(new BusinessException("COUPON_ALREADY_USED", "优惠券已使用"));

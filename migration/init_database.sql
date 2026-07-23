@@ -361,6 +361,8 @@ CREATE TABLE COUPON_TEMPLATE (
     start_time       DATE NOT NULL,
     end_time         DATE NOT NULL,
     status           NUMBER(1) DEFAULT 1 NOT NULL,
+    applicable_category_id NUMBER(10),
+    CONSTRAINT fk_coup_category FOREIGN KEY (applicable_category_id) REFERENCES "CATEGORY"(id),
     CONSTRAINT ch_coup_type CHECK (type IN (1,2)),
     CONSTRAINT ch_coup_status CHECK (status IN (0,1)),
     CONSTRAINT ch_coup_time CHECK (end_time > start_time),
@@ -380,6 +382,7 @@ COMMENT ON COLUMN COUPON_TEMPLATE.received_count IS '已领取数量';
 COMMENT ON COLUMN COUPON_TEMPLATE.start_time IS '有效期开始';
 COMMENT ON COLUMN COUPON_TEMPLATE.end_time IS '有效期结束';
 COMMENT ON COLUMN COUPON_TEMPLATE.status IS '状态：0=停用，1=启用';
+COMMENT ON COLUMN COUPON_TEMPLATE.applicable_category_id IS '适用的末级商品分类ID，NULL表示全场通用';
 
 -- 15. user_coupon 表（用户优惠券表）
 CREATE TABLE USER_COUPON (
