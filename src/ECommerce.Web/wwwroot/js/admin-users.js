@@ -7,6 +7,7 @@
                 loading: false,
                 error: "",
                 message: "",
+                currentUserId: Number(document.getElementById("adminUsersApp")?.dataset.currentUserId || 0),
                 roles: [],
                 items: [],
                 pageIndex: 1,
@@ -25,6 +26,10 @@
             await this.loadUsers();
         },
         methods: {
+            isCurrentUser(item) {
+                return Number(item.userId) === this.currentUserId;
+            },
+
             async loadRoles() {
                 const payload = await this.request("/api/v1/admin/permissions/roles");
                 this.roles = payload.data || [];

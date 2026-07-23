@@ -1,9 +1,10 @@
 @{
     ViewData["Title"] = "首页";
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
-    var isCustomer = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.User);
-    var isAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
-    var isService = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Service);
+    var primaryRole = ECommerce.Web.Security.UserRoleResolver.ResolvePrimary(User);
+    var isCustomer = primaryRole == ECommerce.Shared.Constants.AuthConstants.Roles.User;
+    var isAdmin = primaryRole == ECommerce.Shared.Constants.AuthConstants.Roles.Admin;
+    var isService = primaryRole == ECommerce.Shared.Constants.AuthConstants.Roles.Service;
     var userName = User.Identity?.Name ?? "新朋友";
     var homeRole = isAdmin ? "admin" : isService ? "service" : isCustomer ? "customer" : "guest";
     var loadCatalog = !isAuthenticated || isCustomer;
@@ -45,6 +46,47 @@
             </div>
         </section>
     }
+    else if (isAdmin)
+    {
+        <section class="role-workspace">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-7">
+                    <div class="page-kicker text-warning">ADMIN CONSOLE</div>
+                    <h1 class="display-5 fw-bold mb-3">管理员驾驶舱</h1>
+                    <p class="lead text-muted mb-4">你好，@userName。销售、订单、库存和系统治理入口已按运营流程集中编排。</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a class="btn btn-light btn-lg rounded-pill px-4" href="/admin">查看数据概览</a>
+                        <a class="btn btn-outline-light btn-lg rounded-pill px-4" href="/admin/statistics">统计报表</a>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="row g-3">
+                        <div class="col-12"><a class="quick-action-card" href="/admin/products"><span class="quick-action-icon"><i class="bi bi-box-seam"></i></span><span><strong class="d-block">商品与库存</strong><small class="text-muted">商品、SKU 和库存预警</small></span></a></div>
+                        <div class="col-12"><a class="quick-action-card" href="/admin/operation-logs"><span class="quick-action-icon"><i class="bi bi-shield-check"></i></span><span><strong class="d-block">权限与审计</strong><small class="text-muted">用户角色和操作日志</small></span></a></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    }
+    else if (isService)
+    {
+        <section class="role-workspace">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-7">
+                    <div class="page-kicker text-info">CUSTOMER SERVICE</div>
+                    <h1 class="display-5 fw-bold mb-3">客服工作台</h1>
+                    <p class="lead text-muted mb-4">你好，@userName。今天从待处理订单开始，快速核实状态、维护发货信息并跟进物流。</p>
+                    <a class="btn btn-light btn-lg rounded-pill px-4" href="/admin/orders">进入订单队列 <i class="bi bi-arrow-right ms-1"></i></a>
+                </div>
+                <div class="col-lg-5">
+                    <div class="row g-3">
+                        <div class="col-12"><a class="quick-action-card" href="/admin/orders"><span class="quick-action-icon"><i class="bi bi-headset"></i></span><span><strong class="d-block">订单服务</strong><small class="text-muted">查询、取消与物流维护</small></span></a></div>
+                        <div class="col-12"><a class="quick-action-card" href="/admin"><span class="quick-action-icon"><i class="bi bi-speedometer2"></i></span><span><strong class="d-block">服务概览</strong><small class="text-muted">查看今日订单与待办</small></span></a></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    }
     else if (isCustomer)
     {
         <section class="home-hero">
@@ -73,47 +115,6 @@
                 </div>
                 <div class="col-6 col-lg-3">
                     <a class="quick-action-card" href="/addresses"><span class="quick-action-icon"><i class="bi bi-geo-alt"></i></span><span><strong class="d-block">收货地址</strong><small class="text-muted">管理默认地址</small></span></a>
-                </div>
-            </div>
-        </section>
-    }
-    else if (isService && !isAdmin)
-    {
-        <section class="role-workspace">
-            <div class="row align-items-center g-4">
-                <div class="col-lg-7">
-                    <div class="page-kicker text-info">CUSTOMER SERVICE</div>
-                    <h1 class="display-5 fw-bold mb-3">客服工作台</h1>
-                    <p class="lead text-muted mb-4">你好，@userName。今天从待处理订单开始，快速核实状态、维护发货信息并跟进物流。</p>
-                    <a class="btn btn-light btn-lg rounded-pill px-4" href="/admin/orders">进入订单队列 <i class="bi bi-arrow-right ms-1"></i></a>
-                </div>
-                <div class="col-lg-5">
-                    <div class="row g-3">
-                        <div class="col-12"><a class="quick-action-card" href="/admin/orders"><span class="quick-action-icon"><i class="bi bi-headset"></i></span><span><strong class="d-block">订单服务</strong><small class="text-muted">查询、取消与物流维护</small></span></a></div>
-                        <div class="col-12"><a class="quick-action-card" href="/admin"><span class="quick-action-icon"><i class="bi bi-speedometer2"></i></span><span><strong class="d-block">服务概览</strong><small class="text-muted">查看今日订单与待办</small></span></a></div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    }
-    else if (isAdmin)
-    {
-        <section class="role-workspace">
-            <div class="row align-items-center g-4">
-                <div class="col-lg-7">
-                    <div class="page-kicker text-warning">ADMIN CONSOLE</div>
-                    <h1 class="display-5 fw-bold mb-3">管理员驾驶舱</h1>
-                    <p class="lead text-muted mb-4">你好，@userName。销售、订单、库存和系统治理入口已按运营流程集中编排。</p>
-                    <div class="d-flex flex-wrap gap-2">
-                        <a class="btn btn-light btn-lg rounded-pill px-4" href="/admin">查看数据概览</a>
-                        <a class="btn btn-outline-light btn-lg rounded-pill px-4" href="/admin/statistics">统计报表</a>
-                    </div>
-                </div>
-                <div class="col-lg-5">
-                    <div class="row g-3">
-                        <div class="col-12"><a class="quick-action-card" href="/admin/products"><span class="quick-action-icon"><i class="bi bi-box-seam"></i></span><span><strong class="d-block">商品与库存</strong><small class="text-muted">商品、SKU 和库存预警</small></span></a></div>
-                        <div class="col-12"><a class="quick-action-card" href="/admin/operation-logs"><span class="quick-action-icon"><i class="bi bi-shield-check"></i></span><span><strong class="d-block">权限与审计</strong><small class="text-muted">用户角色和操作日志</small></span></a></div>
-                    </div>
                 </div>
             </div>
         </section>

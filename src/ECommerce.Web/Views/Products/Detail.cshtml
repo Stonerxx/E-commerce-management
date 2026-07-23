@@ -1,7 +1,9 @@
 @{
     Layout = "_Layout";
     ViewData["Title"] = "商品详情";
-    var isCustomer = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.User);
+    var primaryRole = ECommerce.Web.Security.UserRoleResolver.ResolvePrimary(User);
+    var isCustomer = primaryRole == ECommerce.Shared.Constants.AuthConstants.Roles.User;
+    var isBackendUser = primaryRole is ECommerce.Shared.Constants.AuthConstants.Roles.Admin or ECommerce.Shared.Constants.AuthConstants.Roles.Service;
 }
 
 <div id="productDetailApp" v-cloak>
@@ -121,6 +123,14 @@
                                         :disabled="!currentSku || availableStock <= 0">
                                     <i class="bi bi-bag-check"></i> 立即购买
                                 </button>
+                            </template>
+                            <template v-else-if="@isBackendUser.ToString().ToLowerInvariant()">
+                                <a href="/admin" class="btn btn-outline-primary flex-grow-1">
+                                    <i class="bi bi-speedometer2"></i> 返回工作台
+                                </a>
+                                <a href="/admin/orders" class="btn btn-primary flex-grow-1">
+                                    <i class="bi bi-receipt"></i> 处理订单
+                                </a>
                             </template>
                             <template v-else>
                                 <a href="/account/login" class="btn btn-primary flex-grow-1">

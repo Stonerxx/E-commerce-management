@@ -58,6 +58,20 @@ public sealed class FeatureCompletionContractTests
             "admin/orders/{orderId:long}/logistics");
     }
 
+    [Theory]
+    [InlineData(typeof(LogisticsApiController), nameof(LogisticsApiController.Ship))]
+    [InlineData(typeof(LogisticsApiController), nameof(LogisticsApiController.AddTrack))]
+    [InlineData(typeof(AdminOrdersApiController), nameof(AdminOrdersApiController.AdminCancel))]
+    public void ServiceOrderWriteActions_AreServiceOrAdmin(Type controllerType, string actionName)
+    {
+        var method = controllerType.GetMethod(actionName);
+
+        Assert.NotNull(method);
+        var authorization = method.GetCustomAttributes(typeof(AuthorizeAttribute), false)
+            .Cast<AuthorizeAttribute>().Single();
+        Assert.Equal(AuthConstants.Policies.ServiceOrAdmin, authorization.Policy);
+    }
+
     private static void AssertRoute<TController>(string actionName, Type attributeType, string expectedRoute)
     {
         var method = typeof(TController).GetMethod(actionName);

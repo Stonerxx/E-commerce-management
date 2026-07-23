@@ -37,7 +37,21 @@ public sealed class PermissionService : IPermissionService
 
     public async Task BindRolePermissionsAsync(int roleId, IReadOnlyList<int> permissionIds, CancellationToken cancellationToken = default)
     {
-        await EnsureRoleExistsAsync(roleId, cancellationToken);
+        if (roleId <= 0)
+        {
+            throw new BusinessException(ErrorCodes.ValidationError, "角色ID必须大于0");
+        }
+
+        var roleName = await _permissionRepository.GetRoleNameAsync(roleId, cancellationToken);
+        if (roleName is null)
+        {
+            throw new BusinessException(ErrorCodes.ResourceNotFound, "角色不存在");
+        }
+
+        if (string.Equals(roleName, AuthConstants.Roles.Admin, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new BusinessException(ErrorCodes.AuthForbidden, "ADMIN 是内置超级管理员，始终拥有完整后台权限，不能修改其权限绑定");
+        }
 
         if (permissionIds.Any(id => id <= 0))
         {

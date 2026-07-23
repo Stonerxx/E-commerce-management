@@ -1,5 +1,5 @@
 @{
-    var isAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
+    var isAdmin = ECommerce.Web.Security.UserRoleResolver.ResolvePrimary(User) == ECommerce.Shared.Constants.AuthConstants.Roles.Admin;
     var roleName = isAdmin ? "系统管理员" : "客服专员";
     var userName = User.Identity?.Name ?? roleName;
 }
