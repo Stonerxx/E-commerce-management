@@ -322,7 +322,7 @@ public class OrderService : IOrderService
                 FromStatus = (int)OrderStatus.PendingPayment,
                 ToStatus = (int)OrderStatus.Cancelled,
                 OperatorId = operatorId,  // 记录实际操作人
-                Remark = reason ?? (operatorId == userId ? "用户主动取消" : "后台管理员取消"),
+                Remark = reason ?? (operatorId == userId ? "用户主动取消" : "后台取消"),
                 CreatedAt = DateTime.Now
             }, cancellationToken);
 
@@ -341,17 +341,17 @@ public class OrderService : IOrderService
 
             // 6. 判断是否需要写入 OPERATION_LOG
             //    规范要求：只有"后台关键写操作"才写入 OPERATION_LOG
-            //    判断标准：操作人不是订单主人 → 视为后台管理员操作 → 写入 OPERATION_LOG
+            //    判断标准：操作人不是订单主人 → 视为后台客服或管理员操作 → 写入 OPERATION_LOG
             //              操作人是订单主人 → 前台用户自取消 → 只写 ORDER_LOG，不写 OPERATION_LOG
             if (operatorId != userId)
             {
-                // 后台管理员取消订单 → 必须写入 OPERATION_LOG
+                // 后台客服或管理员取消订单 → 必须写入 OPERATION_LOG
                 await _operationLogService.WriteAsync(new OperationLogRequest(
                     OperatorId: operatorId,
-                    OperatorName: operatorName,  // 真实管理员姓名
+                    OperatorName: operatorName,  // 实际后台操作人姓名
                     Module: "订单管理",
                     Action: "后台取消订单",
-                    Description: $"管理员 {operatorName} 取消订单 {order.OrderNo}，原因：{reason ?? "无"}",
+                    Description: $"后台操作人 {operatorName} 取消订单 {order.OrderNo}，原因：{reason ?? "无"}",
                     IpAddress: ipAddress,
                     RequestParams: null,
                     Result: (int)OperationResult.Success

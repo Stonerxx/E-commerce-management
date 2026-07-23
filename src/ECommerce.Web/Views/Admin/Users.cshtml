@@ -1,9 +1,10 @@
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "用户管理";
+    var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0";
 }
 
-<div id="adminUsersApp" v-cloak>
+<div id="adminUsersApp" v-cloak data-current-user-id="@currentUserId">
     <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
         <div>
             <h1 class="h3 mb-1">后台用户管理</h1>
@@ -62,7 +63,7 @@
                 </tr>
                 <tr v-for="item in items" v-bind:key="item.userId">
                     <td>{{ item.userId }}</td>
-                    <td>{{ item.username }}</td>
+                    <td>{{ item.username }} <span v-if="isCurrentUser(item)" class="badge text-bg-primary ms-1">当前账号</span></td>
                     <td>{{ item.phone || '-' }}</td>
                     <td>{{ item.email || '-' }}</td>
                     <td>
@@ -73,10 +74,10 @@
                     <td>{{ item.roles.join(', ') || '-' }}</td>
                     <td>{{ formatDate(item.createdAt) }}</td>
                     <td class="text-end text-nowrap">
-                        <button class="btn btn-sm btn-outline-warning me-1" type="button" v-on:click="toggleStatus(item)">
+                        <button class="btn btn-sm btn-outline-warning me-1" type="button" v-on:click="toggleStatus(item)" v-bind:disabled="isCurrentUser(item)" v-bind:title="isCurrentUser(item) ? '不能禁用当前登录账号' : ''">
                             {{ item.status === 1 ? '禁用' : '启用' }}
                         </button>
-                        <button class="btn btn-sm btn-outline-primary" type="button" v-on:click="assignRoles(item)">分配角色</button>
+                        <button class="btn btn-sm btn-outline-primary" type="button" v-on:click="assignRoles(item)" v-bind:disabled="isCurrentUser(item)" v-bind:title="isCurrentUser(item) ? '请使用其他管理员账号修改当前账号角色' : ''">分配角色</button>
                     </td>
                 </tr>
             </tbody>

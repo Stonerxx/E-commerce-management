@@ -271,10 +271,12 @@ GET /api/v1/system/db-check
 | --- | --- |
 | `USER` | 普通用户，可以浏览商品、购物车、下单、评价。 |
 | `SERVICE` | 客服，可以处理后台订单、发货等客服相关操作。 |
-| `ADMIN` | 管理员，可以维护用户、商品、统计等后台功能。 |
+| `ADMIN` | 内置超级管理员，可以维护用户、商品、统计等后台功能；动态权限绑定只读，始终保留完整后台权限。 |
 | `CustomerOnly` | 需要登录用户。当前包含 `USER`、`SERVICE`、`ADMIN`，方便后台角色也能访问自己的用户功能。 |
 | `ServiceOrAdmin` | 客服或管理员可以访问。 |
 | `AdminOnly` | 只有管理员可以访问。 |
+
+账号允许绑定多个角色时，界面主角色统一按 `ADMIN > SERVICE > USER` 解析；首页、导航和登录落点必须使用同一优先级。当前管理员不能禁用自己或移除自己的 `ADMIN` 角色，系统也必须始终保留至少一个启用的管理员。
 
 Controller 上加权限时用 `[Authorize(Policy = AuthConstants.Policies.AdminOnly)]` 这类写法；公开页面和公开接口用 `[AllowAnonymous]`。
 
@@ -306,7 +308,7 @@ JSON API 权限要和页面入口匹配：
 - 系统健康检查、注册、登录、商品浏览和商品评价列表是公开接口，用 `[AllowAnonymous]`。
 - `POST /api/v1/auth/logout` 和 `GET /api/v1/auth/me` 必须是 `CustomerOnly`，只服务已登录用户。
 - 用户侧购物车、订单、地址、优惠券、支付、物流查询和评价创建接口使用 `CustomerOnly`。
-- 后台订单、发货、物流轨迹和后台首页摘要使用 `ServiceOrAdmin`。
+- 后台订单、取消待支付订单、发货、物流轨迹和后台首页摘要使用 `ServiceOrAdmin`。
 - 后台用户、商品、优惠券模板、评价审核、统计和导出使用 `AdminOnly`。
 
 路由写法说明：

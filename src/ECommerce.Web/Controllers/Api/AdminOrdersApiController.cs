@@ -45,10 +45,10 @@ public sealed class AdminOrdersApiController : ApiControllerBase
     }
 
     /// <summary>
-    /// 后台强制取消订单（仅管理员）
+    /// 客服或管理员取消待支付订单
     /// </summary>
     [HttpPost("{orderId:long}/cancel")]
-    [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
+    [Authorize(Policy = AuthConstants.Policies.ServiceOrAdmin)]
     public async Task<ActionResult<ApiResponse<object>>> AdminCancel(
         long orderId,
         [FromBody] AdminCancelOrderRequest? request,
@@ -63,13 +63,13 @@ public sealed class AdminOrdersApiController : ApiControllerBase
         await _orderService.CancelAsync(
             order.UserId,    // 订单归属者
             orderId,
-            operatorId,      // 管理员自己
-            operatorName,    // 管理员姓名
+            operatorId,      // 实际后台操作人
+            operatorName,    // 实际后台操作人姓名
             ipAddress,
-            request?.Reason ?? "后台强制取消",
+            request?.Reason ?? "后台取消",
             cancellationToken);
 
-        return Ok(ApiResponse<object>.Ok(null, message: "订单已强制取消"));
+        return Ok(ApiResponse<object>.Ok(null, message: "订单已取消"));
     }
 }
 

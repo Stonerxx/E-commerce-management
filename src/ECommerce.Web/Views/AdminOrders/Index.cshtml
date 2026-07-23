@@ -1,28 +1,35 @@
 ﻿@{
     Layout = "_AdminLayout";
     ViewData["Title"] = "订单管理 - 后台";
+    var isAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
 }
 
 <div id="adminOrdersApp" v-cloak>
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3">订单管理</h1>
-        <button type="button" class="btn btn-outline-success" v-on:click="exportOrders">
-            <i class="bi bi-file-earmark-excel"></i> 导出 Excel
-        </button>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <div>
+            <h1 class="h3 mb-1">订单管理</h1>
+            <p class="text-muted mb-0">查询订单、处理取消请求、完成发货并持续维护物流轨迹。</p>
+        </div>
+        @if (isAdmin)
+        {
+            <button type="button" class="btn btn-outline-success" v-on:click="exportOrders">
+                <i class="bi bi-file-earmark-excel"></i> 导出 Excel
+            </button>
+        }
     </div>
 
     <!-- 筛选条件 -->
     <div class="border rounded p-3 bg-white mb-4">
         <div class="row g-3">
-            <div class="col-12 col-md-3">
+            <div class="col-12 col-md-6 col-xl-2">
                 <label class="form-label small">订单号</label>
-                <input type="text" class="form-control" v-model="filters.orderNo" placeholder="输入订单号" />
+                <input type="text" class="form-control" v-model.trim="filters.orderNo" v-on:keyup.enter="applyFilters" placeholder="输入订单号" />
             </div>
-            <div class="col-12 col-md-3">
+            <div class="col-12 col-md-6 col-xl-2">
                 <label class="form-label small">用户 ID</label>
-                <input type="number" class="form-control" v-model="filters.userId" placeholder="用户ID" />
+                <input type="number" min="1" class="form-control" v-model="filters.userId" v-on:keyup.enter="applyFilters" placeholder="用户 ID" />
             </div>
-            <div class="col-12 col-md-3">
+            <div class="col-12 col-md-6 col-xl-2">
                 <label class="form-label small">状态</label>
                 <select class="form-select" v-model="filters.status">
                     <option value="">全部</option>
@@ -33,8 +40,19 @@
                     <option value="4">已取消</option>
                 </select>
             </div>
-            <div class="col-12 col-md-3 d-flex align-items-end">
-                <button class="btn btn-primary w-100" v-on:click="loadOrders">查询</button>
+            <div class="col-12 col-md-6 col-xl-2">
+                <label class="form-label small">开始时间</label>
+                <input type="datetime-local" class="form-control" v-model="filters.startTime" />
+            </div>
+            <div class="col-12 col-md-6 col-xl-2">
+                <label class="form-label small">结束时间</label>
+                <input type="datetime-local" class="form-control" v-model="filters.endTime" />
+            </div>
+            <div class="col-12 col-md-6 col-xl-2 d-flex align-items-end gap-2">
+                <button class="btn btn-primary flex-grow-1" v-on:click="applyFilters" v-bind:disabled="loading">查询</button>
+                <button class="btn btn-outline-secondary" type="button" v-on:click="resetFilters" v-bind:disabled="loading" title="清空筛选" aria-label="清空筛选">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -43,26 +61,26 @@
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-3">
             <div class="border rounded p-2 bg-white text-center">
-                <div class="text-muted small">总订单</div>
+                <div class="text-muted small">筛选结果</div>
                 <div class="h5 mb-0">{{ totalCount }}</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="border rounded p-2 bg-white text-center">
-                <div class="text-muted small">待支付</div>
+                <div class="text-muted small">本页待支付</div>
                 <div class="h5 mb-0 text-warning">{{ statusCounts[0] || 0 }}</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="border rounded p-2 bg-white text-center">
-                <div class="text-muted small">已发货</div>
-                <div class="h5 mb-0 text-primary">{{ statusCounts[2] || 0 }}</div>
+                <div class="text-muted small">本页待发货</div>
+                <div class="h5 mb-0 text-info">{{ statusCounts[1] || 0 }}</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="border rounded p-2 bg-white text-center">
-                <div class="text-muted small">已完成</div>
-                <div class="h5 mb-0 text-success">{{ statusCounts[3] || 0 }}</div>
+                <div class="text-muted small">本页已发货</div>
+                <div class="h5 mb-0 text-primary">{{ statusCounts[2] || 0 }}</div>
             </div>
         </div>
     </div>
@@ -135,6 +153,37 @@
                     </ul>
                 </nav>
             </div>
+        </div>
+    </div>
+
+    <div class="modal fade" ref="shipModalElement" tabindex="-1" aria-labelledby="shipModalTitle" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <form class="modal-content" v-on:submit.prevent="submitShipment">
+                <div class="modal-header">
+                    <div>
+                        <h2 class="modal-title fs-5" id="shipModalTitle">填写发货信息</h2>
+                        <p class="small text-muted mb-0">确认后订单将进入“已发货”，并生成首条物流轨迹。</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭" v-bind:disabled="shipping"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="shipmentCompanyName">物流公司</label>
+                        <input id="shipmentCompanyName" ref="shipmentCompanyInput" class="form-control" v-model.trim="shipment.companyName" maxlength="100" autocomplete="organization" placeholder="例如：顺丰速运" required />
+                    </div>
+                    <div>
+                        <label class="form-label" for="shipmentTrackingNo">运单号</label>
+                        <input id="shipmentTrackingNo" class="form-control" v-model.trim="shipment.trackingNo" maxlength="100" autocomplete="off" placeholder="请输入物流运单号" required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" v-bind:disabled="shipping">取消</button>
+                    <button type="submit" class="btn btn-success" v-bind:disabled="shipping">
+                        <span v-if="shipping" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                        {{ shipping ? '正在发货...' : '确认发货' }}
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

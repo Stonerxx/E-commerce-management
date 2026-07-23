@@ -3,6 +3,7 @@ using ECommerce.Application.Services;
 using ECommerce.Infrastructure.Repositories;
 using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Contracts;
+using ECommerce.Shared.Constants;
 using ECommerce.Shared.Errors;
 using ECommerce.Shared.Exceptions;
 
@@ -42,7 +43,40 @@ public sealed class UserService : IUserService
             throw new BusinessException(ErrorCodes.ResourceNotFound, "用户不存在");
         }
 
-        await _userRepository.SetUserStatusAsync(userId, status, cancellationToken);
+        if (user.Status == status)
+        {
+            return;
+        }
+
+        if (status == 0 && userId == operatorId)
+        {
+            throw new BusinessException(ErrorCodes.AuthForbidden, "不能禁用当前登录的管理员账号，请使用其他管理员账号操作");
+        }
+
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            if (status == 0)
+            {
+                var currentRoles = await _userRepository.GetRoleNamesAsync(userId, cancellationToken);
+                if (currentRoles.Contains(AuthConstants.Roles.Admin, StringComparer.OrdinalIgnoreCase))
+                {
+                    await _userRepository.LockRoleAsync(AuthConstants.Roles.Admin, cancellationToken);
+                    if (await _userRepository.CountActiveUsersInRoleAsync(AuthConstants.Roles.Admin, cancellationToken) <= 1)
+                    {
+                        throw new BusinessException(ErrorCodes.AuthForbidden, "不能禁用最后一个有效管理员账号");
+                    }
+                }
+            }
+
+            await _userRepository.SetUserStatusAsync(userId, status, cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
 
     public async Task AssignRolesAsync(long userId, IReadOnlyList<int> roleIds, long operatorId, CancellationToken cancellationToken = default)
@@ -71,9 +105,30 @@ public sealed class UserService : IUserService
             throw new BusinessException(ErrorCodes.ResourceNotFound, $"角色不存在：{string.Join(",", missingIds)}");
         }
 
+        var adminRoleId = await _userRepository.GetRoleIdByNameAsync(AuthConstants.Roles.Admin, cancellationToken)
+            ?? throw new BusinessException(ErrorCodes.ConfigurationError, "数据库缺少 ADMIN 角色");
+
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
+            var currentRoles = await _userRepository.GetRoleNamesAsync(userId, cancellationToken);
+            var removesAdmin = currentRoles.Contains(AuthConstants.Roles.Admin, StringComparer.OrdinalIgnoreCase)
+                && !distinctRoleIds.Contains(adminRoleId);
+            if (removesAdmin)
+            {
+                if (userId == operatorId)
+                {
+                    throw new BusinessException(ErrorCodes.AuthForbidden, "不能移除当前登录账号的 ADMIN 角色，请使用其他管理员账号操作");
+                }
+
+                await _userRepository.LockRoleAsync(AuthConstants.Roles.Admin, cancellationToken);
+                if (user.Status == 1
+                    && await _userRepository.CountActiveUsersInRoleAsync(AuthConstants.Roles.Admin, cancellationToken) <= 1)
+                {
+                    throw new BusinessException(ErrorCodes.AuthForbidden, "不能移除最后一个有效管理员的 ADMIN 角色");
+                }
+            }
+
             await _userRepository.ReplaceUserRolesAsync(userId, distinctRoleIds, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
         }

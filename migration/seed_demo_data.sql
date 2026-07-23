@@ -2,7 +2,7 @@
 -- 电商购物平台演示/联调用测试数据
 -- 执行顺序：init_database.sql -> database_objects.sql -> seed_demo_data.sql
 -- 说明：
---   1. 本脚本只使用 9000-9999 号段的显式 ID，可重复执行。
+--   1. 演示实体使用 9000-9999 号段的显式 ID；统计快照按日期幂等刷新，可重复执行。
 --   2. 任意 SQL 或跨表自校验失败时，整批种子数据都会回滚。
 --   3. 演示账号密码统一为 demo123；其他客户账号仅用于列表和报表数据。
 -- ============================================================
@@ -77,6 +77,7 @@ INSERT ALL
     INTO "PERMISSION" (id, perm_name, resource_path, action, description) VALUES (9008, 'SERVICE_SHIPMENT_POST', '/api/v1/admin/orders/*/shipments', 'POST', '客服发货')
     INTO "PERMISSION" (id, perm_name, resource_path, action, description) VALUES (9009, 'SERVICE_LOGISTICS_TRACK_POST', '/api/v1/admin/logistics/*/tracks', 'POST', '客服追加物流轨迹')
     INTO "PERMISSION" (id, perm_name, resource_path, action, description) VALUES (9010, 'CUSTOMER_ORDER_GET', '/api/v1/orders/**', 'GET', '用户查看本人订单')
+    INTO "PERMISSION" (id, perm_name, resource_path, action, description) VALUES (9011, 'SERVICE_ORDER_CANCEL_POST', '/api/v1/admin/orders/*/cancel', 'POST', '客服取消待支付订单')
 SELECT 1 FROM DUAL;
 
 INSERT ALL
@@ -105,6 +106,7 @@ INSERT ALL
     INTO ROLE_PERMISSION (id, role_id, permission_id, created_at) VALUES (9013, 9002, 9008, SYSDATE - 30)
     INTO ROLE_PERMISSION (id, role_id, permission_id, created_at) VALUES (9014, 9002, 9009, SYSDATE - 30)
     INTO ROLE_PERMISSION (id, role_id, permission_id, created_at) VALUES (9015, 9003, 9010, SYSDATE - 30)
+    INTO ROLE_PERMISSION (id, role_id, permission_id, created_at) VALUES (9016, 9002, 9011, SYSDATE - 30)
 SELECT 1 FROM DUAL;
 
 PROMPT Insert addresses, catalog and inventory...
@@ -614,28 +616,52 @@ WHERE p.id BETWEEN 9001 AND 9240;
 
 PROMPT Insert statistics snapshots...
 
-INSERT INTO ORDER_STAT_SNAPSHOT (
+-- 后台统计任务也会写入当天快照，因此这里必须按 stat_date 更新或补插，不能直接 INSERT。
+-- 汇总范围是演示订单涉及日期内的全部订单，避免覆盖后台已计算的非演示订单数据。
+MERGE INTO ORDER_STAT_SNAPSHOT target
+USING (
+    SELECT
+        9800 + ROW_NUMBER() OVER (ORDER BY d.stat_date) AS seed_id,
+        d.stat_date,
+        d.order_count,
+        d.paid_count,
+        d.sales_amount,
+        0 AS refund_amount,
+        CASE WHEN d.paid_count = 0 THEN 0 ELSE ROUND(d.sales_amount / d.paid_count, 2) END AS avg_order_amount,
+        (SELECT COUNT(1)
+         FROM "USER" u
+         WHERE u.created_at >= d.stat_date AND u.created_at < d.stat_date + 1) AS new_user_count
+    FROM (
+        SELECT
+            demo_date.stat_date,
+            COUNT(om.id) AS order_count,
+            SUM(CASE WHEN om.status IN (1, 2, 3) THEN 1 ELSE 0 END) AS paid_count,
+            NVL(SUM(CASE WHEN om.status IN (1, 2, 3) THEN om.pay_amount ELSE 0 END), 0) AS sales_amount
+        FROM (
+            SELECT DISTINCT TRUNC(created_at) AS stat_date
+            FROM ORDER_MAIN
+            WHERE id BETWEEN 9000 AND 9999
+        ) demo_date
+        INNER JOIN ORDER_MAIN om
+            ON om.created_at >= demo_date.stat_date
+           AND om.created_at < demo_date.stat_date + 1
+        GROUP BY demo_date.stat_date
+    ) d
+) source
+ON (target.stat_date = source.stat_date)
+WHEN MATCHED THEN UPDATE SET
+    target.order_count = source.order_count,
+    target.paid_count = source.paid_count,
+    target.sales_amount = source.sales_amount,
+    target.refund_amount = source.refund_amount,
+    target.avg_order_amount = source.avg_order_amount,
+    target.new_user_count = source.new_user_count
+WHEN NOT MATCHED THEN INSERT (
     id, stat_date, order_count, paid_count, sales_amount,
     refund_amount, avg_order_amount, new_user_count)
-SELECT
-    9800 + ROW_NUMBER() OVER (ORDER BY d.stat_date),
-    d.stat_date,
-    d.order_count,
-    d.paid_count,
-    d.sales_amount,
-    0,
-    CASE WHEN d.paid_count = 0 THEN 0 ELSE ROUND(d.sales_amount / d.paid_count, 2) END,
-    (SELECT COUNT(1) FROM "USER" u WHERE u.created_at >= d.stat_date AND u.created_at < d.stat_date + 1)
-FROM (
-    SELECT
-        TRUNC(om.created_at) AS stat_date,
-        COUNT(1) AS order_count,
-        SUM(CASE WHEN om.status IN (1, 2, 3) THEN 1 ELSE 0 END) AS paid_count,
-        NVL(SUM(CASE WHEN om.status IN (1, 2, 3) THEN om.pay_amount ELSE 0 END), 0) AS sales_amount
-    FROM ORDER_MAIN om
-    WHERE om.id BETWEEN 9000 AND 9999
-    GROUP BY TRUNC(om.created_at)
-) d;
+VALUES (
+    source.seed_id, source.stat_date, source.order_count, source.paid_count, source.sales_amount,
+    source.refund_amount, source.avg_order_amount, source.new_user_count);
 
 -- 脚本级跨表校验：若任一规则失败，WHENEVER SQLERROR 会回滚所有删除和插入。
 DECLARE

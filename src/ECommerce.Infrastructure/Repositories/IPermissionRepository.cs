@@ -8,6 +8,8 @@ public interface IPermissionRepository
 
     Task<bool> RoleExistsAsync(int roleId, CancellationToken cancellationToken = default);
 
+    Task<string?> GetRoleNameAsync(int roleId, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<PermissionDto>> GetPermissionsAsync(string? keyword, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<int>> GetExistingPermissionIdsAsync(IReadOnlyList<int> permissionIds, CancellationToken cancellationToken = default);

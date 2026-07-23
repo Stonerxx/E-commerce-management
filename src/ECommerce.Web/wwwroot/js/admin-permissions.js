@@ -10,9 +10,15 @@
                 keyword: "",
                 roles: [],
                 permissions: [],
+                selectedRole: null,
                 selectedRoleId: null,
                 selectedPermissionIds: []
             };
+        },
+        computed: {
+            isAdminRole() {
+                return this.selectedRole?.roleName?.toUpperCase() === "ADMIN";
+            }
         },
         async mounted() {
             await this.loadRoles();
@@ -33,6 +39,7 @@
                 this.permissions = payload.data || [];
             },
             async selectRole(role) {
+                this.selectedRole = role;
                 this.selectedRoleId = role.roleId;
                 this.error = "";
                 this.message = "";
@@ -40,6 +47,11 @@
                 this.selectedPermissionIds = (payload.data || []).map(item => item.permissionId);
             },
             async save() {
+                if (this.isAdminRole) {
+                    this.error = "ADMIN 是内置超级管理员，权限不可修改";
+                    return;
+                }
+
                 this.error = "";
                 this.message = "";
                 this.saving = true;
