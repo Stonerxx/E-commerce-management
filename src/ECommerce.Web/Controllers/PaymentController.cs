@@ -42,7 +42,7 @@ public sealed class PaymentController : Controller
                     ? await _paymentService.CreateOrGetPendingAsync(userId, orderId, cancellationToken)
                     : await _paymentService.GetByOrderAsync(userId, orderId, cancellationToken);
             }
-            catch (BusinessException ex) when (ex.Code == "PAYMENT_NOT_FOUND")
+            catch (BusinessException ex)
             {
                 notice ??= ex.Message;
             }
@@ -66,7 +66,7 @@ public sealed class PaymentController : Controller
                 ? $"支付成功，交易流水号：{result.TradeNo}"
                 : "支付尚未完成。";
         }
-        catch (BusinessException ex) when (ex.Code is "PAYMENT_EXPIRED" or "ORDER_STATUS_INVALID")
+        catch (BusinessException ex)
         {
             TempData["PaymentNotice"] = ex.Message;
         }

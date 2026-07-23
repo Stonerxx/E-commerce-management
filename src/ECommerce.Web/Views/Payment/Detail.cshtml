@@ -10,7 +10,8 @@
         && order.PayExpireTime <= DateTime.Now;
     var canPay = order.Status == (int)OrderStatus.PendingPayment
         && !paymentExpired
-        && payment?.Status is (int)PaymentStatus.Pending or (int)PaymentStatus.Failed;
+        && (payment is null
+            || payment.Status is (int)PaymentStatus.Pending or (int)PaymentStatus.Failed);
     var statusText = paymentExpired ? "支付已过期" : order.Status switch
     {
         (int)OrderStatus.PendingPayment => "待支付",

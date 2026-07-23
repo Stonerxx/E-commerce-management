@@ -53,6 +53,48 @@ public sealed class PaymentControllerTests
         Assert.Equal("订单支付时间已过期", controller.TempData["PaymentNotice"]);
     }
 
+    [Theory]
+    [InlineData("INVENTORY_LOCKED_INSUFFICIENT", "商品库存状态已变化")]
+    [InlineData("PAYMENT_CREATE_CONFLICT", "支付记录已变化，请重试")]
+    [InlineData("PAYMENT_AMOUNT_CHANGED", "支付金额与订单金额不一致")]
+    public async Task SimulatePay_RedirectsWithNoticeForBusinessFailure(string code, string message)
+    {
+        var orders = new Mock<IOrderService>();
+        var payments = new Mock<IPaymentService>();
+        payments.Setup(item => item.SimulatePayAsync(
+                7,
+                It.Is<SimulatePaymentRequest>(request => request.OrderId == 10),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new BusinessException(code, message));
+        var controller = CreateController(orders.Object, payments.Object);
+
+        var result = await controller.SimulatePay(10);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(PaymentController.Detail), redirect.ActionName);
+        Assert.Equal(10L, redirect.RouteValues?["orderId"]);
+        Assert.Equal(message, controller.TempData["PaymentNotice"]);
+    }
+
+    [Fact]
+    public async Task Detail_ShowsPaymentBusinessFailureWithoutLeavingThePage()
+    {
+        var orders = new Mock<IOrderService>();
+        var payments = new Mock<IPaymentService>();
+        orders.Setup(item => item.GetPaymentContextAsync(7, 10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateOrder(DateTime.Now.AddMinutes(20)));
+        payments.Setup(item => item.CreateOrGetPendingAsync(7, 10, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new BusinessException("PAYMENT_CREATE_CONFLICT", "支付记录已变化，请重试"));
+        var controller = CreateController(orders.Object, payments.Object);
+
+        var result = await controller.Detail(10);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<PaymentViewModel>(view.Model);
+        Assert.Null(model.Payment);
+        Assert.Equal("支付记录已变化，请重试", model.Notice);
+    }
+
     private static PaymentController CreateController(IOrderService orders, IPaymentService payments)
     {
         var httpContext = new DefaultHttpContext
