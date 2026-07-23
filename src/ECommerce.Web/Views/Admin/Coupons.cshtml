@@ -5,7 +5,7 @@
 
 <div id="adminCouponsApp" v-cloak>
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-        <div><h1 class="h3 mb-1">优惠券管理</h1><p class="text-muted mb-0">创建、编辑和启停优惠券模板。</p></div>
+        <div><h1 class="h3 mb-1">优惠券管理</h1><p class="text-muted mb-0">创建、编辑和启停优惠券模板，并设置全场或指定品类范围。</p></div>
         <button class="btn btn-primary" v-on:click="openCreate">新建模板</button>
     </div>
 
@@ -18,6 +18,7 @@
                 <div class="col-md-2"><label class="form-label">优惠值</label><input class="form-control" type="number" step="0.01" v-model.number="form.amount" /></div>
                 <div class="col-md-2"><label class="form-label">使用门槛</label><input class="form-control" type="number" step="0.01" v-model.number="form.minAmount" /></div>
                 <div class="col-md-2"><label class="form-label">发行量</label><input class="form-control" type="number" v-model.number="form.totalCount" /><div class="form-text">-1 表示不限量</div></div>
+                <div class="col-md-4"><label class="form-label">适用范围</label><select class="form-select" v-model="form.applicableCategoryId"><option v-bind:value="null">全场通用</option><option v-for="category in categories" v-bind:key="category.categoryId" v-bind:value="category.categoryId">{{ category.label }}</option></select><div class="form-text">指定品类时，门槛和折扣只按该品类商品小计计算</div></div>
                 <div class="col-md-4"><label class="form-label">开始时间</label><input class="form-control" type="datetime-local" v-model="form.startTime" /></div>
                 <div class="col-md-4"><label class="form-label">结束时间</label><input class="form-control" type="datetime-local" v-model="form.endTime" /></div>
                 <div class="col-md-2"><label class="form-label">状态</label><select class="form-select" v-model.number="form.status"><option v-bind:value="1">启用</option><option v-bind:value="0">停用</option></select></div>
@@ -35,15 +36,15 @@
     <div class="card overflow-hidden">
         <div v-if="loading" class="text-center py-5"><div class="spinner-border text-primary"></div></div>
         <div v-else class="table-responsive"><table class="table table-hover align-middle mb-0">
-            <thead><tr><th>ID</th><th>名称</th><th>规则</th><th>发行/领取</th><th>有效期</th><th>状态</th><th class="text-end">操作</th></tr></thead>
+            <thead><tr><th>ID</th><th>名称</th><th>适用范围</th><th>规则</th><th>发行/领取</th><th>有效期</th><th>状态</th><th class="text-end">操作</th></tr></thead>
             <tbody>
                 <tr v-for="item in items" v-bind:key="item.templateId">
-                    <td>{{ item.templateId }}</td><td>{{ item.name }}</td><td>{{ ruleText(item) }}</td><td>{{ item.totalCount === -1 ? '不限量' : item.totalCount }} / {{ item.receivedCount }}</td>
+                    <td>{{ item.templateId }}</td><td>{{ item.name }}</td><td>{{ item.applicableCategoryName || '全场通用' }}</td><td>{{ ruleText(item) }}</td><td>{{ item.totalCount === -1 ? '不限量' : item.totalCount }} / {{ item.receivedCount }}</td>
                     <td class="small">{{ formatDate(item.startTime) }}<br />{{ formatDate(item.endTime) }}</td>
                     <td><span class="badge" v-bind:class="item.status === 1 ? 'text-bg-success' : 'text-bg-secondary'">{{ item.status === 1 ? '启用' : '停用' }}</span></td>
                     <td class="text-end"><button class="btn btn-sm btn-outline-primary me-1" v-on:click="openEdit(item)">编辑</button><button class="btn btn-sm" v-bind:class="item.status === 1 ? 'btn-outline-danger' : 'btn-outline-success'" v-on:click="toggleStatus(item)">{{ item.status === 1 ? '停用' : '启用' }}</button></td>
                 </tr>
-                <tr v-if="items.length === 0"><td colspan="7" class="text-center text-muted py-5">暂无模板</td></tr>
+                <tr v-if="items.length === 0"><td colspan="8" class="text-center text-muted py-5">{{ filters.keyword || filters.status !== '' ? '没有符合筛选条件的优惠券模板' : '暂无优惠券模板' }}</td></tr>
             </tbody>
         </table></div>
         <div class="card-footer d-flex justify-content-between align-items-center"><span class="text-muted">共 {{ totalCount }} 条</span><div><button class="btn btn-sm btn-outline-secondary me-2" v-on:click="goPage(pageIndex - 1)" v-bind:disabled="pageIndex <= 1">上一页</button><span>{{ pageIndex }} / {{ totalPages }}</span><button class="btn btn-sm btn-outline-secondary ms-2" v-on:click="goPage(pageIndex + 1)" v-bind:disabled="pageIndex >= totalPages">下一页</button></div></div>

@@ -11,10 +11,12 @@ namespace ECommerce.Web.Controllers.Api;
 public sealed class CouponsApiController : ApiControllerBase
 {
     private readonly ICouponService _couponService;
+    private readonly IOrderService _orderService;
 
-    public CouponsApiController(ICouponService couponService)
+    public CouponsApiController(ICouponService couponService, IOrderService orderService)
     {
         _couponService = couponService;
+        _orderService = orderService;
     }
 
     [HttpGet("coupons")]
@@ -52,11 +54,17 @@ public sealed class CouponsApiController : ApiControllerBase
         [FromBody] CouponValidationRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _couponService.ValidateAsync(
-            GetCurrentUserId(),
-            userCouponId,
-            request.OrderAmount,
-            cancellationToken);
+        var result = request.CartItemIds is { Count: > 0 }
+            ? await _orderService.ValidateCouponAsync(
+                GetCurrentUserId(),
+                userCouponId,
+                request.CartItemIds,
+                cancellationToken)
+            : await _couponService.ValidateAsync(
+                GetCurrentUserId(),
+                userCouponId,
+                request.OrderAmount,
+                cancellationToken);
         return Ok(ApiResponse<CouponValidationDto>.Ok(result));
     }
 

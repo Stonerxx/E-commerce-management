@@ -38,14 +38,18 @@
                 pagination.value.currentPage = page;
                 loading.value = true;
                 try {
-                    // 直接调用预警接口（后端返回已过滤的低库存数据）
-                    const resp = await fetch(`/api/v1/admin/inventory/warnings?pageIndex=${page}&pageSize=${pagination.value.pageSize}`, {
+                    const params = new URLSearchParams({
+                        pageIndex: page,
+                        pageSize: pagination.value.pageSize
+                    });
+                    if (keyword.value.trim()) params.set('keyword', keyword.value.trim());
+                    const resp = await fetch(`/api/v1/admin/inventory/warnings?${params}`, {
                         headers: { 'Accept': 'application/json' }
                     });
                     const data = await resp.json();
 
                     if (data.success && data.data && data.data.items) {
-                        let list = data.data.items.map(it => ({
+                        const list = data.data.items.map(it => ({
                             skuId: it.skuId,
                             productId: it.productId,
                             productName: it.productName || '',
@@ -55,14 +59,6 @@
                             availableStock: Math.max(0, it.stock - it.lockedStock),
                             warningStock: it.warningStock
                         }));
-
-                        if (keyword.value) {
-                            const kw = keyword.value.toLowerCase();
-                            list = list.filter(r =>
-                                (r.productName && r.productName.toLowerCase().includes(kw)) ||
-                                (r.specDesc && r.specDesc.toLowerCase().includes(kw))
-                            );
-                        }
 
                         rows.value = list;
                         pagination.value.total = data.data.totalCount;

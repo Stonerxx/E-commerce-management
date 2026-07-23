@@ -33,6 +33,10 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
         sql.Append("FROM \"INVENTORY_LOG\" l INNER JOIN \"SKU\" s ON s.\"ID\" = l.\"SKU_ID\" INNER JOIN \"PRODUCT\" p ON p.\"ID\" = s.\"PRODUCT_ID\" LEFT JOIN \"USER\" u ON u.\"ID\" = l.\"OPERATOR_ID\" ");
 
         var conditions = new List<string>();
+        if (!string.IsNullOrWhiteSpace(query.Keyword))
+        {
+            conditions.Add("(LOWER(p.\"NAME\") LIKE :keyword OR TO_CHAR(l.\"SKU_ID\") LIKE :keyword)");
+        }
         if (query.SkuId.HasValue)
         {
             conditions.Add("l.\"SKU_ID\" = :skuId");
@@ -58,7 +62,7 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
         sql.Append(" ORDER BY l.\"CREATED_AT\" DESC");
         
         var countSql = new StringBuilder();
-        countSql.Append("SELECT COUNT(*) FROM \"INVENTORY_LOG\" l");
+        countSql.Append("SELECT COUNT(*) FROM \"INVENTORY_LOG\" l INNER JOIN \"SKU\" s ON s.\"ID\" = l.\"SKU_ID\" INNER JOIN \"PRODUCT\" p ON p.\"ID\" = s.\"PRODUCT_ID\"");
         if (conditions.Count > 0)
         {
             countSql.Append(" WHERE " + string.Join(" AND ", conditions));
@@ -134,6 +138,13 @@ public sealed class InventoryLogRepository : IInventoryLogRepository
 
     private static void AddSearchParameters(DbCommand command, InventoryLogQuery query)
     {
+        if (!string.IsNullOrWhiteSpace(query.Keyword))
+        {
+            var param = command.CreateParameter();
+            param.ParameterName = ":keyword";
+            param.Value = $"%{query.Keyword.Trim().ToLowerInvariant()}%";
+            command.Parameters.Add(param);
+        }
         if (query.SkuId.HasValue)
         {
             var param = command.CreateParameter();

@@ -12,6 +12,8 @@ public sealed record OrderSkuQuantity(
 
 public sealed record InventoryLogQuery : PageQuery
 {
+    public string? Keyword { get; init; }
+
     public long? SkuId { get; init; }
 
     public string? ChangeType { get; init; }
@@ -19,6 +21,11 @@ public sealed record InventoryLogQuery : PageQuery
     public DateTime? StartTime { get; init; }
 
     public DateTime? EndTime { get; init; }
+}
+
+public sealed record InventoryWarningQuery : PageQuery
+{
+    public string? Keyword { get; init; }
 }
 
 public sealed record InventoryLogDto(

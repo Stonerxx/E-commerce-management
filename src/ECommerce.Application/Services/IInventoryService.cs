@@ -15,5 +15,5 @@ public interface IInventoryService
 
     Task<PagedResult<InventoryLogDto>> SearchLogsAsync(InventoryLogQuery query, CancellationToken cancellationToken = default);
 
-    Task<PagedResult<InventoryWarningDto>> SearchWarningsAsync(PageQuery query, CancellationToken cancellationToken = default);
+    Task<PagedResult<InventoryWarningDto>> SearchWarningsAsync(InventoryWarningQuery query, CancellationToken cancellationToken = default);
 }

@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - merging
 
 concurrency:
   group: ecommerce-deploy
@@ -12,7 +13,7 @@ concurrency:
 
 jobs:
   build-and-deploy:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/merging'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 

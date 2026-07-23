@@ -4,5 +4,5 @@ namespace ECommerce.Web.Models;
 
 public sealed record PaymentViewModel(
     OrderPaymentContextDto Order,
-    PaymentDto Payment,
+    PaymentDto? Payment,
     string? Notice);

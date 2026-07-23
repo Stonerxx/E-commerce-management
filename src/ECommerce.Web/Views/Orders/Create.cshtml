@@ -14,8 +14,30 @@
             </div>
         </div>
 
-        <div v-else-if="!previewData" class="text-center py-5">
-            <p class="text-muted">购物车为空或数据加载失败</p>
+        <div v-else-if="errorMessage" class="surface-card empty-state">
+            <div class="empty-state-icon"><i class="bi bi-exclamation-triangle"></i></div>
+            <h2 class="h5">确认订单信息加载失败</h2>
+            <p class="text-muted">{{ errorMessage }}</p>
+            <div class="d-flex justify-content-center gap-2">
+                <button class="btn btn-primary" type="button" v-on:click="initPage">重新加载</button>
+                <a href="/cart" class="btn btn-outline-secondary">返回购物车</a>
+            </div>
+        </div>
+
+        <div v-else-if="addresses.length === 0" class="surface-card empty-state">
+            <div class="empty-state-icon"><i class="bi bi-geo-alt"></i></div>
+            <h2 class="h5">请先添加收货地址</h2>
+            <p class="text-muted">结算前需要一条有效的收货地址。</p>
+            <div class="d-flex justify-content-center gap-2">
+                <a href="/addresses" class="btn btn-primary">添加收货地址</a>
+                <a href="/cart" class="btn btn-outline-secondary">返回购物车</a>
+            </div>
+        </div>
+
+        <div v-else-if="!previewData" class="surface-card empty-state">
+            <div class="empty-state-icon"><i class="bi bi-cart-x"></i></div>
+            <h2 class="h5">无法生成订单预览</h2>
+            <p class="text-muted">请返回购物车重新选择商品。</p>
             <a href="/cart" class="btn btn-primary">返回购物车</a>
         </div>
 
@@ -77,10 +99,11 @@
                         <select id="checkoutCoupon" class="form-select form-select-sm" v-model="selectedCouponId">
                             <option v-bind:value="null">不使用优惠券</option>
                             <option v-for="coupon in coupons" v-bind:key="coupon.userCouponId" v-bind:value="coupon.userCouponId">
-                                {{ coupon.couponName }}
+                                {{ coupon.couponName }} · {{ coupon.applicableCategoryName ? coupon.applicableCategoryName + '专享' : '全场通用' }}（优惠 ¥{{ formatMoney(coupon.discountAmount) }}）
                             </option>
                         </select>
-                        <div v-if="coupons.length === 0" class="form-text">暂无可用优惠券</div>
+                        <div v-if="couponMessage" class="form-text text-warning">{{ couponMessage }}，可暂不使用优惠券</div>
+                        <div v-else-if="coupons.length === 0" class="form-text">暂无可用优惠券</div>
                     </div>
 
                     <!-- 金额 -->
@@ -94,7 +117,7 @@
                             <span>-¥{{ previewData.discountAmount.toFixed(2) }}</span>
                         </div>
                         <div class="d-flex justify-content-between border-top pt-2 mt-1">
-                            <strong>实付金额</strong>
+                            <strong>应付金额</strong>
                             <strong class="text-danger h5">¥{{ previewData.payAmount.toFixed(2) }}</strong>
                         </div>
                     </div>

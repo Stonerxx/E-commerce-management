@@ -8,7 +8,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <div>
             <h1 class="h3 mb-1">订单管理</h1>
-            <p class="text-muted mb-0">查询订单、处理取消请求、完成发货并持续维护物流轨迹。</p>
+            <p class="text-muted mb-0">查询订单、取消待支付订单、完成发货并维护物流轨迹。</p>
         </div>
         @if (isAdmin)
         {
@@ -94,7 +94,7 @@
         </div>
 
         <div v-else-if="orders.length === 0" class="text-center py-5">
-            <p class="text-muted">暂无订单</p>
+            <p class="text-muted">{{ filters.orderNo || filters.userId || filters.status !== '' || filters.startTime || filters.endTime ? '没有符合筛选条件的订单' : '暂无订单' }}</p>
         </div>
 
         <div v-else>

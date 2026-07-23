@@ -12,9 +12,12 @@
                 submitting: false,
                 addresses: [],
                 coupons: [],
+                couponCandidates: [],
                 selectedAddressId: null,
                 selectedCouponId: null,
                 previewData: null,
+                errorMessage: '',
+                couponMessage: '',
                 remark: ''
             };
         },
@@ -29,6 +32,9 @@
         methods: {
             async initPage() {
                 this.loading = true;
+                this.errorMessage = '';
+                this.previewData = null;
+                this.selectedAddressId = null;
                 try {
                     await this.loadAddresses();
                     await this.loadCoupons();
@@ -42,43 +48,92 @@
 
                     if (this.selectedAddressId) {
                         await this.loadPreview();
+                        if (this.previewData) {
+                            await this.loadAvailableCoupons();
+                        }
                     }
                 } catch (error) {
                     console.error('初始化页面失败:', error);
+                    this.errorMessage = error instanceof Error ? error.message : '确认订单页加载失败';
                 } finally {
                     this.loading = false;
                 }
             },
 
             async loadAddresses() {
-                try {
-                    const response = await fetch('/api/v1/addresses', {
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    const result = await response.json();
-                    if (result.success && result.data) {
-                        this.addresses = result.data;
-                    } else {
-                        console.warn('加载地址失败:', result.message);
-                    }
-                } catch (error) {
-                    console.error('加载地址异常:', error);
+                const response = await fetch('/api/v1/addresses', {
+                    headers: { 'Accept': 'application/json' }
+                });
+                const result = await response.json().catch(() => null);
+                if (!response.ok || !result?.success) {
+                    throw new Error(result?.message || '收货地址加载失败');
                 }
+                this.addresses = Array.isArray(result.data) ? result.data : [];
             },
 
             async loadCoupons() {
+                this.couponMessage = '';
                 try {
                     const response = await fetch('/api/v1/coupons', {
                         headers: { 'Accept': 'application/json' }
                     });
-                    const result = await response.json();
-                    if (result.success && result.data) {
-                        this.coupons = result.data.filter(coupon => coupon.status === 0);
-                    } else {
-                        console.warn('加载优惠券失败:', result.message);
+                    const result = await response.json().catch(() => null);
+                    if (!response.ok || !result?.success) {
+                        throw new Error(result?.message || '优惠券加载失败');
                     }
+                    this.couponCandidates = Array.isArray(result.data)
+                        ? result.data.filter(coupon => coupon.status === 0)
+                        : [];
+                    this.coupons = [];
                 } catch (error) {
                     console.error('加载优惠券异常:', error);
+                    this.couponCandidates = [];
+                    this.coupons = [];
+                    this.couponMessage = error instanceof Error ? error.message : '优惠券加载失败';
+                }
+            },
+
+            async loadAvailableCoupons() {
+                if (this.couponCandidates.length === 0) {
+                    this.coupons = [];
+                    return;
+                }
+
+                try {
+                    const validated = await Promise.all(this.couponCandidates.map(async coupon => {
+                        const response = await fetch(`/api/v1/coupons/${coupon.userCouponId}/validate`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ cartItemIds: idList })
+                        });
+                        const result = await response.json().catch(() => null);
+                        if (!response.ok || !result?.success || !result.data) {
+                            throw new Error(result?.message || '优惠券校验失败');
+                        }
+                        return result.data.available
+                            ? {
+                                ...coupon,
+                                discountAmount: Number(result.data.discountAmount || 0),
+                                eligibleAmount: Number(result.data.eligibleAmount || 0),
+                                applicableCategoryName: result.data.applicableCategoryName || coupon.applicableCategoryName
+                            }
+                            : null;
+                    }));
+
+                    this.coupons = validated
+                        .filter(Boolean)
+                        .sort((left, right) => right.discountAmount - left.discountAmount);
+                    if (!this.coupons.some(coupon => coupon.userCouponId === this.selectedCouponId)) {
+                        this.selectedCouponId = null;
+                    }
+                } catch (error) {
+                    console.error('校验优惠券异常:', error);
+                    this.coupons = [];
+                    this.selectedCouponId = null;
+                    this.couponMessage = error instanceof Error ? error.message : '优惠券校验失败';
                 }
             },
 
@@ -88,6 +143,7 @@
                     return;
                 }
 
+                this.errorMessage = '';
                 try {
                     const requestBody = {
                         addressId: this.selectedAddressId,
@@ -104,17 +160,17 @@
                         },
                         body: JSON.stringify(requestBody)
                     });
-                    const result = await response.json();
+                    const result = await response.json().catch(() => null);
 
-                    if (result.success && result.data) {
+                    if (response.ok && result?.success && result.data) {
                         this.previewData = result.data;
                     } else {
-                        console.error('加载预览失败:', result.message);
-                        alert(result.message || '加载预览失败，请重试');
+                        throw new Error(result?.message || '订单预览加载失败');
                     }
                 } catch (error) {
                     console.error('加载预览异常:', error);
-                    alert('加载预览失败，请检查网络连接');
+                    this.previewData = null;
+                    this.errorMessage = error instanceof Error ? error.message : '订单预览加载失败';
                 }
             },
 
@@ -161,6 +217,10 @@
                 } finally {
                     this.submitting = false;
                 }
+            },
+
+            formatMoney(value) {
+                return Number(value || 0).toFixed(2);
             }
         },
         watch: {

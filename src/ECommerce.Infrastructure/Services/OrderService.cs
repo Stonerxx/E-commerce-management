@@ -76,10 +76,12 @@ public class OrderService : IOrderService
 
         // 4. 计算金额
         decimal totalAmount = cartItems.Sum(x => x.UnitPrice * x.Quantity);
+        var categoryAmounts = BuildCategoryAmounts(cartItems);
         var discountAmount = await GetDiscountAmountAsync(
             userId,
             request.UserCouponId,
             totalAmount,
+            categoryAmounts,
             cancellationToken);
 
         var payAmount = totalAmount - discountAmount;
@@ -99,6 +101,22 @@ public class OrderService : IOrderService
         )).ToList();
 
         return new OrderPreviewDto(totalAmount, discountAmount, payAmount, items);
+    }
+
+    public async Task<CouponValidationDto> ValidateCouponAsync(
+        long userId,
+        long userCouponId,
+        IReadOnlyList<long>? cartItemIds,
+        CancellationToken cancellationToken = default)
+    {
+        var cartItems = await GetSelectedCartItemsAsync(userId, cartItemIds, cancellationToken);
+        var totalAmount = cartItems.Sum(item => item.UnitPrice * item.Quantity);
+        return await _couponService.ValidateAsync(
+            userId,
+            userCouponId,
+            totalAmount,
+            BuildCategoryAmounts(cartItems),
+            cancellationToken);
     }
 
     public async Task<long> CreateAsync(long userId, CreateOrderRequest request, CancellationToken cancellationToken = default)
@@ -132,6 +150,7 @@ public class OrderService : IOrderService
 
             // 3. 计算金额
             decimal totalAmount = cartItems.Sum(x => x.UnitPrice * x.Quantity);
+            var categoryAmounts = BuildCategoryAmounts(cartItems);
             // 4. 生成订单编号
             orderNo = GenerateOrderNo();
 
@@ -143,6 +162,7 @@ public class OrderService : IOrderService
                 userId,
                 request.UserCouponId,
                 totalAmount,
+                categoryAmounts,
                 cancellationToken);
             var payAmount = Math.Max(0, totalAmount - discountAmount);
 
@@ -181,6 +201,7 @@ public class OrderService : IOrderService
                     request.UserCouponId.Value,
                     orderId,
                     totalAmount,
+                    categoryAmounts,
                     discountAmount,
                     cancellationToken);
             }
@@ -582,6 +603,7 @@ public class OrderService : IOrderService
         long userId,
         long? userCouponId,
         decimal orderAmount,
+        IReadOnlyDictionary<int, decimal> categoryAmounts,
         CancellationToken cancellationToken)
     {
         if (!userCouponId.HasValue)
@@ -593,6 +615,7 @@ public class OrderService : IOrderService
             userId,
             userCouponId.Value,
             orderAmount,
+            categoryAmounts,
             cancellationToken);
         if (!validation.Available)
         {
@@ -600,6 +623,16 @@ public class OrderService : IOrderService
         }
 
         return validation.DiscountAmount;
+    }
+
+    private static IReadOnlyDictionary<int, decimal> BuildCategoryAmounts(
+        IReadOnlyList<CartItemWithDetails> cartItems)
+    {
+        return cartItems
+            .GroupBy(item => item.CategoryId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Sum(item => item.UnitPrice * item.Quantity));
     }
 
     private static void EnsureStatusChanged(bool statusChanged)

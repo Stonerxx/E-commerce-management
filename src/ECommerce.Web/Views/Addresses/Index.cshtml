@@ -29,8 +29,8 @@
 
         <div class="col-12 col-lg-7 col-xl-8">
             <div v-if="loading" class="surface-card py-5 text-center"><div class="spinner-border text-primary"></div><p class="text-muted mt-3 mb-0">正在加载地址...</p></div>
-            <div v-else-if="items.length === 0" class="surface-card empty-state"><div class="empty-state-icon"><i class="bi bi-geo-alt"></i></div><h3 class="h5">还没有收货地址</h3><p class="text-muted mb-0">填写左侧表单，新增第一条常用地址。</p></div>
-            <div v-else>
+            <div v-else-if="!error && items.length === 0" class="surface-card empty-state"><div class="empty-state-icon"><i class="bi bi-geo-alt"></i></div><h3 class="h5">还没有收货地址</h3><p class="text-muted mb-0">填写左侧表单，新增第一条常用地址。</p></div>
+            <div v-else-if="items.length > 0">
                 <div class="surface-card overflow-hidden d-none d-md-block">
                     <div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th class="ps-3">收货人</th><th>联系方式</th><th>完整地址</th><th>状态</th><th class="text-end pe-3">操作</th></tr></thead><tbody><tr v-for="item in items" v-bind:key="item.addressId"><td class="ps-3 fw-semibold">{{ item.receiverName }}</td><td>{{ item.receiverPhone }}</td><td style="min-width:260px">{{ fullAddress(item) }}</td><td><span class="badge" v-bind:class="item.isDefault ? 'text-bg-success' : 'text-bg-secondary'">{{ item.isDefault ? '默认地址' : '普通地址' }}</span></td><td class="text-end pe-3 text-nowrap"><button class="btn btn-sm btn-link text-decoration-none" type="button" v-on:click="editAddress(item)">编辑</button><button class="btn btn-sm btn-link text-success text-decoration-none" type="button" v-on:click="setDefault(item)" v-bind:disabled="item.isDefault || saving">设默认</button><button class="btn btn-sm btn-link text-danger text-decoration-none" type="button" v-on:click="deleteAddress(item)" v-bind:disabled="saving">删除</button></td></tr></tbody></table></div>
                 </div>
