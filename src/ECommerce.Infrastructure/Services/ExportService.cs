@@ -186,6 +186,15 @@ class ExportService : IExportService
 
         var parameters = new List<OracleParameter>();
 
+        if (!string.IsNullOrWhiteSpace(query.Keyword))
+        {
+            sqlBuilder.AppendLine("    AND (LOWER(p.NAME) LIKE :Keyword OR TO_CHAR(l.SKU_ID) LIKE :Keyword)");
+            parameters.Add(new OracleParameter(":Keyword", OracleDbType.Varchar2)
+            {
+                Value = $"%{query.Keyword.Trim().ToLowerInvariant()}%"
+            });
+        }
+
         // SkuId 精确匹配
         if (query.SkuId.HasValue && query.SkuId.Value > 0)
         {

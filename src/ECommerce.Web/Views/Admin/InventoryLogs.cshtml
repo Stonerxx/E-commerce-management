@@ -9,7 +9,7 @@
             <h1 class="h3 mb-1">
                 <i class="bi bi-clock-history text-primary"></i> 库存日志
             </h1>
-            <p class="text-muted mb-0">记录所有库存调整操作，支持按 SKU、类型、时间范围查询</p>
+            <p class="text-muted mb-0">记录库存变动，支持按商品、SKU 和变更类型查询</p>
         </div>
         <button type="button" class="btn btn-outline-success" v-on:click="exportLogs">
             <i class="bi bi-file-earmark-excel"></i> 导出 Excel
@@ -31,6 +31,7 @@
                         <option value="ORDER_DEDUCT">订单扣减</option>
                         <option value="RESTOCK">入库</option>
                         <option value="SALE">销售出库</option>
+                        <option value="CANCEL">取消回补</option>
                     </select>
                 </div>
                 <div class="col-12 col-lg-3">
@@ -52,7 +53,7 @@
 
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h2 class="h5 mb-0">调整记录</h2>
+            <h2 class="h5 mb-0">变动记录</h2>
             <span class="text-muted small">共 {{ pagination.total }} 条记录</span>
         </div>
         <div class="card-body p-0">
@@ -61,7 +62,7 @@
             </div>
             <div v-else-if="rows.length === 0" class="empty-tip text-center">
                 <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                暂无库存调整记录
+                {{ keyword || changeType || skuId ? '没有符合筛选条件的库存记录' : '暂无库存变动记录' }}
             </div>
             <table v-else class="table table-hover mb-0 align-middle">
                 <thead class="table-light">

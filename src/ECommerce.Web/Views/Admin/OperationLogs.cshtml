@@ -7,7 +7,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
         <div>
             <h1 class="h3 mb-1">管理员操作日志</h1>
-            <p class="text-muted mb-0">查看后台关键写操作记录，包括用户状态、角色分配和角色权限绑定。</p>
+            <p class="text-muted mb-0">查看用户、商品、订单、库存和权限等后台关键写操作。</p>
         </div>
         <button class="btn btn-primary" type="button" v-on:click="loadLogs" v-bind:disabled="loading">
             <span v-if="loading" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
@@ -54,7 +54,7 @@
             </thead>
             <tbody>
                 <tr v-if="items.length === 0">
-                    <td class="text-center text-muted py-4" colspan="8">暂无日志</td>
+                    <td class="text-center text-muted py-4" colspan="8">{{ filters.module || filters.operatorId || filters.startTime || filters.endTime ? '没有符合筛选条件的操作日志' : '暂无操作日志' }}</td>
                 </tr>
                 <tr v-for="item in items" v-bind:key="item.logId">
                     <td>{{ item.logId }}</td>

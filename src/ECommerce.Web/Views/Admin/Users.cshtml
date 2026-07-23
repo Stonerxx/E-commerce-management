@@ -59,7 +59,7 @@
             </thead>
             <tbody>
                 <tr v-if="items.length === 0">
-                    <td class="text-center text-muted py-4" colspan="8">暂无用户</td>
+                    <td class="text-center text-muted py-4" colspan="8">{{ filters.keyword || filters.status !== '' || filters.role !== '' ? '没有符合筛选条件的用户' : '暂无用户' }}</td>
                 </tr>
                 <tr v-for="item in items" v-bind:key="item.userId">
                     <td>{{ item.userId }}</td>

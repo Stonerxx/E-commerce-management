@@ -254,7 +254,7 @@ public sealed class InventoryService : IInventoryService
         return await _inventoryLogRepository.SearchLogsAsync(query, cancellationToken);
     }
 
-    public async Task<PagedResult<InventoryWarningDto>> SearchWarningsAsync(PageQuery query, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<InventoryWarningDto>> SearchWarningsAsync(InventoryWarningQuery query, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
 
@@ -262,18 +262,27 @@ public sealed class InventoryService : IInventoryService
         sql.Append("SELECT sku_id AS id, product_id, product_name, spec_desc, stock, locked_stock, warning_stock ");
         sql.Append("FROM V_PRODUCT_INVENTORY ");
         sql.Append("WHERE is_warning = 1 AND sku_status = 1 AND product_status = 1 ");
+        if (!string.IsNullOrWhiteSpace(query.Keyword))
+        {
+            sql.Append("AND (LOWER(product_name) LIKE :keyword OR TO_CHAR(sku_id) LIKE :keyword OR LOWER(spec_desc) LIKE :keyword) ");
+        }
         sql.Append("ORDER BY available_stock ASC ");
 
-        const string countSql = """
+        var countSql = """
             SELECT COUNT(*)
             FROM V_PRODUCT_INVENTORY
             WHERE is_warning = 1
               AND sku_status = 1
               AND product_status = 1
             """;
+        if (!string.IsNullOrWhiteSpace(query.Keyword))
+        {
+            countSql += " AND (LOWER(product_name) LIKE :keyword OR TO_CHAR(sku_id) LIKE :keyword OR LOWER(spec_desc) LIKE :keyword)";
+        }
 
         using var countCommand = connection.CreateCommand();
         countCommand.CommandText = countSql;
+        AddWarningKeywordParameter(countCommand, query.Keyword);
         var totalCount = Convert.ToInt32(await countCommand.ExecuteScalarAsync(cancellationToken));
 
         var offset = (query.SafePageIndex - 1) * query.SafePageSize;
@@ -281,6 +290,7 @@ public sealed class InventoryService : IInventoryService
 
         using var command = connection.CreateCommand();
         command.CommandText = sql.ToString();
+        AddWarningKeywordParameter(command, query.Keyword);
 
         var offsetParam = command.CreateParameter();
         offsetParam.ParameterName = ":offset";
@@ -300,6 +310,19 @@ public sealed class InventoryService : IInventoryService
         }
 
         return new PagedResult<InventoryWarningDto>(items, query.SafePageIndex, query.SafePageSize, totalCount);
+    }
+
+    private static void AddWarningKeywordParameter(DbCommand command, string? keyword)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+        {
+            return;
+        }
+
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = ":keyword";
+        parameter.Value = $"%{keyword.Trim().ToLowerInvariant()}%";
+        command.Parameters.Add(parameter);
     }
 
     private static InventoryWarningDto MapToWarningDto(DbDataReader reader)

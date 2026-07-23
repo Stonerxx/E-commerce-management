@@ -25,11 +25,11 @@
                     </div>
                 </div>
                 <div class="col-6 col-md-4 col-xl-2">
-                    <label class="form-label small fw-semibold" for="skuStatus">上架状态</label>
+                    <label class="form-label small fw-semibold" for="skuStatus">SKU 状态</label>
                     <select id="skuStatus" class="form-select" v-model.number="status">
                         <option :value="null">全部状态</option>
-                        <option :value="1">已上架</option>
-                        <option :value="0">已下架</option>
+                        <option :value="1">已启用</option>
+                        <option :value="0">已停用</option>
                     </select>
                 </div>
                 <div class="col-6 col-md-4 col-xl-2">
@@ -102,9 +102,9 @@
                             <small class="text-muted">已锁定 {{ row.lockedStock }}</small>
                         </td>
                         <td>{{ row.warningStock }}</td>
-                        <td><span class="badge" v-bind:class="row.status === 1 ? 'text-bg-success' : 'text-bg-secondary'">{{ row.status === 1 ? '已上架' : '已下架' }}</span></td>
+                        <td><span class="badge" v-bind:class="row.status === 1 ? 'text-bg-success' : 'text-bg-secondary'">{{ row.status === 1 ? '已启用' : '已停用' }}</span></td>
                         <td class="text-end pe-4 text-nowrap">
-                            <button class="btn btn-sm btn-outline-secondary me-1" type="button" v-on:click="toggleStatus(row)">{{ row.status === 1 ? '下架' : '上架' }}</button>
+                            <button class="btn btn-sm btn-outline-secondary me-1" type="button" v-on:click="toggleStatus(row)">{{ row.status === 1 ? '停用' : '启用' }}</button>
                             <button class="btn btn-sm btn-outline-primary" type="button" v-on:click="openAdjustModal(row)"><i class="bi bi-plus-slash-minus me-1"></i>调库存</button>
                         </td>
                     </tr>
@@ -119,14 +119,14 @@
                     <div class="min-w-0 flex-grow-1">
                         <div class="d-flex justify-content-between align-items-start gap-2">
                             <a v-bind:href="'/admin/products/' + row.productId + '/edit'" class="fw-semibold text-decoration-none text-truncate">{{ row.productName }}</a>
-                            <span class="badge" v-bind:class="row.status === 1 ? 'text-bg-success' : 'text-bg-secondary'">{{ row.status === 1 ? '上架' : '下架' }}</span>
+                            <span class="badge" v-bind:class="row.status === 1 ? 'text-bg-success' : 'text-bg-secondary'">{{ row.status === 1 ? '启用' : '停用' }}</span>
                         </div>
                         <code class="sku-spec d-inline-block mt-1">{{ row.specDesc }}</code>
                         <div class="d-flex justify-content-between mt-3"><span class="fw-semibold">¥{{ row.price.toFixed(2) }}</span><span :class="row.stock - row.lockedStock <= row.warningStock ? 'text-danger fw-semibold' : ''">可售 {{ row.stock - row.lockedStock }}</span></div>
                     </div>
                 </div>
                 <div class="d-flex gap-2 mt-3 pt-3 border-top">
-                    <button class="btn btn-sm btn-outline-secondary flex-grow-1" type="button" v-on:click="toggleStatus(row)">{{ row.status === 1 ? '下架' : '上架' }}</button>
+                    <button class="btn btn-sm btn-outline-secondary flex-grow-1" type="button" v-on:click="toggleStatus(row)">{{ row.status === 1 ? '停用' : '启用' }}</button>
                     <button class="btn btn-sm btn-outline-primary flex-grow-1" type="button" v-on:click="openAdjustModal(row)">调整库存</button>
                 </div>
                 </article>
