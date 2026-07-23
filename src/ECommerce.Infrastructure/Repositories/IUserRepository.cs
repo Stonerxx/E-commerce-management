@@ -18,6 +18,12 @@ public interface IUserRepository
 
     Task<IReadOnlyList<int>> GetExistingRoleIdsAsync(IReadOnlyList<int> roleIds, CancellationToken cancellationToken = default);
 
+    Task<int?> GetRoleIdByNameAsync(string roleName, CancellationToken cancellationToken = default);
+
+    Task<int> CountActiveUsersInRoleAsync(string roleName, CancellationToken cancellationToken = default);
+
+    Task LockRoleAsync(string roleName, CancellationToken cancellationToken = default);
+
     Task<PagedResult<UserDto>> SearchUsersAsync(UserQuery query, CancellationToken cancellationToken = default);
 
     Task SetUserStatusAsync(long userId, int status, CancellationToken cancellationToken = default);

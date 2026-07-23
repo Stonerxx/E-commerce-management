@@ -51,6 +51,19 @@ public sealed class PermissionRepository : IPermissionRepository
         return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)) > 0;
     }
 
+    public async Task<string?> GetRoleNameAsync(int roleId, CancellationToken cancellationToken = default)
+    {
+        var connection = await GetConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.BindByName = true;
+        AttachTransaction(command);
+        command.CommandText = """SELECT role_name FROM "ROLE" WHERE id = :role_id""";
+        command.Parameters.Add(new OracleParameter("role_id", roleId));
+
+        var value = await command.ExecuteScalarAsync(cancellationToken);
+        return value is null or DBNull ? null : Convert.ToString(value);
+    }
+
     public async Task<IReadOnlyList<PermissionDto>> GetPermissionsAsync(string? keyword, CancellationToken cancellationToken = default)
     {
         var permissions = new List<Permission>();

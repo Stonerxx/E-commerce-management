@@ -14,6 +14,7 @@ public sealed class PermissionServiceTests
     [InlineData("/api/v1/admin/**", "/api/v1/admin/orders/1", true)]
     [InlineData("/api/v1/admin/**", "/api/v1/admin", true)]
     [InlineData("/api/v1/admin/orders/*/shipments", "/api/v1/admin/orders/12/shipments", true)]
+    [InlineData("/api/v1/admin/orders/*/cancel", "/api/v1/admin/orders/12/cancel", true)]
     [InlineData("/api/v1/admin/orders/*/shipments", "/api/v1/admin/orders/12/logs/shipments", false)]
     [InlineData("/admin/*", "/admin/orders", true)]
     [InlineData("/admin/*", "/admin/orders/1", false)]
@@ -65,6 +66,26 @@ public sealed class PermissionServiceTests
         var allowed = await service.CanAccessAsync(new[] { AuthConstants.Roles.Admin }, "/api/v1/admin/users", "DELETE");
 
         Assert.True(allowed);
+    }
+
+    [Fact]
+    public async Task BindRolePermissionsAsync_AdminRole_ShouldRejectFakeEditableBindings()
+    {
+        var repository = new Mock<IPermissionRepository>();
+        repository.Setup(item => item.GetRoleNameAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(AuthConstants.Roles.Admin);
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var service = new PermissionService(repository.Object, unitOfWork.Object);
+
+        var exception = await Assert.ThrowsAsync<ECommerce.Shared.Exceptions.BusinessException>(() =>
+            service.BindRolePermissionsAsync(1, [1, 2, 3]));
+
+        Assert.Equal(ECommerce.Shared.Errors.ErrorCodes.AuthForbidden, exception.Code);
+        repository.Verify(item => item.ReplaceRolePermissionsAsync(
+            It.IsAny<int>(),
+            It.IsAny<IReadOnlyList<int>>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        unitOfWork.Verify(item => item.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private static Mock<IPermissionRepository> CreateRepository(
