@@ -8,8 +8,10 @@
                 loading: false,
                 order: null,
                 showShipModal: false,
+                shipping: false,
                 showLogisticsPanel: false,
                 logisticsLoading: false,
+                trackSubmitting: false,
                 logistics: null,
                 trackForm: { trackDesc: '', location: '', status: 1 },
                 shipment: {
@@ -112,6 +114,7 @@
                     return;
                 }
 
+                this.shipping = true;
                 try {
                     const response = await fetch(`/api/v1/admin/orders/${orderId}/shipments`, {
                         method: 'POST',
@@ -127,20 +130,24 @@
                     });
                     const result = await response.json();
 
-                    if (result.success) {
+                    if (response.ok && result.success) {
                         this.showShipModal = false;
-                        this.loadOrderDetail();
+                        this.showLogisticsPanel = true;
+                        window.appToast?.('发货成功，物流信息已创建', 'success');
+                        await this.loadOrderDetail();
                     } else {
-                        alert(result.message || '发货失败');
+                        window.appToast?.(result.message || '发货失败', 'danger');
                     }
                 } catch (error) {
                     console.error('发货异常:', error);
-                    alert('发货失败，请稍后重试');
+                    window.appToast?.('发货失败，请稍后重试', 'danger');
+                } finally {
+                    this.shipping = false;
                 }
             },
 
             async adminCancelOrder(orderId) {
-                if (!confirm('确定要强制取消这个订单吗？此操作不可恢复！')) return;
+                if (!confirm('确定要取消这个待支付订单吗？库存和优惠券将自动恢复。')) return;
 
                 try {
                     const response = await fetch(`/api/v1/admin/orders/${orderId}/cancel`, {
@@ -149,18 +156,19 @@
                             'Content-Type': 'application/json',
                             'Accept': 'application/json'
                         },
-                        body: JSON.stringify({ reason: '后台强制取消' })
+                        body: JSON.stringify({ reason: '后台取消' })
                     });
                     const result = await response.json();
 
-                    if (result.success) {
-                        this.loadOrderDetail();
+                    if (response.ok && result.success) {
+                        window.appToast?.('订单已取消，相关资源已恢复', 'success');
+                        await this.loadOrderDetail();
                     } else {
-                        alert(result.message || '取消订单失败');
+                        window.appToast?.(result.message || '取消订单失败', 'danger');
                     }
                 } catch (error) {
                     console.error('取消订单异常:', error);
-                    alert('取消订单失败，请稍后重试');
+                    window.appToast?.('取消订单失败，请稍后重试', 'danger');
                 }
             },
 
@@ -189,15 +197,34 @@
             },
 
             async addTrack() {
-                if (!this.logistics || !this.trackForm.trackDesc) { alert('请填写轨迹描述'); return; }
-                const response = await fetch(`/api/v1/admin/logistics/${this.logistics.logisticsId}/tracks`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify({ trackDesc: this.trackForm.trackDesc, trackTime: new Date().toISOString(), location: this.trackForm.location || null, status: this.trackForm.status })
-                });
-                const result = await response.json();
-                if (!response.ok || !result.success) { alert(result.message || '轨迹添加失败'); return; }
-                this.trackForm.trackDesc = ''; this.trackForm.location = ''; await this.loadLogistics();
+                if (!this.logistics || !this.trackForm.trackDesc) {
+                    window.appToast?.('请填写轨迹描述', 'warning');
+                    return;
+                }
+
+                this.trackSubmitting = true;
+                try {
+                    const response = await fetch(`/api/v1/admin/logistics/${this.logistics.logisticsId}/tracks`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({ trackDesc: this.trackForm.trackDesc, trackTime: new Date().toISOString(), location: this.trackForm.location || null, status: this.trackForm.status })
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) {
+                        window.appToast?.(result.message || '轨迹添加失败', 'danger');
+                        return;
+                    }
+
+                    this.trackForm.trackDesc = '';
+                    this.trackForm.location = '';
+                    window.appToast?.('物流轨迹已更新', 'success');
+                    await this.loadLogistics();
+                } catch (error) {
+                    console.error('轨迹添加异常:', error);
+                    window.appToast?.('轨迹添加失败，请稍后重试', 'danger');
+                } finally {
+                    this.trackSubmitting = false;
+                }
             },
 
             shipOrder(orderId) {
