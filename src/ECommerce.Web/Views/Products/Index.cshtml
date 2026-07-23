@@ -74,14 +74,14 @@
                 </div>
             </div>
 
-            <div v-else-if="products.length === 0" class="surface-card empty-state">
+            <div v-else-if="!errorMessage && products.length === 0" class="surface-card empty-state">
                 <div class="empty-state-icon"><i class="bi bi-search"></i></div>
                 <h2 class="h5">没有找到匹配商品</h2>
                 <p class="text-muted">换个关键词或清除分类条件再试试。</p>
                 <button class="btn btn-primary" type="button" v-on:click="resetFilters">查看全部商品</button>
             </div>
 
-            <div v-else class="row g-3">
+            <div v-else-if="!errorMessage" class="row g-3">
                 <div v-for="product in products" v-bind:key="product.productId" class="col-6 col-md-4 col-xl-3">
                     <a v-bind:href="'/products/' + product.productId" class="commerce-card text-decoration-none h-100 d-block">
                         <div class="product-image-wrap">
@@ -104,7 +104,7 @@
                 </div>
             </div>
 
-            <nav v-if="pagination.totalPages > 1" aria-label="商品分页" class="mt-4">
+            <nav v-if="!errorMessage && pagination.totalPages > 1" aria-label="商品分页" class="mt-4">
                 <ul class="pagination justify-content-center flex-wrap">
                     <li class="page-item" v-bind:class="{ disabled: pagination.pageIndex === 1 }"><button class="page-link" type="button" v-on:click="loadProducts(pagination.pageIndex - 1)">上一页</button></li>
                     <li class="page-item" v-bind:class="{ active: pagination.pageIndex === page }" v-for="page in pageNumbers" v-bind:key="page"><button class="page-link" type="button" v-on:click="loadProducts(page)">{{ page }}</button></li>
