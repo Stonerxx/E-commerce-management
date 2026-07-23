@@ -2,6 +2,7 @@ using ECommerce.Application.DTOs;
 using ECommerce.Application.Services;
 using ECommerce.Shared.Constants;
 using ECommerce.Shared.Exceptions;
+using ECommerce.Web.Security;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -144,23 +145,12 @@ public sealed class AccountController : Controller
             return LocalRedirect(returnUrl);
         }
 
-        return Redirect(GetLoginRedirectUrl(session));
-    }
-
-    private static string GetLoginRedirectUrl(UserSessionDto session)
-    {
-        return session.Roles.Any(role =>
-            string.Equals(role, AuthConstants.Roles.Admin, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(role, AuthConstants.Roles.Service, StringComparison.OrdinalIgnoreCase))
-            ? "/admin"
-            : "/";
+        return Redirect(UserRoleResolver.GetLandingPath(session.Roles));
     }
 
     private IActionResult RedirectAfterAuthentication()
     {
-        return Redirect(User.IsInRole(AuthConstants.Roles.Admin) || User.IsInRole(AuthConstants.Roles.Service)
-            ? "/admin"
-            : "/");
+        return Redirect(UserRoleResolver.GetLandingPath(User));
     }
 
     private void SetLoginViewData(string? returnUrl)

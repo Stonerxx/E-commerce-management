@@ -1,8 +1,9 @@
 @{
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
-    var isCustomer = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.User);
-    var isAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
-    var isService = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Service);
+    var primaryRole = ECommerce.Web.Security.UserRoleResolver.ResolvePrimary(User);
+    var isCustomer = primaryRole == ECommerce.Shared.Constants.AuthConstants.Roles.User;
+    var isAdmin = primaryRole == ECommerce.Shared.Constants.AuthConstants.Roles.Admin;
+    var isService = primaryRole == ECommerce.Shared.Constants.AuthConstants.Roles.Service;
     var canUseAdmin = isService || isAdmin;
     var currentUserName = User.Identity?.Name ?? "已登录用户";
     var currentRoleName = isAdmin ? "管理员" : isService ? "客服" : isCustomer ? "会员" : "访客";
@@ -148,6 +149,11 @@
                     {
                         <a href="/addresses">地址管理</a>
                         <a href="/coupons">我的优惠券</a>
+                    }
+                    else if (canUseAdmin)
+                    {
+                        <a href="/admin">运营工作台</a>
+                        <a href="/admin/orders">订单管理</a>
                     }
                     else
                     {

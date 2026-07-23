@@ -1,5 +1,5 @@
 @{
-    var isAdmin = User.IsInRole(ECommerce.Shared.Constants.AuthConstants.Roles.Admin);
+    var isAdmin = ECommerce.Web.Security.UserRoleResolver.ResolvePrimary(User) == ECommerce.Shared.Constants.AuthConstants.Roles.Admin;
     var path = Context.Request.Path.Value?.ToLowerInvariant() ?? "/admin";
 }
 <nav class="admin-navigation" aria-label="后台导航">
