@@ -5,6 +5,7 @@ using ECommerce.Infrastructure.Services;
 using ECommerce.Shared.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Oracle.ManagedDataAccess.Client;
 
 namespace ECommerce.Infrastructure;
 
@@ -14,6 +15,10 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Repository SQL uses named bind variables and may reuse a placeholder.
+        // ODP.NET defaults to positional binding, which causes ORA-01008 in that case.
+        OracleConfiguration.BindByName = true;
+
         services.Configure<OracleOptions>(configuration.GetSection(OracleOptions.SectionName));
         services.Configure<StatisticsSnapshotOptions>(configuration.GetSection(StatisticsSnapshotOptions.SectionName));
         services.Configure<PaymentOptions>(configuration.GetSection(PaymentOptions.SectionName));
