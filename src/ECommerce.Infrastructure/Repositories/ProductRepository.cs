@@ -42,17 +42,18 @@ public sealed class ProductRepository : IProductRepository
 
     public async Task<PagedResult<ProductListItemDto>> SearchAsync(ProductQuery query, CancellationToken cancellationToken = default)
     {
-        return await SearchCoreAsync(query, null, cancellationToken);
+        return await SearchCoreAsync(query, null, includeDescendantCategories: false, cancellationToken);
     }
 
     public async Task<PagedResult<ProductListItemDto>> SearchPublicAsync(ProductQuery query, CancellationToken cancellationToken = default)
     {
-        return await SearchCoreAsync(query, new[] { 1, 2 }, cancellationToken);
+        return await SearchCoreAsync(query, new[] { 1, 2 }, includeDescendantCategories: true, cancellationToken);
     }
 
     private async Task<PagedResult<ProductListItemDto>> SearchCoreAsync(
         ProductQuery query,
         IReadOnlyList<int>? fixedStatuses,
+        bool includeDescendantCategories,
         CancellationToken cancellationToken)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
@@ -64,7 +65,16 @@ public sealed class ProductRepository : IProductRepository
         var conditions = new List<string>();
         if (query.CategoryId.HasValue)
         {
-            conditions.Add("p.\"CATEGORY_ID\" = :categoryId");
+            conditions.Add(includeDescendantCategories
+                ? """
+                  p."CATEGORY_ID" IN (
+                      SELECT c."ID"
+                      FROM "CATEGORY" c
+                      START WITH c."ID" = :categoryId AND c."STATUS" = 1
+                      CONNECT BY NOCYCLE PRIOR c."ID" = c."PARENT_ID" AND c."STATUS" = 1
+                  )
+                  """
+                : "p.\"CATEGORY_ID\" = :categoryId");
         }
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {

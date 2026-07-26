@@ -13,6 +13,7 @@
             const requestedSort = initialParams.get("sortBy") || "newest";
             const sortBy = ref(allowedSorts.includes(requestedSort) ? requestedSort : "newest");
             const categoryTree = ref([]);
+            const expandedCategoryIds = ref([]);
             const products = ref([]);
             const pagination = ref({ pageIndex: 1, pageSize: 12, totalCount: 0, totalPages: 0 });
 
@@ -32,6 +33,9 @@
                     const response = await fetch("/api/v1/categories", { headers: { Accept: "application/json" } });
                     const result = await response.json().catch(() => null);
                     categoryTree.value = response.ok && result?.success ? (result.data || []) : [];
+                    expandedCategoryIds.value = categoryTree.value
+                        .filter(category => category.children && category.children.length)
+                        .map(category => category.categoryId);
                 } catch (error) {
                     console.error("加载分类失败:", error);
                 }
@@ -81,6 +85,16 @@
                 loadProducts(1);
             }
 
+            function isCategoryExpanded(categoryId) {
+                return expandedCategoryIds.value.includes(categoryId);
+            }
+
+            function toggleCategory(categoryId) {
+                expandedCategoryIds.value = isCategoryExpanded(categoryId)
+                    ? expandedCategoryIds.value.filter(id => id !== categoryId)
+                    : [...expandedCategoryIds.value, categoryId];
+            }
+
             function clearCategory() {
                 selectedCategoryId.value = null;
                 loadProducts(1);
@@ -102,7 +116,24 @@
                 loadProducts(Number(initialParams.get("page")) || 1);
             });
 
-            return { loading, errorMessage, keyword, selectedCategoryId, sortBy, categoryTree, products, pagination, pageNumbers, loadProducts, selectCategory, clearCategory, resetFilters, formatMoney };
+            return {
+                loading,
+                errorMessage,
+                keyword,
+                selectedCategoryId,
+                sortBy,
+                categoryTree,
+                products,
+                pagination,
+                pageNumbers,
+                loadProducts,
+                selectCategory,
+                isCategoryExpanded,
+                toggleCategory,
+                clearCategory,
+                resetFilters,
+                formatMoney
+            };
         }
     }).mount("#productsApp");
 })();
