@@ -4,6 +4,7 @@ using ECommerce.Shared.Exceptions;
 using ECommerce.Web.Errors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Oracle.ManagedDataAccess.Client;
 
 namespace ECommerce.Web.Filters;
@@ -26,6 +27,13 @@ public sealed class ApiExceptionFilter : IExceptionFilter
 
     public void OnException(ExceptionContext context)
     {
+        if (!context.ActionDescriptor.EndpointMetadata.Any(metadata => metadata is IApiBehaviorMetadata))
+        {
+            // MVC pages must continue to the HTML exception handler instead of
+            // rendering an API JSON envelope in the browser.
+            return;
+        }
+
         var traceId = context.HttpContext.TraceIdentifier;
 
         if (context.Exception is BusinessException businessException)
