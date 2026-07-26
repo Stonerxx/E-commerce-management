@@ -665,6 +665,7 @@ CREATE INDEX idx_address_user_id ON ADDRESS(user_id);
 CREATE UNIQUE INDEX uk_address_one_default ON ADDRESS (
     CASE WHEN is_deleted = 0 AND is_default = 1 THEN user_id END
 );
+CREATE INDEX idx_category_parent_status ON "CATEGORY"(parent_id, status);
 CREATE INDEX idx_product_category ON PRODUCT(category_id);
 CREATE INDEX idx_product_status ON PRODUCT(status);
 CREATE INDEX idx_product_status_created ON PRODUCT(status, created_at DESC);
