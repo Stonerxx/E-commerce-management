@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.Configure<OracleOptions>(configuration.GetSection(OracleOptions.SectionName));
         services.Configure<StatisticsSnapshotOptions>(configuration.GetSection(StatisticsSnapshotOptions.SectionName));
         services.Configure<PaymentOptions>(configuration.GetSection(PaymentOptions.SectionName));
+        services.AddMemoryCache();
         services.AddScoped<IOracleConnectionFactory, OracleConnectionFactory>();
         services.AddScoped<IDatabaseHealthCheck, DatabaseHealthCheck>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
