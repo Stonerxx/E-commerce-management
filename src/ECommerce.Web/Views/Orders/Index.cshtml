@@ -18,9 +18,8 @@
         </div>
     </div>
 
-    <div v-if="errorMessage" class="alert alert-warning d-flex justify-content-between align-items-center gap-3"><span><i class="bi bi-exclamation-triangle me-2"></i>{{ errorMessage }}</span><button class="btn btn-sm btn-outline-warning" type="button" v-on:click="loadOrders">重试</button></div>
-
     <div v-if="loading" class="surface-card py-5 text-center" role="status"><div class="spinner-border text-primary"><span class="visually-hidden">加载中</span></div><p class="text-muted mt-3 mb-0">正在查询订单...</p></div>
+    <div v-else-if="errorMessage" class="alert alert-warning d-flex justify-content-between align-items-center gap-3"><span><i class="bi bi-exclamation-triangle me-2"></i>{{ errorMessage }}</span><button class="btn btn-sm btn-outline-warning" type="button" v-on:click="loadOrders">重试</button></div>
     <div v-else-if="orders.length === 0" class="surface-card empty-state"><div class="empty-state-icon"><i class="bi bi-receipt-cutoff"></i></div><h2 class="h4">没有符合条件的订单</h2><p class="text-muted">调整筛选条件，或去选购一件喜欢的商品。</p><a href="/products" class="btn btn-primary rounded-pill px-4">去逛逛</a></div>
 
     <div v-else class="vstack gap-3">
@@ -30,7 +29,7 @@
                 <time class="text-muted small"><i class="bi bi-clock me-1"></i>{{ formatDate(order.createdAt) }}</time>
             </div>
             <div class="order-card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-                <div><div class="small text-muted mb-1">订单实付</div><div class="price-current fs-4">¥{{ formatMoney(order.payAmount) }}</div></div>
+                <div><div class="small text-muted mb-1">{{ Number(order.status) === 0 ? '应付金额' : '实付金额' }}</div><div class="price-current fs-4">¥{{ formatMoney(order.payAmount) }}</div></div>
                 <div class="d-flex flex-wrap gap-2">
                     <a v-bind:href="'/orders/' + order.orderId" class="btn btn-outline-primary"><i class="bi bi-eye me-1"></i>查看详情</a>
                     <button v-if="Number(order.status) === 0" class="btn btn-outline-danger" type="button" v-on:click="cancelOrder(order)" v-bind:disabled="isBusy(order.orderId)">取消订单</button>
@@ -41,7 +40,7 @@
         </article>
     </div>
 
-    <nav v-if="totalPages > 1" class="mt-4" aria-label="订单分页"><ul class="pagination justify-content-center flex-wrap"><li class="page-item" v-bind:class="{ disabled: pageIndex === 1 }"><button class="page-link" type="button" v-on:click="goPage(pageIndex - 1)">上一页</button></li><li class="page-item" v-for="page in visiblePages" v-bind:key="page" v-bind:class="{ active: page === pageIndex }"><button class="page-link" type="button" v-on:click="goPage(page)">{{ page }}</button></li><li class="page-item" v-bind:class="{ disabled: pageIndex === totalPages }"><button class="page-link" type="button" v-on:click="goPage(pageIndex + 1)">下一页</button></li></ul></nav>
+    <nav v-if="!errorMessage && totalPages > 1" class="mt-4" aria-label="订单分页"><ul class="pagination justify-content-center flex-wrap"><li class="page-item" v-bind:class="{ disabled: pageIndex === 1 }"><button class="page-link" type="button" v-on:click="goPage(pageIndex - 1)">上一页</button></li><li class="page-item" v-for="page in visiblePages" v-bind:key="page" v-bind:class="{ active: page === pageIndex }"><button class="page-link" type="button" v-on:click="goPage(page)">{{ page }}</button></li><li class="page-item" v-bind:class="{ disabled: pageIndex === totalPages }"><button class="page-link" type="button" v-on:click="goPage(pageIndex + 1)">下一页</button></li></ul></nav>
 </div>
 
 @section Scripts {

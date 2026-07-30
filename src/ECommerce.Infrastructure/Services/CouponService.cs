@@ -57,6 +57,7 @@ public sealed class CouponService : ICouponService
         CancellationToken cancellationToken = default)
     {
         ValidateTemplateRequest(request);
+        await ValidateApplicableCategoryAsync(request.ApplicableCategoryId, cancellationToken);
         return await _couponRepository.InsertTemplateAsync(new CouponTemplate
         {
             Name = request.Name.Trim(),
@@ -67,7 +68,8 @@ public sealed class CouponService : ICouponService
             ReceivedCount = 0,
             StartTime = request.StartTime,
             EndTime = request.EndTime,
-            Status = request.Status
+            Status = request.Status,
+            ApplicableCategoryId = request.ApplicableCategoryId
         }, cancellationToken);
     }
 
@@ -78,6 +80,7 @@ public sealed class CouponService : ICouponService
         CancellationToken cancellationToken = default)
     {
         ValidateTemplateRequest(request);
+        await ValidateApplicableCategoryAsync(request.ApplicableCategoryId, cancellationToken);
         var template = await _couponRepository.GetTemplateByIdAsync(templateId, cancellationToken)
             ?? throw new BusinessException("COUPON_TEMPLATE_NOT_FOUND", "优惠券模板不存在");
         if (request.TotalCount != -1 && request.TotalCount < template.ReceivedCount)
@@ -93,6 +96,7 @@ public sealed class CouponService : ICouponService
         template.StartTime = request.StartTime;
         template.EndTime = request.EndTime;
         template.Status = request.Status;
+        template.ApplicableCategoryId = request.ApplicableCategoryId;
         if (!await _couponRepository.UpdateTemplateAsync(template, cancellationToken))
         {
             throw new BusinessException("COUPON_TEMPLATE_NOT_FOUND", "优惠券模板不存在");
@@ -178,7 +182,12 @@ public sealed class CouponService : ICouponService
                 item.UserCoupon.UsedAt,
                 item.UserCoupon.OrderId,
                 item.Template.StartTime,
-                item.Template.EndTime);
+                item.Template.EndTime,
+                item.Template.Type,
+                item.Template.Amount,
+                item.Template.MinAmount,
+                item.Template.ApplicableCategoryId,
+                item.Template.ApplicableCategoryName);
         }).ToList();
     }
 
@@ -186,6 +195,21 @@ public sealed class CouponService : ICouponService
         long userId,
         long userCouponId,
         decimal orderAmount,
+        CancellationToken cancellationToken = default)
+    {
+        return await ValidateAsync(
+            userId,
+            userCouponId,
+            orderAmount,
+            new Dictionary<int, decimal>(),
+            cancellationToken);
+    }
+
+    public async Task<CouponValidationDto> ValidateAsync(
+        long userId,
+        long userCouponId,
+        decimal orderAmount,
+        IReadOnlyDictionary<int, decimal> categoryAmounts,
         CancellationToken cancellationToken = default)
     {
         if (orderAmount <= 0)
@@ -211,15 +235,23 @@ public sealed class CouponService : ICouponService
             return Unavailable("优惠券模板已停用或不在有效期内");
         }
 
-        if (orderAmount < template.MinAmount)
+        var eligibleAmount = template.ApplicableCategoryId.HasValue
+            ? categoryAmounts.GetValueOrDefault(template.ApplicableCategoryId.Value, 0)
+            : orderAmount;
+        var scopeName = template.ApplicableCategoryName ?? "指定品类";
+
+        if (eligibleAmount < template.MinAmount)
         {
-            return Unavailable($"订单金额未达到使用门槛 {template.MinAmount:0.00}");
+            var reason = template.ApplicableCategoryId.HasValue
+                ? $"{scopeName}商品金额未达到使用门槛 {template.MinAmount:0.00}"
+                : $"订单金额未达到使用门槛 {template.MinAmount:0.00}";
+            return Unavailable(reason, template, eligibleAmount);
         }
 
         decimal discountAmount;
         if (template.Type == (int)CouponType.FullReduction)
         {
-            if (template.Amount <= 0 || template.Amount > orderAmount)
+            if (template.Amount <= 0 || template.Amount > eligibleAmount)
             {
                 return Unavailable("满减金额无效或超过订单金额");
             }
@@ -233,14 +265,20 @@ public sealed class CouponService : ICouponService
                 return Unavailable("折扣率无效");
             }
 
-            discountAmount = Math.Round(orderAmount * (1 - template.Amount), 2, MidpointRounding.AwayFromZero);
+            discountAmount = Math.Round(eligibleAmount * (1 - template.Amount), 2, MidpointRounding.AwayFromZero);
         }
         else
         {
             return Unavailable("优惠券类型无效");
         }
 
-        return new CouponValidationDto(true, discountAmount, null);
+        return new CouponValidationDto(
+            true,
+            discountAmount,
+            null,
+            eligibleAmount,
+            template.ApplicableCategoryId,
+            template.ApplicableCategoryName);
     }
 
     public async Task UseForOrderAsync(
@@ -251,7 +289,31 @@ public sealed class CouponService : ICouponService
         decimal expectedDiscountAmount,
         CancellationToken cancellationToken = default)
     {
-        var validation = await ValidateAsync(userId, userCouponId, orderAmount, cancellationToken);
+        await UseForOrderAsync(
+            userId,
+            userCouponId,
+            orderId,
+            orderAmount,
+            new Dictionary<int, decimal>(),
+            expectedDiscountAmount,
+            cancellationToken);
+    }
+
+    public async Task UseForOrderAsync(
+        long userId,
+        long userCouponId,
+        long orderId,
+        decimal orderAmount,
+        IReadOnlyDictionary<int, decimal> categoryAmounts,
+        decimal expectedDiscountAmount,
+        CancellationToken cancellationToken = default)
+    {
+        var validation = await ValidateAsync(
+            userId,
+            userCouponId,
+            orderAmount,
+            categoryAmounts,
+            cancellationToken);
         if (!validation.Available)
         {
             throw new BusinessException("COUPON_NOT_AVAILABLE", validation.Reason ?? "优惠券不可用");
@@ -266,7 +328,7 @@ public sealed class CouponService : ICouponService
                 userId,
                 userCouponId,
                 orderId,
-                orderAmount,
+                validation.EligibleAmount,
                 expectedDiscountAmount,
                 DateTime.Now,
                 cancellationToken))
@@ -292,6 +354,12 @@ public sealed class CouponService : ICouponService
         if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length > 100)
         {
             throw new BusinessException("VALIDATION_ERROR", "优惠券名称不能为空且不能超过 100 个字符");
+        }
+
+        var stateWords = new[] { "已用", "未使用", "已使用", "已失效", "过期" };
+        if (stateWords.Any(word => request.Name.Contains(word, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new BusinessException("VALIDATION_ERROR", "优惠券名称请描述优惠规则，不要写已用、未使用或过期等使用状态");
         }
 
         if (request.Status is not 0 and not 1)
@@ -329,6 +397,21 @@ public sealed class CouponService : ICouponService
         }
     }
 
+    private async Task ValidateApplicableCategoryAsync(
+        int? applicableCategoryId,
+        CancellationToken cancellationToken)
+    {
+        if (!applicableCategoryId.HasValue)
+        {
+            return;
+        }
+
+        if (!await _couponRepository.IsEnabledLeafCategoryAsync(applicableCategoryId.Value, cancellationToken))
+        {
+            throw new BusinessException("VALIDATION_ERROR", "优惠券适用品类必须是启用的末级品类");
+        }
+    }
+
     private static bool IsTemplateActive(CouponTemplate template, DateTime now)
     {
         return template.Status == 1
@@ -354,11 +437,22 @@ public sealed class CouponService : ICouponService
             template.ReceivedCount,
             template.StartTime,
             template.EndTime,
-            template.Status);
+            template.Status,
+            template.ApplicableCategoryId,
+            template.ApplicableCategoryName);
     }
 
-    private static CouponValidationDto Unavailable(string reason)
+    private static CouponValidationDto Unavailable(
+        string reason,
+        CouponTemplate? template = null,
+        decimal eligibleAmount = 0)
     {
-        return new CouponValidationDto(false, 0, reason);
+        return new CouponValidationDto(
+            false,
+            0,
+            reason,
+            eligibleAmount,
+            template?.ApplicableCategoryId,
+            template?.ApplicableCategoryName);
     }
 }

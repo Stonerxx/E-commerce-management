@@ -120,12 +120,24 @@
                     this.bulkUpdating = false;
                 }
             },
-            checkout() {
+            async checkout() {
                 const selectedIds = this.selectedItems.map(item => item.cartItemId);
                 if (!selectedIds.length) {
                     window.appToast?.("请至少选择一件商品", "warning");
                     return;
                 }
+
+                try {
+                    const payload = await this.request("/api/v1/addresses");
+                    if (!Array.isArray(payload.data) || payload.data.length === 0) {
+                        window.appToast?.("请先添加收货地址后再结算", "warning");
+                        return;
+                    }
+                } catch (error) {
+                    window.appToast?.(error instanceof Error ? error.message : "收货地址检查失败", "danger");
+                    return;
+                }
+
                 const params = new URLSearchParams();
                 selectedIds.forEach(id => params.append("cartItemIds", id));
                 window.location.href = `/orders/create?${params}`;

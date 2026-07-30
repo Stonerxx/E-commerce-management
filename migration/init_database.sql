@@ -361,6 +361,8 @@ CREATE TABLE COUPON_TEMPLATE (
     start_time       DATE NOT NULL,
     end_time         DATE NOT NULL,
     status           NUMBER(1) DEFAULT 1 NOT NULL,
+    applicable_category_id NUMBER(10),
+    CONSTRAINT fk_coup_category FOREIGN KEY (applicable_category_id) REFERENCES "CATEGORY"(id),
     CONSTRAINT ch_coup_type CHECK (type IN (1,2)),
     CONSTRAINT ch_coup_status CHECK (status IN (0,1)),
     CONSTRAINT ch_coup_time CHECK (end_time > start_time),
@@ -380,6 +382,7 @@ COMMENT ON COLUMN COUPON_TEMPLATE.received_count IS '已领取数量';
 COMMENT ON COLUMN COUPON_TEMPLATE.start_time IS '有效期开始';
 COMMENT ON COLUMN COUPON_TEMPLATE.end_time IS '有效期结束';
 COMMENT ON COLUMN COUPON_TEMPLATE.status IS '状态：0=停用，1=启用';
+COMMENT ON COLUMN COUPON_TEMPLATE.applicable_category_id IS '适用的末级商品分类ID，NULL表示全场通用';
 
 -- 15. user_coupon 表（用户优惠券表）
 CREATE TABLE USER_COUPON (
@@ -662,8 +665,12 @@ CREATE INDEX idx_address_user_id ON ADDRESS(user_id);
 CREATE UNIQUE INDEX uk_address_one_default ON ADDRESS (
     CASE WHEN is_deleted = 0 AND is_default = 1 THEN user_id END
 );
+CREATE INDEX idx_category_parent_status ON "CATEGORY"(parent_id, status);
 CREATE INDEX idx_product_category ON PRODUCT(category_id);
 CREATE INDEX idx_product_status ON PRODUCT(status);
+CREATE INDEX idx_product_status_created ON PRODUCT(status, created_at DESC);
+CREATE INDEX idx_product_image_product_sort ON PRODUCT_IMAGE(product_id, sort_order);
+CREATE INDEX idx_product_spec_product_sort ON PRODUCT_SPEC(product_id, sort_order);
 CREATE INDEX idx_sku_product ON SKU(product_id);
 CREATE INDEX idx_inventory_log_sku ON INVENTORY_LOG(sku_id);
 CREATE INDEX idx_inventory_log_created ON INVENTORY_LOG(created_at);
@@ -671,12 +678,14 @@ CREATE INDEX idx_cart_user ON CART(user_id);
 CREATE INDEX idx_order_main_user_id ON ORDER_MAIN(user_id);
 CREATE INDEX idx_order_main_status ON ORDER_MAIN(status);
 CREATE INDEX idx_order_main_created ON ORDER_MAIN(created_at);
+CREATE INDEX idx_order_user_status_created ON ORDER_MAIN(user_id, status, created_at DESC);
 CREATE INDEX idx_order_main_pay_expire ON ORDER_MAIN(pay_expire_time, status);
 CREATE INDEX idx_order_item_order ON ORDER_ITEM(order_id);
 CREATE INDEX idx_order_log_order ON ORDER_LOG(order_id);
 CREATE INDEX idx_logistics_track_logistics ON LOGISTICS_TRACK(logistics_id);
 CREATE INDEX idx_review_product ON REVIEW(product_id);
 CREATE INDEX idx_review_user ON REVIEW(user_id);
+CREATE INDEX idx_review_prod_status_created ON REVIEW(product_id, status, created_at DESC);
 CREATE INDEX idx_operation_log_operator ON OPERATION_LOG(operator_id);
 CREATE INDEX idx_operation_log_created ON OPERATION_LOG(created_at);
 CREATE INDEX idx_user_coupon_user ON USER_COUPON(user_id);

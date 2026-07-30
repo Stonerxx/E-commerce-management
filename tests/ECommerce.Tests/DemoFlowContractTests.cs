@@ -29,6 +29,38 @@ public sealed class DemoFlowContractTests
     }
 
     [Fact]
+    public void CheckoutEntrypoints_ShouldPreserveCartAndAddressPrerequisites()
+    {
+        var productDetailScript = ReadProjectFile("src", "ECommerce.Web", "wwwroot", "js", "product-detail.js");
+        var checkoutScript = ReadProjectFile("src", "ECommerce.Web", "wwwroot", "js", "order-create.js");
+        var couponView = ReadProjectFile("src", "ECommerce.Web", "Views", "Coupons", "Index.cshtml");
+        var checkoutView = ReadProjectFile("src", "ECommerce.Web", "Views", "Orders", "Create.cshtml");
+
+        Assert.Contains("fetch('/api/v1/addresses'", productDetailScript);
+        Assert.Contains("href=\"/cart\">查看购物车", couponView);
+        Assert.DoesNotContain("href=\"/orders/create\">去结算", couponView);
+        Assert.Contains("/validate`,", checkoutScript);
+        Assert.Contains("result.data.available", checkoutScript);
+        Assert.Contains("请先添加收货地址", checkoutView);
+        Assert.Contains("coupon.discountAmount", checkoutView);
+        Assert.DoesNotContain("购物车为空或数据加载失败", checkoutView);
+    }
+
+    [Fact]
+    public void InventorySearch_ShouldBeServerSideInsteadOfFilteringOnlyCurrentPage()
+    {
+        var warningScript = ReadProjectFile("src", "ECommerce.Web", "wwwroot", "js", "admin-inventory-warnings.js");
+        var logScript = ReadProjectFile("src", "ECommerce.Web", "wwwroot", "js", "admin-inventory-logs.js");
+        var logRepository = ReadProjectFile("src", "ECommerce.Infrastructure", "Repositories", "InventoryLogRepository.cs");
+
+        Assert.Contains("params.set('keyword'", warningScript);
+        Assert.Contains("params.set('keyword'", logScript);
+        Assert.DoesNotContain("list = list.filter", warningScript);
+        Assert.DoesNotContain("list = list.filter", logScript);
+        Assert.Contains("query.Keyword.Trim().ToLowerInvariant()", logRepository);
+    }
+
+    [Fact]
     public void DocsController_ShouldExposeDemoFlowDocument()
     {
         AssertHttpRoute<DocsController>(nameof(DocsController.DemoFlow), typeof(HttpGetAttribute), "/docs/demo-flow");
@@ -64,5 +96,17 @@ public sealed class DemoFlowContractTests
 
         Assert.NotNull(method);
         Assert.Contains(method.GetCustomAttributes(typeof(TAttribute), false), attribute => attribute is TAttribute);
+    }
+
+    private static string ReadProjectFile(params string[] pathSegments)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "ECommerce.sln")))
+        {
+            directory = directory.Parent;
+        }
+
+        Assert.NotNull(directory);
+        return File.ReadAllText(Path.Combine([directory.FullName, .. pathSegments]));
     }
 }

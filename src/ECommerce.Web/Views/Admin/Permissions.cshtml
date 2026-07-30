@@ -57,7 +57,7 @@
                     </thead>
                     <tbody>
                         <tr v-if="permissions.length === 0">
-                            <td class="text-center text-muted py-4" colspan="6">暂无权限数据</td>
+                            <td class="text-center text-muted py-4" colspan="6">{{ keyword ? '没有匹配的权限' : '暂无权限数据' }}</td>
                         </tr>
                         <tr v-for="permission in permissions" v-bind:key="permission.permissionId">
                             <td>

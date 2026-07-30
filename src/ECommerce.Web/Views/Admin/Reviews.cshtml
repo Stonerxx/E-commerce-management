@@ -23,7 +23,7 @@
             <div v-if="item.images.length" class="d-flex flex-wrap gap-2 mb-3"><a v-for="image in item.images" v-bind:key="image" v-bind:href="image" target="_blank"><img v-bind:src="image" alt="评价图片" style="width:72px;height:72px;object-fit:cover" class="rounded border" /></a></div>
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2"><small class="text-muted">{{ formatDate(item.createdAt) }}</small><div><button class="btn btn-sm btn-outline-success me-2" v-if="item.status !== 1" v-on:click="setStatus(item, 1)">发布</button><button class="btn btn-sm btn-outline-danger" v-if="item.status !== 2" v-on:click="setStatus(item, 2)">屏蔽</button></div></div>
         </div></div>
-        <div v-if="items.length === 0" class="text-center text-muted py-5">暂无评价</div>
+        <div v-if="items.length === 0" class="text-center text-muted py-5">{{ filters.productId || filters.status !== '' ? '没有符合筛选条件的评价' : '暂无评价' }}</div>
     </div>
     <div class="d-flex justify-content-between align-items-center mt-4"><span class="text-muted">共 {{ totalCount }} 条</span><div><button class="btn btn-sm btn-outline-secondary me-2" v-on:click="goPage(pageIndex - 1)" v-bind:disabled="pageIndex <= 1">上一页</button><span>{{ pageIndex }} / {{ totalPages }}</span><button class="btn btn-sm btn-outline-secondary ms-2" v-on:click="goPage(pageIndex + 1)" v-bind:disabled="pageIndex >= totalPages">下一页</button></div></div>
 </div>

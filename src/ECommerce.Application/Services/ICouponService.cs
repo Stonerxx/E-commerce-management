@@ -21,11 +21,27 @@ public interface ICouponService
 
     Task<CouponValidationDto> ValidateAsync(long userId, long userCouponId, decimal orderAmount, CancellationToken cancellationToken = default);
 
+    Task<CouponValidationDto> ValidateAsync(
+        long userId,
+        long userCouponId,
+        decimal orderAmount,
+        IReadOnlyDictionary<int, decimal> categoryAmounts,
+        CancellationToken cancellationToken = default);
+
     Task UseForOrderAsync(
         long userId,
         long userCouponId,
         long orderId,
         decimal orderAmount,
+        decimal expectedDiscountAmount,
+        CancellationToken cancellationToken = default);
+
+    Task UseForOrderAsync(
+        long userId,
+        long userCouponId,
+        long orderId,
+        decimal orderAmount,
+        IReadOnlyDictionary<int, decimal> categoryAmounts,
         decimal expectedDiscountAmount,
         CancellationToken cancellationToken = default);
 

@@ -6,9 +6,13 @@
 
     var order = Model.Order;
     var payment = Model.Payment;
+    var paymentExpired = order.Status == (int)OrderStatus.PendingPayment
+        && order.PayExpireTime <= DateTime.Now;
     var canPay = order.Status == (int)OrderStatus.PendingPayment
-        && payment.Status is (int)PaymentStatus.Pending or (int)PaymentStatus.Failed;
-    var statusText = order.Status switch
+        && !paymentExpired
+        && (payment is null
+            || payment.Status is (int)PaymentStatus.Pending or (int)PaymentStatus.Failed);
+    var statusText = paymentExpired ? "支付已过期" : order.Status switch
     {
         (int)OrderStatus.PendingPayment => "待支付",
         (int)OrderStatus.Paid => "已支付",
@@ -49,11 +53,11 @@
                     <dt class="col-sm-3">支付金额</dt>
                     <dd class="col-sm-9 text-danger fw-semibold">¥@order.PayAmount.ToString("F2")</dd>
                     <dt class="col-sm-3">支付记录</dt>
-                    <dd class="col-sm-9">@payment.PaymentId</dd>
+                    <dd class="col-sm-9">@(payment?.PaymentId.ToString() ?? "-")</dd>
                     <dt class="col-sm-3">支付方式</dt>
-                    <dd class="col-sm-9">@payment.PayMethod</dd>
+                    <dd class="col-sm-9">@(payment?.PayMethod ?? "-")</dd>
                     <dt class="col-sm-3">交易流水</dt>
-                    <dd class="col-sm-9">@(payment.TradeNo ?? "-")</dd>
+                    <dd class="col-sm-9">@(payment?.TradeNo ?? "-")</dd>
                     <dt class="col-sm-3">支付截止</dt>
                     <dd class="col-sm-9">@order.PayExpireTime.ToString("yyyy-MM-dd HH:mm:ss")</dd>
                 </dl>
@@ -72,11 +76,15 @@
                 }
                 else
                 {
-                    <p class="text-muted mb-0">当前支付已处理或订单状态不允许支付。</p>
+                    <p class="text-muted mb-0">@(paymentExpired ? "订单支付时间已过期，此订单无法继续支付。" : "当前支付已处理或订单状态不允许支付。")</p>
                 }
                 <div class="d-grid gap-2 mt-3">
                     <a class="btn btn-outline-primary" href="/orders/@order.OrderId">查看订单详情</a>
                     <a class="btn btn-outline-secondary" href="/orders">返回订单列表</a>
+                    @if (paymentExpired)
+                    {
+                        <a class="btn btn-primary" href="/products">重新选购</a>
+                    }
                 </div>
             </div>
         </div>

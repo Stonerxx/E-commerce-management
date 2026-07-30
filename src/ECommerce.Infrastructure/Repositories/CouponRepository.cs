@@ -35,15 +35,15 @@ public sealed class CouponRepository : ICouponRepository
         var where = new StringBuilder("WHERE 1 = 1");
         if (!string.IsNullOrWhiteSpace(keyword))
         {
-            where.Append(" AND name LIKE :Keyword");
+            where.Append(" AND ct.name LIKE :Keyword");
         }
 
         if (status.HasValue)
         {
-            where.Append(" AND status = :Status");
+            where.Append(" AND ct.status = :Status");
         }
 
-        await using var countCommand = CreateCommand($"SELECT COUNT(1) FROM coupon_template {where}");
+        await using var countCommand = CreateCommand($"SELECT COUNT(1) FROM coupon_template ct {where}");
         AddTemplateQueryParameters(countCommand, keyword, status);
         var totalCount = Convert.ToInt64(await countCommand.ExecuteScalarAsync(cancellationToken));
         if (totalCount == 0)
@@ -52,10 +52,13 @@ public sealed class CouponRepository : ICouponRepository
         }
 
         var sql = $@"
-            SELECT id, name, type, amount, min_amount, total_count, received_count, start_time, end_time, status
-            FROM coupon_template
+            SELECT ct.id, ct.name, ct.type, ct.amount, ct.min_amount, ct.total_count,
+                   ct.received_count, ct.start_time, ct.end_time, ct.status,
+                   ct.applicable_category_id, c.name AS applicable_category_name
+            FROM coupon_template ct
+            LEFT JOIN category c ON c.id = ct.applicable_category_id
             {where}
-            ORDER BY id DESC
+            ORDER BY ct.id DESC
             OFFSET :Offset ROWS FETCH NEXT :PageSize ROWS ONLY";
         await using var dataCommand = CreateCommand(sql);
         AddTemplateQueryParameters(dataCommand, keyword, status);
@@ -80,8 +83,10 @@ public sealed class CouponRepository : ICouponRepository
         await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = @"
             SELECT ct.id, ct.name, ct.type, ct.amount, ct.min_amount, ct.total_count,
-                   ct.received_count, ct.start_time, ct.end_time, ct.status
+                   ct.received_count, ct.start_time, ct.end_time, ct.status,
+                   ct.applicable_category_id, c.name AS applicable_category_name
             FROM coupon_template ct
+            LEFT JOIN category c ON c.id = ct.applicable_category_id
             WHERE ct.status = 1
               AND ct.start_time <= :Now
               AND ct.end_time >= :Now
@@ -110,9 +115,12 @@ public sealed class CouponRepository : ICouponRepository
     {
         await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = @"
-            SELECT id, name, type, amount, min_amount, total_count, received_count, start_time, end_time, status
-            FROM coupon_template
-            WHERE id = :Id";
+            SELECT ct.id, ct.name, ct.type, ct.amount, ct.min_amount, ct.total_count,
+                   ct.received_count, ct.start_time, ct.end_time, ct.status,
+                   ct.applicable_category_id, c.name AS applicable_category_name
+            FROM coupon_template ct
+            LEFT JOIN category c ON c.id = ct.applicable_category_id
+            WHERE ct.id = :Id";
         await using var command = CreateCommand(sql);
         command.Parameters.Add(CreateParameter("Id", id));
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -124,9 +132,9 @@ public sealed class CouponRepository : ICouponRepository
         await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
         const string sql = @"
             INSERT INTO coupon_template
-                (name, type, amount, min_amount, total_count, received_count, start_time, end_time, status)
+                (name, type, amount, min_amount, total_count, received_count, start_time, end_time, status, applicable_category_id)
             VALUES
-                (:Name, :Type, :Amount, :MinAmount, :TotalCount, :ReceivedCount, :StartTime, :EndTime, :Status)
+                (:Name, :Type, :Amount, :MinAmount, :TotalCount, :ReceivedCount, :StartTime, :EndTime, :Status, :ApplicableCategoryId)
             RETURNING id INTO :Id";
         await using var command = CreateCommand(sql);
         AddTemplateParameters(command, template, includeReceivedCount: true);
@@ -152,7 +160,8 @@ public sealed class CouponRepository : ICouponRepository
                 total_count = :TotalCount,
                 start_time = :StartTime,
                 end_time = :EndTime,
-                status = :Status
+                status = :Status,
+                applicable_category_id = :ApplicableCategoryId
             WHERE id = :Id";
         await using var command = CreateCommand(sql);
         AddTemplateParameters(command, template, includeReceivedCount: false);
@@ -167,6 +176,23 @@ public sealed class CouponRepository : ICouponRepository
         command.Parameters.Add(CreateParameter("Status", status));
         command.Parameters.Add(CreateParameter("Id", id));
         return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+    }
+
+    public async Task<bool> IsEnabledLeafCategoryAsync(int categoryId, CancellationToken cancellationToken = default)
+    {
+        await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        const string sql = @"
+            SELECT COUNT(1)
+            FROM category c
+            WHERE c.id = :CategoryId
+              AND c.status = 1
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM category child
+                  WHERE child.parent_id = c.id)";
+        await using var command = CreateCommand(sql);
+        command.Parameters.Add(CreateParameter("CategoryId", categoryId));
+        return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)) == 1;
     }
 
     public async Task<bool> TryIncrementReceivedCountAsync(
@@ -222,9 +248,11 @@ public sealed class CouponRepository : ICouponRepository
             SELECT uc.id AS uc_id, uc.user_id, uc.coupon_template_id, uc.status AS uc_status,
                    uc.received_at, uc.used_at, uc.order_id,
                    ct.id, ct.name, ct.type, ct.amount, ct.min_amount, ct.total_count,
-                   ct.received_count, ct.start_time, ct.end_time, ct.status
+                   ct.received_count, ct.start_time, ct.end_time, ct.status,
+                   ct.applicable_category_id, c.name AS applicable_category_name
             FROM user_coupon uc
             INNER JOIN coupon_template ct ON ct.id = uc.coupon_template_id
+            LEFT JOIN category c ON c.id = ct.applicable_category_id
             WHERE uc.user_id = :UserId
             ORDER BY uc.status, uc.received_at DESC";
         await using var command = CreateCommand(sql);
@@ -249,9 +277,11 @@ public sealed class CouponRepository : ICouponRepository
             SELECT uc.id AS uc_id, uc.user_id, uc.coupon_template_id, uc.status AS uc_status,
                    uc.received_at, uc.used_at, uc.order_id,
                    ct.id, ct.name, ct.type, ct.amount, ct.min_amount, ct.total_count,
-                   ct.received_count, ct.start_time, ct.end_time, ct.status
+                   ct.received_count, ct.start_time, ct.end_time, ct.status,
+                   ct.applicable_category_id, c.name AS applicable_category_name
             FROM user_coupon uc
             INNER JOIN coupon_template ct ON ct.id = uc.coupon_template_id
+            LEFT JOIN category c ON c.id = ct.applicable_category_id
             WHERE uc.id = :UserCouponId
               AND uc.user_id = :UserId";
         await using var command = CreateCommand(sql);
@@ -265,7 +295,7 @@ public sealed class CouponRepository : ICouponRepository
         long userId,
         long userCouponId,
         long orderId,
-        decimal orderAmount,
+        decimal eligibleAmount,
         decimal expectedDiscountAmount,
         DateTime usedAt,
         CancellationToken cancellationToken = default)
@@ -286,11 +316,11 @@ public sealed class CouponRepository : ICouponRepository
                     AND ct.status = 1
                     AND ct.start_time <= :UsedAt
                     AND ct.end_time >= :UsedAt
-                    AND ct.min_amount <= :OrderAmount
-                    AND ((ct.type = 1 AND ct.amount > 0 AND ct.amount <= :OrderAmount
+                    AND ct.min_amount <= :EligibleAmount
+                    AND ((ct.type = 1 AND ct.amount > 0 AND ct.amount <= :EligibleAmount
                           AND ct.amount = :ExpectedDiscountAmount)
                       OR (ct.type = 2 AND ct.amount > 0 AND ct.amount <= 1
-                          AND ROUND(:OrderAmount * (1 - ct.amount), 2) = :ExpectedDiscountAmount)))";
+                          AND ROUND(:EligibleAmount * (1 - ct.amount), 2) = :ExpectedDiscountAmount)))";
         await using var command = CreateCommand(sql);
         command.Parameters.Add(CreateParameter("UsedStatus", (int)UserCouponStatus.Used));
         command.Parameters.Add(CreateParameter("UsedAt", usedAt));
@@ -298,7 +328,7 @@ public sealed class CouponRepository : ICouponRepository
         command.Parameters.Add(CreateParameter("UserCouponId", userCouponId));
         command.Parameters.Add(CreateParameter("UserId", userId));
         command.Parameters.Add(CreateParameter("UnusedStatus", (int)UserCouponStatus.Unused));
-        command.Parameters.Add(CreateParameter("OrderAmount", orderAmount));
+        command.Parameters.Add(CreateParameter("EligibleAmount", eligibleAmount));
         command.Parameters.Add(CreateParameter("ExpectedDiscountAmount", expectedDiscountAmount));
         return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
     }
@@ -354,7 +384,13 @@ public sealed class CouponRepository : ICouponRepository
             ReceivedCount = reader.GetInt32(reader.GetOrdinal("received_count")),
             StartTime = reader.GetDateTime(reader.GetOrdinal("start_time")),
             EndTime = reader.GetDateTime(reader.GetOrdinal("end_time")),
-            Status = reader.GetInt32(reader.GetOrdinal("status"))
+            Status = reader.GetInt32(reader.GetOrdinal("status")),
+            ApplicableCategoryId = reader.IsDBNull(reader.GetOrdinal("applicable_category_id"))
+                ? null
+                : reader.GetInt32(reader.GetOrdinal("applicable_category_id")),
+            ApplicableCategoryName = reader.IsDBNull(reader.GetOrdinal("applicable_category_name"))
+                ? null
+                : reader.GetString(reader.GetOrdinal("applicable_category_name"))
         };
     }
 
@@ -401,6 +437,7 @@ public sealed class CouponRepository : ICouponRepository
         command.Parameters.Add(CreateParameter("StartTime", template.StartTime));
         command.Parameters.Add(CreateParameter("EndTime", template.EndTime));
         command.Parameters.Add(CreateParameter("Status", template.Status));
+        command.Parameters.Add(CreateParameter("ApplicableCategoryId", template.ApplicableCategoryId));
     }
 
     private static DbParameter CreateParameter(string name, object? value)

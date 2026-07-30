@@ -7,8 +7,10 @@
             return {
                 loading: false,
                 order: null,
+                errorMessage: '',
                 logistics: null,
                 logisticsLoading: false,
+                logisticsError: '',
                 reviewForm: null,
                 submittingReview: false
             };
@@ -16,29 +18,35 @@
         mounted() {
             if (orderId > 0) {
                 this.loadOrderDetail();
+            } else {
+                this.errorMessage = '订单编号无效';
             }
         },
         methods: {
             async loadOrderDetail() {
                 this.loading = true;
+                this.errorMessage = '';
                 try {
                     const response = await fetch(`/api/v1/orders/${orderId}`, {
                         headers: { 'Accept': 'application/json' }
                     });
-                    const result = await response.json();
+                    const result = await response.json().catch(() => null);
 
-                    if (result.success && result.data) {
-                        this.order = result.data;
-                        if (this.order.status === 2 || this.order.status === 3) {
-                            await this.loadLogistics();
-                        } else {
-                            this.logistics = null;
-                        }
+                    if (!response.ok || !result?.success || !result.data) {
+                        throw new Error(result?.message || '订单详情加载失败');
+                    }
+
+                    this.order = result.data;
+                    if (this.order.status === 2 || this.order.status === 3) {
+                        await this.loadLogistics();
                     } else {
-                        console.error('加载订单详情失败:', result.message);
+                        this.logistics = null;
+                        this.logisticsError = '';
                     }
                 } catch (error) {
                     console.error('加载订单详情异常:', error);
+                    this.order = null;
+                    this.errorMessage = error instanceof Error ? error.message : '订单详情加载失败';
                 } finally {
                     this.loading = false;
                 }
@@ -112,7 +120,7 @@
                     const result = await response.json();
 
                     if (result.success) {
-                        this.loadOrderDetail();
+                        await this.loadOrderDetail();
                     } else {
                         alert(result.message || '取消订单失败');
                     }
@@ -133,7 +141,7 @@
                     const result = await response.json();
 
                     if (result.success) {
-                        this.loadOrderDetail();
+                        await this.loadOrderDetail();
                     } else {
                         alert(result.message || '确认收货失败');
                     }
@@ -145,13 +153,21 @@
 
             async loadLogistics() {
                 this.logisticsLoading = true;
+                this.logisticsError = '';
                 try {
                     const response = await fetch(`/api/v1/logistics/${orderId}`, { headers: { 'Accept': 'application/json' } });
-                    const result = await response.json();
-                    this.logistics = response.ok && result.success ? result.data : null;
+                    const result = await response.json().catch(() => null);
+                    if (response.ok && result?.success) {
+                        this.logistics = result.data;
+                    } else if (result?.code === 'LOGISTICS_NOT_FOUND') {
+                        this.logistics = null;
+                    } else {
+                        throw new Error(result?.message || '物流信息加载失败');
+                    }
                 } catch (error) {
                     console.error('加载物流失败:', error);
                     this.logistics = null;
+                    this.logisticsError = error instanceof Error ? error.message : '物流信息加载失败';
                 } finally {
                     this.logisticsLoading = false;
                 }

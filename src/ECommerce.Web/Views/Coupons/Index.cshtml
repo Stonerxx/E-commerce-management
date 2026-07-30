@@ -9,7 +9,7 @@
             <h1 class="h3 mb-1">优惠券中心</h1>
             <p class="text-muted mb-0">领取可用优惠券，并查看自己的使用状态。</p>
         </div>
-        <a class="btn btn-outline-primary" href="/orders/create">去结算</a>
+        <a class="btn btn-outline-primary" href="/cart">查看购物车</a>
     </div>
 
     <ul class="nav nav-tabs mb-3">
@@ -29,9 +29,10 @@
                             <h2 class="h5">{{ item.name }}</h2>
                             <div class="text-danger fs-4 fw-bold">{{ discountText(item) }}</div>
                         </div>
-                        <span class="badge text-bg-light align-self-start">满 ¥{{ item.minAmount.toFixed(2) }} 可用</span>
+                        <span class="badge text-bg-light align-self-start">{{ item.applicableCategoryName ? item.applicableCategoryName : '全场' }}满 ¥{{ item.minAmount.toFixed(2) }} 可用</span>
                     </div>
                     <div class="text-muted small mt-3">有效期：{{ formatDate(item.startTime) }} 至 {{ formatDate(item.endTime) }}</div>
+                    <div class="text-muted small">适用范围：{{ item.applicableCategoryName ? item.applicableCategoryName + '专享' : '全场通用' }}</div>
                     <div class="text-muted small">剩余：{{ remainingText(item) }}</div>
                     <button class="btn btn-danger mt-auto pt-2" v-on:click="receive(item)" v-bind:disabled="receivingId === item.templateId">
                         {{ receivingId === item.templateId ? '领取中...' : '立即领取' }}
@@ -52,6 +53,8 @@
                     </div>
                     <div class="text-muted small">领取时间：{{ formatDateTime(item.receivedAt) }}</div>
                     <div class="text-muted small">有效期：{{ formatDate(item.startTime) }} 至 {{ formatDate(item.endTime) }}</div>
+                    <div class="text-muted small">适用范围：{{ item.applicableCategoryName ? item.applicableCategoryName + '专享' : '全场通用' }}</div>
+                    <div class="text-muted small">使用门槛：{{ item.applicableCategoryName ? item.applicableCategoryName + '商品' : '全场商品' }}满 ¥{{ item.minAmount.toFixed(2) }}</div>
                     <div v-if="item.usedAt" class="text-muted small">使用时间：{{ formatDateTime(item.usedAt) }}</div>
                     <a v-if="item.status === 0" class="btn btn-sm btn-outline-success mt-3" href="/cart">去使用</a>
                 </div>

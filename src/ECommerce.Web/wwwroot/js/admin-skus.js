@@ -106,7 +106,7 @@
 
             async function toggleStatus(row) {
                 const newStatus = row.status === 1 ? 0 : 1;
-                if (!confirm(`确定要${newStatus === 1 ? '上架' : '下架'}此 SKU 吗？`)) return;
+                if (!confirm(`确定要${newStatus === 1 ? '启用' : '停用'}此 SKU 吗？`)) return;
                 try {
                     const resp = await fetch(`/api/v1/admin/skus/${row.skuId}/status`, {
                         method: 'PUT',

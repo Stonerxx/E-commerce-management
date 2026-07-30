@@ -10,6 +10,7 @@ public class CartItemWithDetails
     public long CartItemId { get; set; }
     public long SkuId { get; set; }
     public long ProductId { get; set; }
+    public int CategoryId { get; set; }
     public string ProductName { get; set; } = string.Empty;
     public string SpecDescJson { get; set; } = string.Empty;
     public string MainImage { get; set; } = string.Empty;

@@ -7,6 +7,12 @@ public interface IOrderService
 {
     Task<OrderPreviewDto> PreviewAsync(long userId, CreateOrderRequest request, CancellationToken cancellationToken = default);
 
+    Task<CouponValidationDto> ValidateCouponAsync(
+        long userId,
+        long userCouponId,
+        IReadOnlyList<long>? cartItemIds,
+        CancellationToken cancellationToken = default);
+
     Task<long> CreateAsync(long userId, CreateOrderRequest request, CancellationToken cancellationToken = default);
 
     Task<PagedResult<OrderListItemDto>> SearchMineAsync(long userId, OrderQuery query, CancellationToken cancellationToken = default);

@@ -22,4 +22,10 @@ public class CouponTemplate
     public DateTime EndTime { get; set; }
     
     public int Status { get; set; }
+
+    /// <summary>限定的末级商品分类；NULL 表示全场通用。</summary>
+    public int? ApplicableCategoryId { get; set; }
+
+    /// <summary>联表查询得到的分类名称，不持久化到优惠券模板表。</summary>
+    public string? ApplicableCategoryName { get; set; }
 }

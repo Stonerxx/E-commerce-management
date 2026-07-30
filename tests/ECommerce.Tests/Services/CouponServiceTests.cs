@@ -147,6 +147,50 @@ public sealed class CouponServiceTests
     }
 
     [Fact]
+    public async Task ValidateAsync_CategoryCouponDoesNotUseOtherCategoryAmountForThreshold()
+    {
+        var template = CreateTemplate();
+        template.ApplicableCategoryId = 5;
+        template.ApplicableCategoryName = "咖啡茶饮";
+        _repository.Setup(item => item.GetUserCouponAsync(10, 20, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateUserCouponDetail(template));
+
+        var result = await _service.ValidateAsync(
+            10,
+            20,
+            1000m,
+            new Dictionary<int, decimal> { [5] = 200m });
+
+        Assert.False(result.Available);
+        Assert.Contains("咖啡茶饮", result.Reason);
+        Assert.Equal(200m, result.EligibleAmount);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_CategoryDiscountOnlyUsesMatchingCategorySubtotal()
+    {
+        var template = CreateTemplate();
+        template.Type = (int)CouponType.Discount;
+        template.Amount = 0.85m;
+        template.MinAmount = 100m;
+        template.ApplicableCategoryId = 5;
+        template.ApplicableCategoryName = "咖啡茶饮";
+        _repository.Setup(item => item.GetUserCouponAsync(10, 20, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateUserCouponDetail(template));
+
+        var result = await _service.ValidateAsync(
+            10,
+            20,
+            1000m,
+            new Dictionary<int, decimal> { [5] = 200m, [9] = 800m });
+
+        Assert.True(result.Available);
+        Assert.Equal(30m, result.DiscountAmount);
+        Assert.Equal(200m, result.EligibleAmount);
+        Assert.Equal(5, result.ApplicableCategoryId);
+    }
+
+    [Fact]
     public async Task ValidateAsync_RejectsCouponOwnedByAnotherUserWithoutLeakingIt()
     {
         _repository.Setup(item => item.GetUserCouponAsync(10, 20, It.IsAny<CancellationToken>()))

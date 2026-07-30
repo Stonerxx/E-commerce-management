@@ -254,7 +254,7 @@ dotnet test ECommerce.sln -c Release --no-build --no-restore
 
 - `.github/workflows/build.yml` 只构建和测试，不部署。
 - `.github/workflows/build.yml` 在 `merging` push 和 PR 检查时运行。
-- `.github/workflows/deploy.yml` 只允许 `main` 部署服务器。
+- `.github/workflows/deploy.yml` 允许 `main` 与 `merging` 使用同一套流程部署服务器。
 - 数据库密码不进入 GitHub Secrets，仍由服务器环境变量决定。
 
 ## 11. 服务器发布后检查

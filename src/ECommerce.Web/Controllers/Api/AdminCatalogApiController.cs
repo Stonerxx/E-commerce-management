@@ -167,7 +167,7 @@ public sealed class AdminCatalogApiController : ApiControllerBase
     }
 
     [HttpGet("inventory/warnings")]
-    public async Task<ActionResult<ApiResponse<PagedResult<InventoryWarningDto>>>> InventoryWarnings([FromQuery] PageQuery query, CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<PagedResult<InventoryWarningDto>>>> InventoryWarnings([FromQuery] InventoryWarningQuery query, CancellationToken cancellationToken)
     {
         var result = await _inventoryService.SearchWarningsAsync(query, cancellationToken);
         return Ok(ApiResponse<PagedResult<InventoryWarningDto>>.Ok(result));

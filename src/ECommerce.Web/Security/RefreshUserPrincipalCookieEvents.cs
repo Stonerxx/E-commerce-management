@@ -2,12 +2,15 @@ using System.Security.Claims;
 using ECommerce.Infrastructure.Repositories;
 using ECommerce.Shared.Constants;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace ECommerce.Web.Security;
 
 public sealed class RefreshUserPrincipalCookieEvents : CookieAuthenticationEvents
 {
+    private static readonly TimeSpan RevalidationInterval = TimeSpan.FromMinutes(1);
+
     private readonly IUserRepository _userRepository;
     private readonly ILogger<RefreshUserPrincipalCookieEvents> _logger;
 
@@ -21,6 +24,22 @@ public sealed class RefreshUserPrincipalCookieEvents : CookieAuthenticationEvent
 
     public override async Task ValidatePrincipal(CookieValidatePrincipalContext context)
     {
+        // Anonymous catalog pages do not use the authenticated identity for authorization.
+        // Avoid turning every public page/API request into two Oracle round trips for users
+        // who happen to have a login cookie.
+        if (context.HttpContext.GetEndpoint()?.Metadata.GetMetadata<IAllowAnonymous>() is not null)
+        {
+            return;
+        }
+
+        // The ticket is created from database-backed claims at sign-in. Recheck it at a
+        // short interval instead of querying USER and USER_ROLE on every request.
+        var issuedUtc = context.Properties.IssuedUtc;
+        if (issuedUtc.HasValue && DateTimeOffset.UtcNow - issuedUtc.Value < RevalidationInterval)
+        {
+            return;
+        }
+
         var userIdValue = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!long.TryParse(userIdValue, out var userId) || userId <= 0)
         {
@@ -48,6 +67,7 @@ public sealed class RefreshUserPrincipalCookieEvents : CookieAuthenticationEvent
 
             if (currentRoles.SequenceEqual(databaseRoles, StringComparer.OrdinalIgnoreCase))
             {
+                context.ShouldRenew = true;
                 return;
             }
 

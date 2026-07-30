@@ -333,14 +333,14 @@ SELECT 1 FROM DUAL;
 PROMPT Insert coupons and representative orders...
 
 INSERT ALL
-    INTO COUPON_TEMPLATE (id, name, type, amount, min_amount, total_count, received_count, start_time, end_time, status)
-    VALUES (9001, '满500减50已用演示券', 1, 50.00, 500.00, 1000, 1, SYSDATE - 30, SYSDATE + 60, 1)
-    INTO COUPON_TEMPLATE (id, name, type, amount, min_amount, total_count, received_count, start_time, end_time, status)
-    VALUES (9002, '咖啡礼盒85折券', 2, 0.85, 100.00, 500, 2, SYSDATE - 30, SYSDATE + 60, 1)
-    INTO COUPON_TEMPLATE (id, name, type, amount, min_amount, total_count, received_count, start_time, end_time, status)
-    VALUES (9003, '过期20元券', 1, 20.00, 99.00, 100, 1, SYSDATE - 60, SYSDATE - 1, 0)
-    INTO COUPON_TEMPLATE (id, name, type, amount, min_amount, total_count, received_count, start_time, end_time, status)
-    VALUES (9004, '满500减50未使用演示券', 1, 50.00, 500.00, 1000, 1, SYSDATE - 30, SYSDATE + 60, 1)
+    INTO COUPON_TEMPLATE (id, name, type, amount, min_amount, total_count, received_count, start_time, end_time, status, applicable_category_id)
+    VALUES (9001, '全场满500减50券', 1, 50.00, 500.00, 1000, 1, SYSDATE - 30, SYSDATE + 60, 1, NULL)
+    INTO COUPON_TEMPLATE (id, name, type, amount, min_amount, total_count, received_count, start_time, end_time, status, applicable_category_id)
+    VALUES (9002, '咖啡茶饮85折券', 2, 0.85, 100.00, 500, 2, SYSDATE - 30, SYSDATE + 60, 1, 9005)
+    INTO COUPON_TEMPLATE (id, name, type, amount, min_amount, total_count, received_count, start_time, end_time, status, applicable_category_id)
+    VALUES (9003, '全场满99减20券', 1, 20.00, 99.00, 100, 1, SYSDATE - 60, SYSDATE - 1, 0, NULL)
+    INTO COUPON_TEMPLATE (id, name, type, amount, min_amount, total_count, received_count, start_time, end_time, status, applicable_category_id)
+    VALUES (9004, '电脑配件满500减50券', 1, 50.00, 500.00, 1000, 1, SYSDATE - 30, SYSDATE + 60, 1, 9003)
     INTO USER_COUPON (id, user_id, coupon_template_id, status, received_at, used_at, order_id)
     VALUES (9001, 9003, 9001, 1, SYSDATE - 12, SYSDATE - 8, NULL)
     INTO USER_COUPON (id, user_id, coupon_template_id, status, received_at, used_at, order_id)

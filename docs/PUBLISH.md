@@ -48,11 +48,11 @@ GitHub Actions restore/build/publish
 触发方式：
 
 ```text
-push 到 main
-GitHub Actions 页面手动 Run workflow（选择 main）
+push 到 main 或 merging
+GitHub Actions 页面手动 Run workflow（选择 main 或 merging）
 ```
 
-`merging` 分支只触发 `.github/workflows/build.yml` 的 build/test 检查，不部署服务器。
+`main` 与 `merging` 共用同一套构建、打包和服务器部署步骤；推送任一分支都会触发部署。
 
 ## 二、服务器准备 artifact 部署脚本
 

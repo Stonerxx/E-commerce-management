@@ -1,12 +1,28 @@
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
+using ECommerce.Infrastructure;
 using ECommerce.Infrastructure.Data;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Oracle.ManagedDataAccess.Client;
 
 namespace ECommerce.Tests;
 
 public sealed class InfrastructureTests
 {
+    [Fact]
+    public void AddInfrastructure_ShouldEnableNamedOracleBinding()
+    {
+        OracleConfiguration.BindByName = false;
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder().Build();
+
+        services.AddInfrastructure(configuration);
+
+        Assert.True(OracleConfiguration.BindByName);
+    }
+
     [Fact]
     public async Task UnitOfWork_ShouldOpenConnectionAndCommitTransaction()
     {

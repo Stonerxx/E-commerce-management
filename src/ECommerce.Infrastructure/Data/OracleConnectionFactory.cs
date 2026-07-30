@@ -21,7 +21,10 @@ public sealed class OracleConnectionFactory : IOracleConnectionFactory
                 "Oracle connection string is not configured. Set Oracle__ConnectionString before checking the database.");
         }
 
-        var connection = new OracleConnection(_options.ConnectionString);
+        var connection = new OracleConnection(_options.ConnectionString)
+        {
+            BindByName = true
+        };
         await connection.OpenAsync(cancellationToken);
         return connection;
     }

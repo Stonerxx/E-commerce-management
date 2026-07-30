@@ -103,6 +103,19 @@ public sealed class ApiExceptionFilterTests
         Assert.Equal(ErrorCodes.InternalServerError, response.Code);
     }
 
+    [Fact]
+    public void MvcPageException_IsLeftForTheHtmlExceptionHandler()
+    {
+        var context = CreateContext(
+            new BusinessException("ORDER_NOT_FOUND", "订单不存在"),
+            isApi: false);
+
+        CreateFilter(Environments.Production).OnException(context);
+
+        Assert.False(context.ExceptionHandled);
+        Assert.Null(context.Result);
+    }
+
     private static ApiExceptionFilter CreateFilter(string environmentName)
     {
         var environment = new Mock<IWebHostEnvironment>();
@@ -122,16 +135,23 @@ public sealed class ApiExceptionFilterTests
         return (OracleException)constructor.Invoke(new object[] { number, message, "test-db", string.Empty, 0 });
     }
 
-    private static ExceptionContext CreateContext(Exception exception)
+    private static ExceptionContext CreateContext(Exception exception, bool isApi = true)
     {
         var httpContext = new DefaultHttpContext
         {
             TraceIdentifier = "test-trace"
         };
+        var descriptor = new ActionDescriptor
+        {
+            EndpointMetadata = isApi
+                ? new List<object> { new ApiControllerAttribute() }
+                : new List<object>()
+        };
+
         var actionContext = new ActionContext(
             httpContext,
             new RouteData(),
-            new ActionDescriptor());
+            descriptor);
         return new ExceptionContext(actionContext, new List<IFilterMetadata>())
         {
             Exception = exception

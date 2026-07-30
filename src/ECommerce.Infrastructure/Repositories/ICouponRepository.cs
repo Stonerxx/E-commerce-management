@@ -18,6 +18,8 @@ public interface ICouponRepository
 
     Task<bool> UpdateTemplateStatusAsync(int id, int status, CancellationToken cancellationToken = default);
 
+    Task<bool> IsEnabledLeafCategoryAsync(int categoryId, CancellationToken cancellationToken = default);
+
     Task<bool> TryIncrementReceivedCountAsync(int templateId, DateTime now, CancellationToken cancellationToken = default);
 
     Task<long> InsertUserCouponAsync(UserCoupon userCoupon, CancellationToken cancellationToken = default);
@@ -30,7 +32,7 @@ public interface ICouponRepository
         long userId,
         long userCouponId,
         long orderId,
-        decimal orderAmount,
+        decimal eligibleAmount,
         decimal expectedDiscountAmount,
         DateTime usedAt,
         CancellationToken cancellationToken = default);

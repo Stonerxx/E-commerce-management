@@ -34,6 +34,7 @@
                     case 'ORDER_DEDUCT': return '订单扣减';
                     case 'RESTOCK': return '入库';
                     case 'SALE': return '销售出库';
+                    case 'CANCEL': return '取消回补';
                     default: return t || '其他';
                 }
             }
@@ -45,6 +46,7 @@
                     case 'ORDER_DEDUCT': return 'text-bg-danger';
                     case 'ORDER_LOCK': return 'text-bg-warning';
                     case 'ORDER_RELEASE': return 'text-bg-info';
+                    case 'CANCEL': return 'text-bg-info';
                     default: return 'text-bg-secondary';
                 }
             }
@@ -68,6 +70,7 @@
                     params.set('pageSize', pagination.value.pageSize);
                     if (changeType.value != null) params.set('changeType', changeType.value);
                     if (skuId.value) params.set('skuId', skuId.value);
+                    if (keyword.value.trim()) params.set('keyword', keyword.value.trim());
 
                     const resp = await fetch(`/api/v1/admin/inventory/logs?${params.toString()}`, {
                         headers: { 'Accept': 'application/json' }
@@ -75,7 +78,7 @@
                     const data = await resp.json();
 
                     if (data.success && data.data) {
-                        let list = (data.data.items || []).map(it => ({
+                        const list = (data.data.items || []).map(it => ({
                             logId: it.logId,
                             skuId: it.skuId,
                             productId: it.productId,
@@ -89,14 +92,6 @@
                             createdAt: it.createdAt,
                             remark: it.remark
                         }));
-
-                        if (keyword.value) {
-                            const kw = keyword.value.toLowerCase();
-                            list = list.filter(r =>
-                                (r.productName && r.productName.toLowerCase().includes(kw)) ||
-                                String(r.skuId).includes(kw)
-                            );
-                        }
 
                         rows.value = list;
                         pagination.value.total = data.data.totalCount;
@@ -125,6 +120,7 @@
                 const params = new URLSearchParams();
                 if (changeType.value != null) params.set('changeType', changeType.value);
                 if (skuId.value) params.set('skuId', skuId.value);
+                if (keyword.value.trim()) params.set('keyword', keyword.value.trim());
                 window.location.assign(`/api/v1/admin/exports/inventory?${params.toString()}`);
             }
 

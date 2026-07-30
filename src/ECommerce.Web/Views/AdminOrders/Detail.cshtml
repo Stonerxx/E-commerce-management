@@ -32,7 +32,7 @@
                 <div class="col-12 col-md-6">
                     <div><span class="text-muted small">商品总额：</span>¥{{ order.totalAmount.toFixed(2) }}</div>
                     <div><span class="text-muted small">优惠金额：</span>¥{{ order.discountAmount.toFixed(2) }}</div>
-                    <div><span class="text-muted small">实付金额：</span><strong class="text-danger">¥{{ order.payAmount.toFixed(2) }}</strong></div>
+                    <div><span class="text-muted small">{{ order.status === 0 ? '应付金额：' : '实付金额：' }}</span><strong class="text-danger">¥{{ order.payAmount.toFixed(2) }}</strong></div>
                 </div>
                 <div class="col-12">
                     <div><span class="text-muted small">创建时间：</span>{{ formatDate(order.createdAt) }}</div>

@@ -225,6 +225,26 @@
                 }
 
                 try {
+                    const addressResponse = await fetch('/api/v1/addresses', {
+                        headers: { 'Accept': 'application/json' }
+                    });
+
+                    if (addressResponse.status === 401) {
+                        window.location.href = '/account/login';
+                        return;
+                    }
+
+                    const addressResult = await addressResponse.json().catch(() => null);
+                    if (!addressResponse.ok || !addressResult?.success) {
+                        window.appToast?.(addressResult?.message || '收货地址检查失败', 'danger');
+                        return;
+                    }
+
+                    if (!Array.isArray(addressResult.data) || addressResult.data.length === 0) {
+                        window.appToast?.('请先添加收货地址后再购买', 'warning');
+                        return;
+                    }
+
                     const addResponse = await fetch('/api/v1/cart/items', {
                         method: 'POST',
                         headers: {
