@@ -71,7 +71,7 @@
                                 <img v-bind:src="item.mainImage || '/images/default-product.jpg'" alt="商品图片" class="img-thumbnail" style="width:60px;height:60px;object-fit:cover;" />
                                 <div class="flex-grow-1">
                                     <div>{{ item.productName }}</div>
-                                    <div class="text-muted small">{{ item.specSnap }}</div>
+                                    <div class="text-muted small">{{ formatSpecs(item.specSnap) }}</div>
                                 </div>
                                 <div class="text-end">
                                     <div>¥{{ item.unitPrice.toFixed(2) }} × {{ item.quantity }}</div>

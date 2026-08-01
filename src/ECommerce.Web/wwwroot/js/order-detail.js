@@ -216,6 +216,18 @@
                 }
             },
 
+            formatSpecs(value) {
+                if (!value) return '默认规格';
+                try {
+                    const specs = typeof value === 'string' ? JSON.parse(value) : value;
+                    return Object.entries(specs)
+                        .map(([name, item]) => `${name}：${item}`)
+                        .join(' · ') || '默认规格';
+                } catch {
+                    return String(value);
+                }
+            },
+
             goPay(orderId) {
                 window.location.href = `/payment/${orderId}`;
             }
