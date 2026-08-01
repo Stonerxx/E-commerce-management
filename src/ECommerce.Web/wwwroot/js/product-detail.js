@@ -20,47 +20,94 @@
 
             const productId = parseInt(window.location.pathname.split('/')[2]);
 
-            const specGroups = computed(() => {
-                if (!product.value || !product.value.specs) return [];
-                const groups = {};
-                for (const spec of product.value.specs) {
-                    if (!groups[spec.specName]) {
-                        groups[spec.specName] = [];
-                    }
-                    if (!groups[spec.specName].includes(spec.specValue)) {
-                        groups[spec.specName].push(spec.specValue);
-                    }
+            function parseSkuSpecs(sku) {
+                try {
+                    const parsed = JSON.parse(sku.specDescJson);
+                    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+                        ? parsed
+                        : null;
+                } catch {
+                    return null;
                 }
-                return Object.entries(groups).map(([name, values]) => ({
-                    specName: name,
-                    values: values
-                }));
+            }
+
+            const enabledSkuSelections = computed(() => {
+                if (!product.value || !Array.isArray(product.value.skus)) return [];
+                return product.value.skus
+                    .filter(sku => Number(sku.status) === 1)
+                    .map(sku => ({ sku, specs: parseSkuSpecs(sku) }))
+                    .filter(item => item.specs);
             });
 
-            const currentSku = computed(() => {
-                if (!product.value || !product.value.skus) return null;
-                const enabledSkus = product.value.skus.filter(sku => sku.status === 1);
-                const selectedEntries = Object.entries(selectedSpecs.value)
-                    .filter(([_, v]) => v);
-                if (selectedEntries.length === 0) return enabledSkus[0] || null;
+            const specGroups = computed(() => {
+                if (!product.value) return [];
 
-                for (const sku of enabledSkus) {
-                    let specObj = {};
-                    try {
-                        specObj = JSON.parse(sku.specDescJson);
-                    } catch {
-                        continue;
-                    }
-                    let match = true;
-                    for (const [name, val] of selectedEntries) {
-                        if (specObj[name] !== val) {
-                            match = false;
-                            break;
+                // SKU 中的 JSON 才是实际下单组合。规格定义用于排序和文案，但旧数据若漏了
+                // 维度或选项，仍应以可售 SKU 为准，避免出现“选完了却不能购买”。
+                const skuGroups = new Map();
+                for (const item of enabledSkuSelections.value) {
+                    for (const [name, value] of Object.entries(item.specs)) {
+                        if (!skuGroups.has(name)) {
+                            skuGroups.set(name, []);
+                        }
+                        if (!skuGroups.get(name).includes(value)) {
+                            skuGroups.get(name).push(value);
                         }
                     }
-                    if (match) return sku;
                 }
-                return null;
+
+                if (skuGroups.size === 0) return [];
+
+                const definedOrder = [];
+                const definedValues = new Map();
+                for (const spec of (product.value.specs || [])) {
+                    if (!skuGroups.has(spec.specName)) continue;
+                    if (!definedValues.has(spec.specName)) {
+                        definedOrder.push(spec.specName);
+                        definedValues.set(spec.specName, []);
+                    }
+                    if (!definedValues.get(spec.specName).includes(spec.specValue)) {
+                        definedValues.get(spec.specName).push(spec.specValue);
+                    }
+                }
+
+                const names = [
+                    ...definedOrder,
+                    ...Array.from(skuGroups.keys()).filter(name => !definedValues.has(name))
+                ];
+
+                return names.map(name => {
+                    const skuValues = skuGroups.get(name);
+                    const preferredValues = (definedValues.get(name) || [])
+                        .filter(value => skuValues.includes(value));
+                    return {
+                        specName: name,
+                        values: [
+                            ...preferredValues,
+                            ...skuValues.filter(value => !preferredValues.includes(value))
+                        ]
+                    };
+                });
+            });
+
+            const missingSpecNames = computed(() => specGroups.value
+                .map(group => group.specName)
+                .filter(name => !selectedSpecs.value[name]));
+
+            const currentSku = computed(() => {
+                if (enabledSkuSelections.value.length === 0) return null;
+
+                const requiredNames = specGroups.value.map(group => group.specName);
+                if (requiredNames.length === 0) {
+                    return enabledSkuSelections.value.length === 1
+                        ? enabledSkuSelections.value[0].sku
+                        : null;
+                }
+                if (missingSpecNames.value.length > 0) return null;
+
+                const match = enabledSkuSelections.value.find(item =>
+                    requiredNames.every(name => item.specs[name] === selectedSpecs.value[name]));
+                return match ? match.sku : null;
             });
 
             const availableStock = computed(() => {
@@ -70,18 +117,54 @@
 
             const currentSkuSpecText = computed(() => {
                 if (!currentSku.value) return '';
-                try {
-                    const specObj = JSON.parse(currentSku.value.specDescJson);
-                    return Object.entries(specObj)
-                        .map(([k, v]) => `${k}: ${v}`)
-                        .join(' / ');
-                } catch {
-                    return '';
-                }
+                return specGroups.value
+                    .map(group => `${group.specName}: ${selectedSpecs.value[group.specName]}`)
+                    .join(' / ');
             });
 
+            const canPurchase = computed(() => Boolean(currentSku.value) && availableStock.value > 0);
+
+            const selectionHint = computed(() => {
+                if (enabledSkuSelections.value.length === 0) return '暂无可购买规格';
+                if (missingSpecNames.value.length > 0) {
+                    return `请选择：${missingSpecNames.value.join('、')}`;
+                }
+                if (!currentSku.value) return '该规格组合暂不可购买，请重新选择';
+                if (availableStock.value <= 0) return '当前规格库存不足';
+                return '';
+            });
+
+            function isSpecOptionAvailable(specName, specValue) {
+                const groupIndex = specGroups.value.findIndex(group => group.specName === specName);
+                if (groupIndex < 0) return false;
+
+                const candidate = { [specName]: specValue };
+                for (let index = 0; index < groupIndex; index++) {
+                    const previousName = specGroups.value[index].specName;
+                    const previousValue = selectedSpecs.value[previousName];
+                    if (previousValue) candidate[previousName] = previousValue;
+                }
+
+                return enabledSkuSelections.value.some(item =>
+                    Object.entries(candidate).every(([name, value]) => item.specs[name] === value));
+            }
+
             function selectSpec(specName, specValue) {
-                selectedSpecs.value[specName] = specValue;
+                if (!isSpecOptionAvailable(specName, specValue)) return;
+
+                const groupIndex = specGroups.value.findIndex(group => group.specName === specName);
+                const nextSelection = { ...selectedSpecs.value, [specName]: specValue };
+                const hasMatchingSku = selection => enabledSkuSelections.value.some(item =>
+                    Object.entries(selection).every(([name, value]) => item.specs[name] === value));
+
+                // 更改前置维度时，仅清理与新选择冲突的后续维度；兼容组合保留。
+                if (!hasMatchingSku(nextSelection)) {
+                    for (let index = specGroups.value.length - 1; index > groupIndex; index--) {
+                        delete nextSelection[specGroups.value[index].specName];
+                        if (hasMatchingSku(nextSelection)) break;
+                    }
+                }
+                selectedSpecs.value = nextSelection;
                 quantity.value = 1;
             }
 
@@ -105,15 +188,7 @@
                     if (result.success && result.data) {
                         product.value = result.data;
                         selectedImage.value = result.data.mainImage;
-
-                        if (result.data.skus && result.data.skus.length > 0) {
-                            try {
-                                const firstSkuSpecs = JSON.parse(result.data.skus[0].specDescJson);
-                                selectedSpecs.value = { ...firstSkuSpecs };
-                            } catch {
-                                selectedSpecs.value = {};
-                            }
-                        }
+                        selectedSpecs.value = {};
                     } else {
                         errorMsg.value = result.message || '商品不存在';
                     }
@@ -320,6 +395,9 @@
                 currentSku,
                 availableStock,
                 currentSkuSpecText,
+                canPurchase,
+                selectionHint,
+                isSpecOptionAvailable,
                 selectSpec,
                 normalizeQuantity,
                 loadReviews,
