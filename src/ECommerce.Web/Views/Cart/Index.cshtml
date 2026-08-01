@@ -40,19 +40,19 @@
                     <thead><tr><th class="ps-3" style="width:48px"></th><th>商品信息</th><th class="text-center">单价</th><th class="text-center">数量</th><th class="text-end">小计</th><th class="text-end pe-3">操作</th></tr></thead>
                     <tbody>
                         <tr v-for="item in items" v-bind:key="item.cartItemId">
-                            <td class="ps-3"><input class="form-check-input" type="checkbox" v-model="item.selected" v-on:change="updateItem(item)" v-bind:disabled="isBusy(item.cartItemId)" /></td>
+                            <td class="ps-3"><input class="form-check-input" type="checkbox" v-model="item.selected" v-on:change="updateItem(item)" v-bind:disabled="isBusy(item.cartItemId) || !canSelect(item)" /></td>
                             <td>
                                 <div class="d-flex align-items-center gap-3">
                                     <img v-bind:src="item.mainImage || '/images/product-placeholder.svg'" v-bind:alt="item.productName" class="cart-thumb" />
-                                    <div class="min-w-0"><a v-bind:href="'/products/' + item.productId" class="fw-semibold text-body text-decoration-none">{{ item.productName }}</a><div class="text-muted small mt-1">{{ formatSpecs(item.specDescJson) }}</div></div>
+                                    <div class="min-w-0"><a v-bind:href="'/products/' + item.productId" class="fw-semibold text-body text-decoration-none">{{ item.productName }}</a><div class="text-muted small mt-1">{{ formatSpecs(item.specDescJson) }}</div><div class="small mt-1" v-bind:class="canSelect(item) ? 'text-success' : 'text-danger'">{{ availabilityText(item) }}</div></div>
                                 </div>
                             </td>
                             <td class="text-center">¥{{ formatMoney(item.unitPrice) }}</td>
                             <td class="text-center">
                                 <div class="input-group input-group-sm quantity-control mx-auto">
-                                    <button class="btn btn-outline-secondary" type="button" v-on:click="changeQuantity(item, -1)" v-bind:disabled="item.quantity <= 1 || isBusy(item.cartItemId)">−</button>
-                                    <input type="number" class="form-control text-center" v-model.number="item.quantity" min="1" step="1" v-on:change="updateItem(item)" v-bind:disabled="isBusy(item.cartItemId)" aria-label="商品数量" />
-                                    <button class="btn btn-outline-secondary" type="button" v-on:click="changeQuantity(item, 1)" v-bind:disabled="isBusy(item.cartItemId)">+</button>
+                                    <button class="btn btn-outline-secondary" type="button" v-on:click="changeQuantity(item, -1)" v-bind:disabled="item.quantity <= 1 || isBusy(item.cartItemId) || !canEditQuantity(item)">−</button>
+                                    <input type="number" class="form-control text-center" v-model.number="item.quantity" min="1" v-bind:max="item.availableStock" step="1" v-on:change="updateItem(item)" v-bind:disabled="isBusy(item.cartItemId) || !canEditQuantity(item)" aria-label="商品数量" />
+                                    <button class="btn btn-outline-secondary" type="button" v-on:click="changeQuantity(item, 1)" v-bind:disabled="isBusy(item.cartItemId) || !canEditQuantity(item) || item.quantity >= item.availableStock">+</button>
                                 </div>
                             </td>
                             <td class="text-end fw-semibold">¥{{ formatMoney(item.unitPrice * item.quantity) }}</td>
@@ -70,15 +70,15 @@
             </div>
             <article v-for="item in items" v-bind:key="item.cartItemId" class="surface-card p-3">
                 <div class="d-flex gap-3">
-                    <input class="form-check-input mt-1" type="checkbox" v-model="item.selected" v-on:change="updateItem(item)" v-bind:disabled="isBusy(item.cartItemId)" />
+                    <input class="form-check-input mt-1" type="checkbox" v-model="item.selected" v-on:change="updateItem(item)" v-bind:disabled="isBusy(item.cartItemId) || !canSelect(item)" />
                     <img v-bind:src="item.mainImage || '/images/product-placeholder.svg'" v-bind:alt="item.productName" class="cart-thumb" />
-                    <div class="min-w-0 flex-grow-1"><a v-bind:href="'/products/' + item.productId" class="fw-semibold text-body text-decoration-none d-block text-truncate">{{ item.productName }}</a><div class="text-muted small mt-1 text-truncate">{{ formatSpecs(item.specDescJson) }}</div><div class="price-current mt-2">¥{{ formatMoney(item.unitPrice) }}</div></div>
+                    <div class="min-w-0 flex-grow-1"><a v-bind:href="'/products/' + item.productId" class="fw-semibold text-body text-decoration-none d-block text-truncate">{{ item.productName }}</a><div class="text-muted small mt-1 text-truncate">{{ formatSpecs(item.specDescJson) }}</div><div class="small mt-1" v-bind:class="canSelect(item) ? 'text-success' : 'text-danger'">{{ availabilityText(item) }}</div><div class="price-current mt-2">¥{{ formatMoney(item.unitPrice) }}</div></div>
                 </div>
                 <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
                     <div class="input-group input-group-sm quantity-control">
-                        <button class="btn btn-outline-secondary" type="button" v-on:click="changeQuantity(item, -1)" v-bind:disabled="item.quantity <= 1 || isBusy(item.cartItemId)">−</button>
-                        <input type="number" class="form-control text-center" v-model.number="item.quantity" min="1" step="1" v-on:change="updateItem(item)" v-bind:disabled="isBusy(item.cartItemId)" aria-label="商品数量" />
-                        <button class="btn btn-outline-secondary" type="button" v-on:click="changeQuantity(item, 1)" v-bind:disabled="isBusy(item.cartItemId)">+</button>
+                        <button class="btn btn-outline-secondary" type="button" v-on:click="changeQuantity(item, -1)" v-bind:disabled="item.quantity <= 1 || isBusy(item.cartItemId) || !canEditQuantity(item)">−</button>
+                        <input type="number" class="form-control text-center" v-model.number="item.quantity" min="1" v-bind:max="item.availableStock" step="1" v-on:change="updateItem(item)" v-bind:disabled="isBusy(item.cartItemId) || !canEditQuantity(item)" aria-label="商品数量" />
+                        <button class="btn btn-outline-secondary" type="button" v-on:click="changeQuantity(item, 1)" v-bind:disabled="isBusy(item.cartItemId) || !canEditQuantity(item) || item.quantity >= item.availableStock">+</button>
                     </div>
                     <button class="btn btn-sm btn-link text-danger text-decoration-none" type="button" v-on:click="removeItem(item)"><i class="bi bi-trash3"></i></button>
                 </div>

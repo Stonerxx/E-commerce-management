@@ -75,11 +75,17 @@
                                             class="btn btn-sm"
                                             :class="selectedSpecs[group.specName] === val ? 'btn-primary' : 'btn-outline-secondary'"
                                             v-for="val in group.values" :key="val"
+                                            :disabled="!isSpecOptionAvailable(group.specName, val)"
+                                            :aria-pressed="selectedSpecs[group.specName] === val"
                                             v-on:click="selectSpec(group.specName, val)">
                                         {{ val }}
                                     </button>
                                 </div>
                             </div>
+                        </div>
+
+                        <div v-if="selectionHint" class="alert alert-secondary py-2 mb-3" role="status">
+                            <i class="bi bi-info-circle me-1"></i>{{ selectionHint }}
                         </div>
 
                         <div class="mb-3" v-if="currentSku">
@@ -102,10 +108,10 @@
                         <div class="mb-4">
                             <label class="form-label">购买数量</label>
                             <div class="input-group" style="width: 140px;">
-                                <button class="btn btn-outline-secondary" type="button" v-on:click="quantity--" :disabled="quantity <= 1">-</button>
-                                <input type="number" class="form-control text-center" v-model.number="quantity" min="1" step="1" v-on:change="normalizeQuantity">
+                                <button class="btn btn-outline-secondary" type="button" v-on:click="quantity--" :disabled="!currentSku || quantity <= 1">-</button>
+                                <input type="number" class="form-control text-center" v-model.number="quantity" min="1" step="1" v-on:change="normalizeQuantity" :disabled="!currentSku">
                                 <button class="btn btn-outline-secondary" type="button" v-on:click="quantity++"
-                                        :disabled="currentSku && quantity >= availableStock">+</button>
+                                        :disabled="!currentSku || availableStock <= 0 || quantity >= availableStock">+</button>
                             </div>
                         </div>
 
@@ -113,14 +119,14 @@
                             <template v-if="@isCustomer.ToString().ToLowerInvariant()">
                                 <button type="button" class="btn btn-outline-primary flex-grow-1"
                                         v-on:click="addToCart"
-                                        :disabled="!currentSku || availableStock <= 0 || addingToCart">
+                                        :disabled="!canPurchase || addingToCart">
                                     <i class="bi bi-cart-plus"></i>
                                     <span v-if="addingToCart">添加中...</span>
                                     <span v-else>加入购物车</span>
                                 </button>
                                 <button type="button" class="btn btn-danger flex-grow-1"
                                         v-on:click="buyNow"
-                                        :disabled="!currentSku || availableStock <= 0">
+                                        :disabled="!canPurchase">
                                     <i class="bi bi-bag-check"></i> 立即购买
                                 </button>
                             </template>

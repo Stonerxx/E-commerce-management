@@ -54,6 +54,9 @@ public abstract class ServiceTestBase
             UnitPrice = unitPrice,
             Quantity = quantity,
             Selected = selected,
+            AvailableStock = 100,
+            SkuStatus = (int)SkuStatus.Enabled,
+            ProductStatus = (int)ProductStatus.OnShelf,
             UpdatedAt = DateTime.Now
         };
     }

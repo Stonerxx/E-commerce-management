@@ -43,6 +43,9 @@ public class CartService : ICartService
             item.UnitPrice,
             item.Quantity,
             item.Selected,
+            item.AvailableStock,
+            item.SkuStatus == (int)SkuStatus.Enabled
+                && item.ProductStatus is ((int)ProductStatus.OnShelf or (int)ProductStatus.Presale),
             item.UpdatedAt
         )).ToList();
 
