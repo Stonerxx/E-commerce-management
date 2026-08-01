@@ -76,7 +76,7 @@
                                         <img v-bind:src="item.mainImage || '/images/default-product.jpg'" alt="商品图片" class="img-thumbnail" style="width:40px;height:40px;object-fit:cover;" />
                                         <div>
                                             <div>{{ item.productName }}</div>
-                                            <div class="text-muted small">{{ item.specSnap }}</div>
+                                            <div class="text-muted small">{{ formatSpecs(item.specSnap) }}</div>
                                             <button v-if="order.status === 3" class="btn btn-link btn-sm p-0 mt-1" v-on:click="openReview(item)">评价商品</button>
                                         </div>
                                     </div>

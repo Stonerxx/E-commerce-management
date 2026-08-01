@@ -18,6 +18,8 @@ public sealed record CartItemDto(
     decimal UnitPrice,
     int Quantity,
     bool Selected,
+    int AvailableStock,
+    bool IsPurchasable,
     DateTime UpdatedAt);
 
 public sealed record CartDto(

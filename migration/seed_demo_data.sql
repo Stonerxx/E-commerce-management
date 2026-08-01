@@ -207,6 +207,23 @@ INSERT ALL
     INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9009, 9008, '光源', '暖光', 1)
     INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9010, 9009, '口味', '桂花乌龙', 1)
     INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9011, 9010, '连接方式', '蓝牙', 1)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9301, 9001, '颜色', '深空黑', 1)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9302, 9001, '存储', '512GB', 2)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9303, 9002, '轴体', '红轴', 1)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9304, 9002, '配列', '87键', 2)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9305, 9003, '口味', '原味', 2)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9306, 9003, '口味', '低糖', 2)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9307, 9004, '颜色', '月光白', 1)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9308, 9004, '版本', '标准', 2)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9309, 9005, '尺寸', '27英寸', 1)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9310, 9005, '尺寸', '32英寸', 1)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9311, 9005, '分辨率', '4K', 2)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9312, 9006, '颜色', '雾蓝', 1)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9313, 9007, '容量', '22L', 2)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9314, 9008, '颜色', '奶油白', 1)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9315, 9009, '规格', '12泡', 2)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9316, 9010, '颜色', '极光蓝', 1)
+    INTO PRODUCT_SPEC (id, product_id, spec_name, spec_value, sort_order) VALUES (9317, 9010, '颜色', '曜石黑', 1)
 SELECT 1 FROM DUAL;
 
 INSERT ALL
@@ -239,9 +256,9 @@ INSERT ALL
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
     VALUES (9014, 9009, '{"口味":"桂花乌龙","规格":"12泡"}', 88.00, 108.00, 16, 0, 18, '/images/demo-tea.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9015, 9010, '{"颜色":"极光蓝","连接":"蓝牙"}', 159.00, 199.00, 65, 0, 12, '/images/demo-mouse.png', 1)
+    VALUES (9015, 9010, '{"颜色":"极光蓝","连接方式":"蓝牙"}', 159.00, 199.00, 65, 0, 12, '/images/demo-mouse.png', 1)
     INTO SKU (id, product_id, spec_desc, price, original_price, stock, locked_stock, warning_stock, sku_image, status)
-    VALUES (9016, 9010, '{"颜色":"曜石黑","连接":"蓝牙"}', 199.00, 239.00, 20, 0, 5, '/images/demo-mouse.png', 0)
+    VALUES (9016, 9010, '{"颜色":"曜石黑","连接方式":"蓝牙"}', 199.00, 239.00, 20, 0, 5, '/images/demo-mouse.png', 0)
 SELECT 1 FROM DUAL;
 
 -- 额外生成 140 个可见商品，配合上方 10 个重点演示商品，正好覆盖三页 50 条的商品流。
@@ -307,7 +324,7 @@ BEGIN
             locked_stock, warning_stock, sku_image, status)
         VALUES (
             v_product_id, v_product_id,
-            '{"款式":"演示' || LPAD(i, 3, '0') || '","版本":"标准"}',
+            '{"演示款式":"标准版' || LPAD(i, 3, '0') || '"}',
             v_price, v_price + 30, v_stock, 0, v_warning,
             v_image, 1);
     END LOOP;

@@ -13,10 +13,11 @@
         },
         computed: {
             allSelected() {
-                return this.items.length > 0 && this.items.every(item => item.selected);
+                const purchasableItems = this.items.filter(item => this.canSelect(item));
+                return purchasableItems.length > 0 && purchasableItems.every(item => item.selected);
             },
             selectedItems() {
-                return this.items.filter(item => item.selected);
+                return this.items.filter(item => item.selected && this.canSelect(item));
             },
             selectedCount() {
                 return this.selectedItems.length;
@@ -34,7 +35,10 @@
                 this.errorMessage = "";
                 try {
                     const payload = await this.request("/api/v1/cart");
-                    this.items = payload.data?.items || [];
+                    this.items = (payload.data?.items || []).map(item => ({
+                        ...item,
+                        selected: this.canSelect(item) ? item.selected : false
+                    }));
                 } catch (error) {
                     this.errorMessage = error instanceof Error ? error.message : "购物车加载失败";
                 } finally {
@@ -52,9 +56,31 @@
             normalizeQuantity(item) {
                 const quantity = Math.floor(Number(item.quantity));
                 item.quantity = Number.isFinite(quantity) && quantity >= 1 ? quantity : 1;
+                if (Number(item.availableStock) > 0) {
+                    item.quantity = Math.min(item.quantity, Number(item.availableStock));
+                }
+            },
+            canEditQuantity(item) {
+                return Boolean(item.isPurchasable) && Number(item.availableStock) > 0;
+            },
+            canSelect(item) {
+                return this.canEditQuantity(item)
+                    && Number(item.quantity) <= Number(item.availableStock);
+            },
+            availabilityText(item) {
+                if (!item.isPurchasable) return "商品已下架或该规格已停售";
+                if (Number(item.availableStock) <= 0) return "暂时无货";
+                if (Number(item.quantity) > Number(item.availableStock)) {
+                    return `库存仅剩 ${item.availableStock} 件，请减少数量`;
+                }
+                return `库存 ${item.availableStock} 件`;
             },
             async updateItem(item, quiet = false) {
                 if (this.isBusy(item.cartItemId)) return;
+                if (!this.canEditQuantity(item)) {
+                    window.appToast?.(this.availabilityText(item), "warning");
+                    return;
+                }
                 this.normalizeQuantity(item);
                 this.setBusy(item.cartItemId, true);
                 try {
@@ -71,7 +97,7 @@
                 }
             },
             async toggleAll(selected) {
-                const changed = this.items.filter(item => item.selected !== selected);
+                const changed = this.items.filter(item => this.canSelect(item) && item.selected !== selected);
                 if (!changed.length) return;
                 this.bulkUpdating = true;
                 changed.forEach(item => { item.selected = selected; });
@@ -91,7 +117,9 @@
             async changeQuantity(item, delta) {
                 if (this.isBusy(item.cartItemId)) return;
                 this.normalizeQuantity(item);
-                item.quantity = Math.max(1, item.quantity + delta);
+                item.quantity = Math.min(
+                    Number(item.availableStock),
+                    Math.max(1, item.quantity + delta));
                 await this.updateItem(item, true);
             },
             async removeItem(item) {
