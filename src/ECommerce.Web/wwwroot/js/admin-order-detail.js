@@ -81,7 +81,17 @@
                 if (!jsonStr) return '无收货信息';
                 try {
                     const data = JSON.parse(jsonStr);
-                    return `${data.receiverName}，${data.receiverPhone}，${data.province}${data.city}${data.district}${data.detailAddress}`;
+                    const valueOf = (name) => data[name]
+                        ?? data[name.charAt(0).toUpperCase() + name.slice(1)]
+                        ?? '';
+                    const contact = [valueOf('receiverName'), valueOf('receiverPhone')]
+                        .filter(Boolean)
+                        .join('，');
+                    const address = ['province', 'city', 'district', 'detailAddress']
+                        .map(valueOf)
+                        .filter(Boolean)
+                        .join('');
+                    return [contact, address].filter(Boolean).join('，') || '无收货信息';
                 } catch {
                     return jsonStr;
                 }
