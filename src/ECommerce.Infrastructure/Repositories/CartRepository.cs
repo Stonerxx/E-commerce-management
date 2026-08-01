@@ -36,6 +36,9 @@ public class CartRepository : ICartRepository
                 s.price AS UnitPrice,
                 c.quantity AS Quantity,
                 c.selected AS Selected,
+                GREATEST(s.stock - s.locked_stock, 0) AS AvailableStock,
+                s.status AS SkuStatus,
+                p.status AS ProductStatus,
                 c.updated_at AS UpdatedAt
             FROM cart c
             JOIN sku s ON c.sku_id = s.id
@@ -68,6 +71,9 @@ public class CartRepository : ICartRepository
                 UnitPrice = reader.GetDecimal(reader.GetOrdinal("UnitPrice")),
                 Quantity = reader.GetInt32(reader.GetOrdinal("Quantity")),
                 Selected = reader.GetInt32(reader.GetOrdinal("Selected")) == 1,
+                AvailableStock = reader.GetInt32(reader.GetOrdinal("AvailableStock")),
+                SkuStatus = reader.GetInt32(reader.GetOrdinal("SkuStatus")),
+                ProductStatus = reader.GetInt32(reader.GetOrdinal("ProductStatus")),
                 UpdatedAt = reader.GetDateTime(reader.GetOrdinal("UpdatedAt"))
             });
         }

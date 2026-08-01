@@ -17,5 +17,8 @@ public class CartItemWithDetails
     public decimal UnitPrice { get; set; }
     public int Quantity { get; set; }
     public bool Selected { get; set; }
+    public int AvailableStock { get; set; }
+    public int SkuStatus { get; set; }
+    public int ProductStatus { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

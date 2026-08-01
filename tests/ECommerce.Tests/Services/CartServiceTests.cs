@@ -60,6 +60,8 @@ public class CartServiceTests : ServiceTestBase
         Assert.Equal(2, result.Items.Count);
         Assert.Equal(1, result.Items.Count(x => x.Selected));
         Assert.Equal(99.99m * 2, result.SelectedTotalAmount);
+        Assert.All(result.Items, item => Assert.Equal(100, item.AvailableStock));
+        Assert.All(result.Items, item => Assert.True(item.IsPurchasable));
     }
 
     [Fact]
