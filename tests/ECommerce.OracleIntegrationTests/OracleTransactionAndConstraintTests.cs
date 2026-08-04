@@ -79,6 +79,58 @@ public class OracleTransactionAndConstraintTests
         await transaction.RollbackAsync();
     }
 
+    [DevOracleFact]
+    [Trait("Category", "OracleIntegration")]
+    public async Task Oracle_rejects_invalid_order_amounts_and_status_transitions()
+    {
+        var orderId = OracleTestEnvironment.NewId();
+        await using var connection = await OracleTestEnvironment.OpenDevAsync();
+        var references = await OracleTestEnvironment.GetSeedReferencesAsync(connection);
+        await using var transaction = (OracleTransaction)await connection.BeginTransactionAsync();
+
+        await InsertTemporaryOrderAsync(connection, transaction, orderId, references.UserId, references.AddressId);
+
+        await using (var invalidPayment = OracleTestEnvironment.CreateCommand(connection, @"
+            INSERT INTO PAYMENT (order_id, pay_method, status, pay_amount)
+            VALUES (:OrderId, 'integration test', 0, 2)", transaction))
+        {
+            invalidPayment.Parameters.Add(":OrderId", OracleDbType.Int64).Value = orderId;
+            var paymentException = await Assert.ThrowsAsync<OracleException>(() => invalidPayment.ExecuteNonQueryAsync());
+            Assert.Equal(20012, paymentException.Number);
+        }
+
+        await using (var cancelledWithPayAmount = OracleTestEnvironment.CreateCommand(connection, @"
+            UPDATE ORDER_MAIN
+            SET status = 4
+            WHERE id = :OrderId", transaction))
+        {
+            cancelledWithPayAmount.Parameters.Add(":OrderId", OracleDbType.Int64).Value = orderId;
+            var amountException = await Assert.ThrowsAsync<OracleException>(() => cancelledWithPayAmount.ExecuteNonQueryAsync());
+            Assert.Equal(2290, amountException.Number);
+        }
+
+        await using (var invalidTransition = OracleTestEnvironment.CreateCommand(connection, @"
+            UPDATE ORDER_MAIN
+            SET status = 3
+            WHERE id = :OrderId", transaction))
+        {
+            invalidTransition.Parameters.Add(":OrderId", OracleDbType.Int64).Value = orderId;
+            var transitionException = await Assert.ThrowsAsync<OracleException>(() => invalidTransition.ExecuteNonQueryAsync());
+            Assert.Equal(20010, transitionException.Number);
+        }
+
+        await using (var cancelledOrder = OracleTestEnvironment.CreateCommand(connection, @"
+            UPDATE ORDER_MAIN
+            SET status = 4, pay_amount = 0
+            WHERE id = :OrderId", transaction))
+        {
+            cancelledOrder.Parameters.Add(":OrderId", OracleDbType.Int64).Value = orderId;
+            Assert.Equal(1, await cancelledOrder.ExecuteNonQueryAsync());
+        }
+
+        await transaction.RollbackAsync();
+    }
+
     internal static async Task InsertTemporarySkuAsync(OracleConnection connection, OracleTransaction? transaction, long skuId, long productId)
     {
         await using var command = OracleTestEnvironment.CreateCommand(connection, @"

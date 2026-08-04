@@ -154,6 +154,7 @@ migration/seed_demo_data.sql
 
 ```sql
 @migration/init_database.sql
+@migration/database_objects.sql
 @migration/seed_demo_data.sql
 ```
 

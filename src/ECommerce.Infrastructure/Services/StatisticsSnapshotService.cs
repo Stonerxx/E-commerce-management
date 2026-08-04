@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Data;
 using ECommerce.Infrastructure.Data;
 using ECommerce.Shared.Abstractions;
 using Oracle.ManagedDataAccess.Client;
@@ -49,50 +50,15 @@ public sealed class StatisticsSnapshotService : IStatisticsSnapshotService
     private async Task UpsertSnapshotAsync(DbConnection connection, DateTime statDate, CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
-        command.CommandText = """
-            MERGE INTO ORDER_STAT_SNAPSHOT target
-            USING (
-                SELECT
-                    :StatDate AS stat_date,
-                    (SELECT COUNT(1) FROM ORDER_MAIN om
-                     WHERE om.created_at >= :StartAt AND om.created_at < :EndAt) AS order_count,
-                    (SELECT COUNT(1) FROM ORDER_MAIN om
-                     WHERE om.created_at >= :StartAt AND om.created_at < :EndAt
-                       AND om.status IN (1, 2, 3)) AS paid_count,
-                    (SELECT NVL(SUM(om.pay_amount), 0) FROM ORDER_MAIN om
-                     WHERE om.created_at >= :StartAt AND om.created_at < :EndAt
-                       AND om.status IN (1, 2, 3)) AS sales_amount,
-                    (SELECT COUNT(1) FROM "USER" u
-                     WHERE u.created_at >= :StartAt AND u.created_at < :EndAt) AS new_user_count
-                FROM DUAL
-            ) source
-            ON (target.stat_date = source.stat_date)
-            WHEN MATCHED THEN UPDATE SET
-                target.order_count = source.order_count,
-                target.paid_count = source.paid_count,
-                target.sales_amount = source.sales_amount,
-                target.refund_amount = 0,
-                target.avg_order_amount = CASE
-                    WHEN source.paid_count = 0 THEN 0
-                    ELSE ROUND(source.sales_amount / source.paid_count, 2)
-                END,
-                target.new_user_count = source.new_user_count
-            WHEN NOT MATCHED THEN INSERT
-                (stat_date, order_count, paid_count, sales_amount, refund_amount, avg_order_amount, new_user_count)
-            VALUES
-                (source.stat_date, source.order_count, source.paid_count, source.sales_amount, 0,
-                 CASE WHEN source.paid_count = 0 THEN 0 ELSE ROUND(source.sales_amount / source.paid_count, 2) END,
-                 source.new_user_count)
-            """;
+        command.CommandText = "SP_REFRESH_ORDER_STAT_SNAPSHOT";
+        command.CommandType = CommandType.StoredProcedure;
         command.Transaction = _unitOfWork.CurrentTransaction;
         if (command is OracleCommand oracleCommand)
         {
             oracleCommand.BindByName = true;
         }
 
-        AddParameter(command, "StatDate", statDate);
-        AddParameter(command, "StartAt", statDate);
-        AddParameter(command, "EndAt", statDate.AddDays(1));
+        AddParameter(command, "p_stat_date", statDate.Date);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
     }

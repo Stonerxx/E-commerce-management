@@ -14,6 +14,7 @@
 - 购物车和订单商品数量能不能被限制为大于 0；
 - 两个请求同时抢最后一件库存时，是否只允许一个成功；
 - 支付和取消同时操作同一张订单时，是否只允许一个成功；
+- 函数、存储过程、视图和触发器是否真实存在并参与业务操作；
 - 可选测试：一次导出 5,000 行订单到 Excel。
 
 ---
@@ -26,6 +27,7 @@
 
 ```text
 migration/init_database.sql
+migration/database_objects.sql
 migration/seed_demo_data.sql
 ````
 
@@ -86,6 +88,7 @@ ECOMMERCE_TEST  自动化集成测试
 
 ```powershell
 sqlplus ECOMMERCE_TEST/密码@//数据库地址:1521/FREEPDB1 @migration/init_database.sql
+sqlplus ECOMMERCE_TEST/密码@//数据库地址:1521/FREEPDB1 @migration/database_objects.sql
 sqlplus ECOMMERCE_TEST/密码@//数据库地址:1521/FREEPDB1 @migration/seed_demo_data.sql
 ```
 
