@@ -8,6 +8,12 @@
                 loading: false,
                 order: null,
                 showShipModal: false,
+                shipping: false,
+                showLogisticsPanel: false,
+                logisticsLoading: false,
+                trackSubmitting: false,
+                logistics: null,
+                trackForm: { trackDesc: '', location: '', status: 1 },
                 shipment: {
                     companyName: '',
                     trackingNo: ''
@@ -30,6 +36,9 @@
 
                     if (result.success && result.data) {
                         this.order = result.data;
+                        if (this.showLogisticsPanel && (this.order.status === 2 || this.order.status === 3)) {
+                            await this.loadLogistics();
+                        }
                     } else {
                         console.error('加载订单详情失败:', result.message);
                     }
@@ -72,9 +81,31 @@
                 if (!jsonStr) return '无收货信息';
                 try {
                     const data = JSON.parse(jsonStr);
-                    return `${data.receiverName}，${data.receiverPhone}，${data.province}${data.city}${data.district}${data.detailAddress}`;
+                    const valueOf = (name) => data[name]
+                        ?? data[name.charAt(0).toUpperCase() + name.slice(1)]
+                        ?? '';
+                    const contact = [valueOf('receiverName'), valueOf('receiverPhone')]
+                        .filter(Boolean)
+                        .join('，');
+                    const address = ['province', 'city', 'district', 'detailAddress']
+                        .map(valueOf)
+                        .filter(Boolean)
+                        .join('');
+                    return [contact, address].filter(Boolean).join('，') || '无收货信息';
                 } catch {
                     return jsonStr;
+                }
+            },
+
+            formatSpecs(value) {
+                if (!value) return '默认规格';
+                try {
+                    const specs = typeof value === 'string' ? JSON.parse(value) : value;
+                    return Object.entries(specs)
+                        .map(([name, item]) => `${name}：${item}`)
+                        .join(' · ') || '默认规格';
+                } catch {
+                    return String(value);
                 }
             },
 
@@ -105,6 +136,7 @@
                     return;
                 }
 
+                this.shipping = true;
                 try {
                     const response = await fetch(`/api/v1/admin/orders/${orderId}/shipments`, {
                         method: 'POST',
@@ -120,20 +152,24 @@
                     });
                     const result = await response.json();
 
-                    if (result.success) {
+                    if (response.ok && result.success) {
                         this.showShipModal = false;
-                        this.loadOrderDetail();
+                        this.showLogisticsPanel = true;
+                        window.appToast?.('发货成功，物流信息已创建', 'success');
+                        await this.loadOrderDetail();
                     } else {
-                        alert(result.message || '发货失败');
+                        window.appToast?.(result.message || '发货失败', 'danger');
                     }
                 } catch (error) {
                     console.error('发货异常:', error);
-                    alert('发货失败，请稍后重试');
+                    window.appToast?.('发货失败，请稍后重试', 'danger');
+                } finally {
+                    this.shipping = false;
                 }
             },
 
             async adminCancelOrder(orderId) {
-                if (!confirm('确定要强制取消这个订单吗？此操作不可恢复！')) return;
+                if (!confirm('确定要取消这个待支付订单吗？库存和优惠券将自动恢复。')) return;
 
                 try {
                     const response = await fetch(`/api/v1/admin/orders/${orderId}/cancel`, {
@@ -142,24 +178,75 @@
                             'Content-Type': 'application/json',
                             'Accept': 'application/json'
                         },
-                        body: JSON.stringify({ reason: '后台强制取消' })
+                        body: JSON.stringify({ reason: '后台取消' })
                     });
                     const result = await response.json();
 
-                    if (result.success) {
-                        this.loadOrderDetail();
+                    if (response.ok && result.success) {
+                        window.appToast?.('订单已取消，相关资源已恢复', 'success');
+                        await this.loadOrderDetail();
                     } else {
-                        alert(result.message || '取消订单失败');
+                        window.appToast?.(result.message || '取消订单失败', 'danger');
                     }
                 } catch (error) {
                     console.error('取消订单异常:', error);
-                    alert('取消订单失败，请稍后重试');
+                    window.appToast?.('取消订单失败，请稍后重试', 'danger');
                 }
             },
 
-            showLogistics(orderId) {
-                // TODO: 实现物流弹窗或跳转
-                alert('物流功能由 Member5 实现，敬请期待');
+            async showLogistics() {
+                this.showLogisticsPanel = !this.showLogisticsPanel;
+                if (this.showLogisticsPanel) await this.loadLogistics();
+            },
+
+            async loadLogistics() {
+                this.logisticsLoading = true;
+                try {
+                    const response = await fetch(`/api/v1/admin/orders/${orderId}/logistics`, { headers: { 'Accept': 'application/json' } });
+                    const result = await response.json();
+                    this.logistics = response.ok && result.success ? result.data : null;
+                    if (this.logistics) this.trackForm.status = Math.max(1, this.logistics.status);
+                } catch (error) {
+                    console.error('加载物流失败:', error);
+                    this.logistics = null;
+                } finally {
+                    this.logisticsLoading = false;
+                }
+            },
+
+            logisticsStatusText(status) {
+                return ({ 0: '已揽收', 1: '运输中', 2: '派送中', 3: '已签收' })[status] || '未知';
+            },
+
+            async addTrack() {
+                if (!this.logistics || !this.trackForm.trackDesc) {
+                    window.appToast?.('请填写轨迹描述', 'warning');
+                    return;
+                }
+
+                this.trackSubmitting = true;
+                try {
+                    const response = await fetch(`/api/v1/admin/logistics/${this.logistics.logisticsId}/tracks`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({ trackDesc: this.trackForm.trackDesc, trackTime: new Date().toISOString(), location: this.trackForm.location || null, status: this.trackForm.status })
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) {
+                        window.appToast?.(result.message || '轨迹添加失败', 'danger');
+                        return;
+                    }
+
+                    this.trackForm.trackDesc = '';
+                    this.trackForm.location = '';
+                    window.appToast?.('物流轨迹已更新', 'success');
+                    await this.loadLogistics();
+                } catch (error) {
+                    console.error('轨迹添加异常:', error);
+                    window.appToast?.('轨迹添加失败，请稍后重试', 'danger');
+                } finally {
+                    this.trackSubmitting = false;
+                }
             },
 
             shipOrder(orderId) {

@@ -2,6 +2,7 @@ using System.Data.Common;
 using System.Text;
 using ECommerce.Application.DTOs;
 using ECommerce.Domain.Entities;
+using ECommerce.Infrastructure.Data;
 using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Contracts;
 
@@ -25,6 +26,8 @@ public interface IProductRepository
 
     Task<int> IncrementViewCountAsync(long productId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<ProductListItemDto>> GetRecommendationsAsync(long productId, int limit, CancellationToken cancellationToken = default);
+
     Task<bool> HasSkusAsync(long productId, CancellationToken cancellationToken = default);
 }
 
@@ -39,17 +42,18 @@ public sealed class ProductRepository : IProductRepository
 
     public async Task<PagedResult<ProductListItemDto>> SearchAsync(ProductQuery query, CancellationToken cancellationToken = default)
     {
-        return await SearchCoreAsync(query, null, cancellationToken);
+        return await SearchCoreAsync(query, null, includeDescendantCategories: false, cancellationToken);
     }
 
     public async Task<PagedResult<ProductListItemDto>> SearchPublicAsync(ProductQuery query, CancellationToken cancellationToken = default)
     {
-        return await SearchCoreAsync(query, new[] { 1, 2 }, cancellationToken);
+        return await SearchCoreAsync(query, new[] { 1, 2 }, includeDescendantCategories: true, cancellationToken);
     }
 
     private async Task<PagedResult<ProductListItemDto>> SearchCoreAsync(
         ProductQuery query,
         IReadOnlyList<int>? fixedStatuses,
+        bool includeDescendantCategories,
         CancellationToken cancellationToken)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
@@ -61,7 +65,16 @@ public sealed class ProductRepository : IProductRepository
         var conditions = new List<string>();
         if (query.CategoryId.HasValue)
         {
-            conditions.Add("p.\"CATEGORY_ID\" = :categoryId");
+            conditions.Add(includeDescendantCategories
+                ? """
+                  p."CATEGORY_ID" IN (
+                      SELECT c."ID"
+                      FROM "CATEGORY" c
+                      START WITH c."ID" = :categoryId AND c."STATUS" = 1
+                      CONNECT BY NOCYCLE PRIOR c."ID" = c."PARENT_ID" AND c."STATUS" = 1
+                  )
+                  """
+                : "p.\"CATEGORY_ID\" = :categoryId");
         }
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {
@@ -81,7 +94,7 @@ public sealed class ProductRepository : IProductRepository
             sql.Append("WHERE " + string.Join(" AND ", conditions));
         }
         
-        sql.Append(" ORDER BY p.\"CREATED_AT\" DESC");
+        sql.Append(GetOrderByClause(query.SortBy));
         
         var countSql = new StringBuilder();
         countSql.Append("SELECT COUNT(*) FROM \"PRODUCT\" p");
@@ -181,7 +194,7 @@ public sealed class ProductRepository : IProductRepository
         command.Parameters.Add(newIdParam);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
-        return Convert.ToInt64(newIdParam.Value);
+        return OracleValueConverter.ToInt64(newIdParam.Value);
     }
 
     public async Task<int> UpdateAsync(Product product, CancellationToken cancellationToken = default)
@@ -287,6 +300,64 @@ public sealed class ProductRepository : IProductRepository
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<ProductListItemDto>> GetRecommendationsAsync(
+        long productId,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        const string sql = """
+            SELECT "ID", "CATEGORY_ID", "NAME", "MAIN_IMAGE", "PRICE_MIN", "SALES_COUNT", "AVG_RATING", "STATUS"
+            FROM (
+                SELECT p."ID", p."CATEGORY_ID", p."NAME", p."MAIN_IMAGE", p."PRICE_MIN",
+                       p."SALES_COUNT", p."AVG_RATING", p."STATUS"
+                FROM "PRODUCT" p
+                WHERE p."ID" <> :productId
+                  AND p."STATUS" IN (1, 2)
+                ORDER BY CASE
+                             WHEN p."CATEGORY_ID" = (SELECT current_product."CATEGORY_ID"
+                                                     FROM "PRODUCT" current_product
+                                                     WHERE current_product."ID" = :currentProductId)
+                             THEN 0 ELSE 1
+                         END,
+                         (p."SALES_COUNT" * 5 + p."VIEW_COUNT" + p."AVG_RATING" * 20) DESC,
+                         p."CREATED_AT" DESC
+            )
+            WHERE ROWNUM <= :resultLimit
+            """;
+
+        using var command = connection.CreateCommand();
+        if (_unitOfWork.CurrentTransaction != null)
+        {
+            command.Transaction = _unitOfWork.CurrentTransaction;
+        }
+        command.CommandText = sql;
+
+        var productIdParameter = command.CreateParameter();
+        productIdParameter.ParameterName = ":productId";
+        productIdParameter.Value = productId;
+        command.Parameters.Add(productIdParameter);
+
+        var currentProductIdParameter = command.CreateParameter();
+        currentProductIdParameter.ParameterName = ":currentProductId";
+        currentProductIdParameter.Value = productId;
+        command.Parameters.Add(currentProductIdParameter);
+
+        var limitParameter = command.CreateParameter();
+        limitParameter.ParameterName = ":resultLimit";
+        limitParameter.Value = limit;
+        command.Parameters.Add(limitParameter);
+
+        var result = new List<ProductListItemDto>();
+        using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            result.Add(MapToListItemDto(reader));
+        }
+
+        return result;
+    }
+
     public async Task<bool> HasSkusAsync(long productId, CancellationToken cancellationToken = default)
     {
         var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
@@ -331,6 +402,19 @@ public sealed class ProductRepository : IProductRepository
             param.Value = query.Status.Value;
             command.Parameters.Add(param);
         }
+    }
+
+    private static string GetOrderByClause(string? sortBy)
+    {
+        return sortBy?.Trim().ToLowerInvariant() switch
+        {
+            "hot" => " ORDER BY (p.\"SALES_COUNT\" * 5 + p.\"VIEW_COUNT\" + p.\"AVG_RATING\" * 20) DESC, p.\"CREATED_AT\" DESC",
+            "sales" => " ORDER BY p.\"SALES_COUNT\" DESC, p.\"CREATED_AT\" DESC",
+            "rating" => " ORDER BY p.\"AVG_RATING\" DESC, p.\"SALES_COUNT\" DESC",
+            "priceasc" => " ORDER BY p.\"PRICE_MIN\" ASC, p.\"CREATED_AT\" DESC",
+            "pricedesc" => " ORDER BY p.\"PRICE_MIN\" DESC, p.\"CREATED_AT\" DESC",
+            _ => " ORDER BY p.\"CREATED_AT\" DESC"
+        };
     }
 
     private static void AddUpdateParameters(DbCommand command, Product product)

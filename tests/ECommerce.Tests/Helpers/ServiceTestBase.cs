@@ -36,6 +36,7 @@ public abstract class ServiceTestBase
         long cartItemId = 1,
         long skuId = 100,
         long productId = 10,
+        int categoryId = 1,
         string productName = "测试商品",
         decimal unitPrice = 99.99m,
         int quantity = 2,
@@ -46,12 +47,16 @@ public abstract class ServiceTestBase
             CartItemId = cartItemId,
             SkuId = skuId,
             ProductId = productId,
+            CategoryId = categoryId,
             ProductName = productName,
             SpecDescJson = "{\"颜色\":\"红色\",\"尺码\":\"M\"}",
             MainImage = "/images/test.jpg",
             UnitPrice = unitPrice,
             Quantity = quantity,
             Selected = selected,
+            AvailableStock = 100,
+            SkuStatus = (int)SkuStatus.Enabled,
+            ProductStatus = (int)ProductStatus.OnShelf,
             UpdatedAt = DateTime.Now
         };
     }

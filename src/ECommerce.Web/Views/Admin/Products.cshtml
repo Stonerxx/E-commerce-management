@@ -54,7 +54,7 @@
             </div>
 
             <div v-else-if="products.length === 0" class="text-center py-4 text-muted">
-                暂无商品数据，点击"新增商品"开始创建
+                {{ keyword || categoryId !== null || status !== null ? '没有符合筛选条件的商品' : '暂无商品数据，点击“新增商品”开始创建' }}
             </div>
 
             <table v-else class="table table-hover mb-0">

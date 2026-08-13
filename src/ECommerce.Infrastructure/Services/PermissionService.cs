@@ -5,18 +5,28 @@ using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Constants;
 using ECommerce.Shared.Errors;
 using ECommerce.Shared.Exceptions;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace ECommerce.Infrastructure.Services;
 
 public sealed class PermissionService : IPermissionService
 {
+    private static readonly TimeSpan AllRulesCacheDuration = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan RoleRulesCacheDuration = TimeSpan.FromMinutes(1);
+    private static readonly string[] SupportedActions = ["GET", "POST", "PUT", "DELETE"];
+
     private readonly IPermissionRepository _permissionRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IMemoryCache _cache;
 
-    public PermissionService(IPermissionRepository permissionRepository, IUnitOfWork unitOfWork)
+    public PermissionService(
+        IPermissionRepository permissionRepository,
+        IUnitOfWork unitOfWork,
+        IMemoryCache cache)
     {
         _permissionRepository = permissionRepository;
         _unitOfWork = unitOfWork;
+        _cache = cache;
     }
 
     public Task<IReadOnlyList<RoleDto>> GetRolesAsync(CancellationToken cancellationToken = default)
@@ -37,7 +47,21 @@ public sealed class PermissionService : IPermissionService
 
     public async Task BindRolePermissionsAsync(int roleId, IReadOnlyList<int> permissionIds, CancellationToken cancellationToken = default)
     {
-        await EnsureRoleExistsAsync(roleId, cancellationToken);
+        if (roleId <= 0)
+        {
+            throw new BusinessException(ErrorCodes.ValidationError, "角色ID必须大于0");
+        }
+
+        var roleName = await _permissionRepository.GetRoleNameAsync(roleId, cancellationToken);
+        if (roleName is null)
+        {
+            throw new BusinessException(ErrorCodes.ResourceNotFound, "角色不存在");
+        }
+
+        if (string.Equals(roleName, AuthConstants.Roles.Admin, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new BusinessException(ErrorCodes.AuthForbidden, "ADMIN 是内置超级管理员，始终拥有完整后台权限，不能修改其权限绑定");
+        }
 
         if (permissionIds.Any(id => id <= 0))
         {
@@ -57,6 +81,7 @@ public sealed class PermissionService : IPermissionService
         {
             await _permissionRepository.ReplaceRolePermissionsAsync(roleId, distinctPermissionIds, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
+            InvalidateRoleRules(roleName);
         }
         catch
         {
@@ -77,7 +102,15 @@ public sealed class PermissionService : IPermissionService
         }
 
         var action = httpMethod.ToUpperInvariant();
-        var matchingRules = (await _permissionRepository.GetPermissionRulesByActionAsync(action, cancellationToken))
+        var allRules = await _cache.GetOrCreateAsync(
+            GetAllRulesCacheKey(action),
+            entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = AllRulesCacheDuration;
+                return _permissionRepository.GetPermissionRulesByActionAsync(action, cancellationToken);
+            }) ?? Array.Empty<PermissionDto>();
+
+        var matchingRules = allRules
             .Where(rule => PermissionPathMatcher.IsMatch(rule.ResourcePath, requestPath))
             .ToArray();
 
@@ -86,9 +119,43 @@ public sealed class PermissionService : IPermissionService
             return !IsStrictBackendPath(requestPath);
         }
 
-        var roleRules = await _permissionRepository.GetRolePermissionRulesByActionAsync(roleNames, action, cancellationToken);
-        return roleRules.Any(rule => PermissionPathMatcher.IsMatch(rule.ResourcePath, requestPath));
+        foreach (var roleName in roleNames
+                     .Where(role => !string.IsNullOrWhiteSpace(role))
+                     .Select(role => role.Trim())
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var roleRules = await _cache.GetOrCreateAsync(
+                GetRoleRulesCacheKey(roleName, action),
+                entry =>
+                {
+                    entry.AbsoluteExpirationRelativeToNow = RoleRulesCacheDuration;
+                    return _permissionRepository.GetRolePermissionRulesByActionAsync(
+                        [roleName],
+                        action,
+                        cancellationToken);
+                }) ?? Array.Empty<PermissionDto>();
+
+            if (roleRules.Any(rule => PermissionPathMatcher.IsMatch(rule.ResourcePath, requestPath)))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
+
+    private void InvalidateRoleRules(string roleName)
+    {
+        foreach (var action in SupportedActions)
+        {
+            _cache.Remove(GetRoleRulesCacheKey(roleName, action));
+        }
+    }
+
+    private static string GetAllRulesCacheKey(string action) => $"rbac:all:{action}";
+
+    private static string GetRoleRulesCacheKey(string roleName, string action) =>
+        $"rbac:role:{roleName.ToUpperInvariant()}:{action}";
 
     private async Task EnsureRoleExistsAsync(int roleId, CancellationToken cancellationToken)
     {

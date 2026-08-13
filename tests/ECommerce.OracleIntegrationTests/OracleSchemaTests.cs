@@ -1,3 +1,4 @@
+using ECommerce.Infrastructure.Data;
 using Oracle.ManagedDataAccess.Client;
 
 namespace ECommerce.OracleIntegrationTests;
@@ -22,7 +23,7 @@ public class OracleSchemaTests
             var idParameter = new OracleParameter(":Id", OracleDbType.Int64) { Direction = System.Data.ParameterDirection.Output };
             insert.Parameters.Add(idParameter);
             await insert.ExecuteNonQueryAsync();
-            userId = Convert.ToInt64(idParameter.Value);
+            userId = OracleValueConverter.ToInt64(idParameter.Value);
             Assert.True(userId >= 10_001, $"Expected generated user id >= 10001, got {userId}.");
         }
         finally
@@ -67,6 +68,13 @@ public class OracleSchemaTests
 
         command.CommandText = """SELECT COUNT(*) FROM "USER" WHERE id = 1 AND username = 'system' AND status = 0""";
         Assert.Equal(1, Convert.ToInt32(await command.ExecuteScalarAsync()));
+
+        command.CommandText = @"
+            SELECT COUNT(*)
+            FROM USER_INDEXES
+            WHERE INDEX_NAME = 'UK_ADDRESS_ONE_DEFAULT'
+              AND UNIQUENESS = 'UNIQUE'";
+        Assert.Equal(1, Convert.ToInt32(await command.ExecuteScalarAsync()));
     }
 
     [DemoOracleFact]
@@ -101,5 +109,24 @@ public class OracleSchemaTests
         Assert.Equal(48, reader.GetInt32(3));
         Assert.Equal(0, reader.GetInt32(4));
         Assert.Equal(0, reader.GetInt32(5));
+    }
+
+    [DevOracleFact]
+    [Trait("Category", "OracleIntegration")]
+    public async Task Dev_schema_contains_coupon_and_review_concurrency_constraints()
+    {
+        await using var connection = await OracleTestEnvironment.OpenDevAsync();
+        await using var command = OracleTestEnvironment.CreateCommand(connection, @"
+            SELECT COUNT(*)
+            FROM USER_CONSTRAINTS
+            WHERE CONSTRAINT_NAME IN (
+                'UK_UC_USER_TEMPLATE',
+                'UK_REVIEW_ORDER_PRODUCT_USER',
+                'CH_COUP_AMOUNT',
+                'CH_COUP_TOTAL',
+                'CH_COUP_RECEIVED')
+              AND STATUS = 'ENABLED'");
+
+        Assert.Equal(5, Convert.ToInt32(await command.ExecuteScalarAsync()));
     }
 }

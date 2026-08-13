@@ -13,7 +13,7 @@
 - 状态枚举以 `src/ECommerce.Domain/Enums` 为准。
 - 如果必须修改公共接口、DTO、状态码、路由或枚举，必须同时更新本文件。
 - 不要回滚、覆盖或格式化无关文件。
-- 提交信息使用 `<type>(<scope>)：中文说明`。
+- 提交信息使用 `<type>(<scope>): 中文说明`。
 
 ### 1.1 常见术语先说明
 
@@ -166,7 +166,7 @@ Shared -> 不依赖其他项目
 | DI 注册 | `src/ECommerce.Infrastructure/DependencyInjection.cs`, `src/ECommerce.Web/Program.cs` |
 | 数据库脚本 | `migration/init_database.sql`、`migration/database_objects.sql` |
 
-当前所有 API Controller 只是占位，默认返回 `501 NOT_IMPLEMENTED`。这表示“路由已经定好，但业务还没实现”，不是系统报错。实现功能时，把对应 Controller 改成调用 Service，不要直接在 Controller 里写 SQL。
+API Controller 路由已统一定义并调用对应 Service；Controller 不直接写 SQL。模拟支付持久化 `PAYMENT`，并通过签名回调或页面操作完成支付事务。
 
 看接口时按这个顺序：
 
@@ -197,7 +197,7 @@ Oracle 连接使用 `Oracle:ConnectionString`，推荐通过环境变量覆盖�
 $env:Oracle__ConnectionString = "User Id=ECOMMERCE_DEV;Password=...;Data Source=数据库服务器IP:1521/服务名"
 ```
 
-开发联调用 `ECOMMERCE_DEV`，最终演示用 `ECOMMERCE_DEMO`。后端代码不区分本地库或远程库，连接到哪里只由 `Data Source` 决定。
+项目使用两个已创建的 Oracle 用户（Schema）：`ECOMMERCE_DEV` 用于开发联调，`ECOMMERCE_DEMO` 用于最终演示和业务服务器部署。两个用户位于同一 Oracle 服务也不影响隔离，分别维护自己的表和数据。项目没有、也不需要额外创建 `ECOMMERCE_TEST`；真实 Oracle 集成测试分别连接现有 DEV 和 DEMO。后端代码不区分本地库或远程库，连接到哪里只由完整连接串决定。
 
 数据库连通性检查：
 
@@ -207,31 +207,24 @@ GET /api/v1/system/db-check
 
 该接口会返回 `connected`、`sessionUser`、`currentSchema` 和 `serviceName`，用于确认当前后端实际连到哪个 Oracle 用户和服务。
 
-当前登录模块还未完成，基础阶段该接口允许匿名访问，便于第 1 人验证 Oracle 和服务器部署。登录权限完成后，可按验收要求改为 `AdminOnly`。
+该接口继续允许匿名访问，便于负载均衡和部署探针验证就绪状态；返回内容不包含连接密码。
 
-## 5. 分支职责
+## 5. 模块边界与数据表归属
 
-| 分支 | 主责 | 直接负责接口 |
-| --- | --- | --- |
-| `feat-member1-foundation-oracle-deploy` | 项目骨架、Oracle、部署 | `IUnitOfWork`、Oracle 连接、数据库健康检查、认证/授权、DI、README、部署样例 |
-| `feat-member2-user-permission-address-log` | 用户、权限、地址、日志 | `IAuthService`、`IUserService`、`IAddressService`、`IOperationLogService` |
-| `feat-member3-product-category-sku-inventory` | 商品、分类、SKU、库存 | `ICategoryService`、`IProductService`、`ISkuService`、`IInventoryService` |
-| `feat-member4-cart-order-core` | 购物车、订单核心流程 | `ICartService`、`IOrderService` |
-| `feat-member5-payment-coupon-logistics-review` | 支付、优惠券、物流、评价 | `ICouponService`、`IPaymentService`、`ILogisticsService`、`IReviewService` |
-| `feat-member6-stats-export-ui-docs` | 统计、导出、UI、测试、文档、PPT | `IStatisticsService`、`IExportService`、后台首页、统一 Bootstrap 页面 |
+成员分支、提交和 PR 流程统一见 [组员开工指南](TEAM_GUIDE.md)。本文只保留长期有效的技术边界，避免人员分工变化后出现两套说法。
 
 ### 5.1 数据表归属
 
 数据表以 `migration/init_database.sql` 为准。主责人负责对应表的 Repository（数据访问类）、写入规则、状态流转和后台维护页面；其他人需要写这些表时，必须通过主责人的 Service 接口协作，不要跨模块直接改表。
 
-| 人员 | 主责表 | 依赖表 | 边界说明 |
+| 模块 | 主责表 | 依赖表 | 边界说明 |
 | --- | --- | --- | --- |
-| 第 1 人 | 全部表的建表脚本、索引、约束、数据库对象与初始化顺序 | 全部业务表 | 负责 `migration/init_database.sql`、`migration/database_objects.sql`、Oracle 连接、`IUnitOfWork`、部署配置；不负责业务 CRUD 规则。 |
-| 第 2 人 | `"USER"`、`"ROLE"`、`"PERMISSION"`、`USER_ROLE`、`ROLE_PERMISSION`、`ADDRESS`、`OPERATION_LOG` | 其他模块会引用 `"USER"` 和 `OPERATION_LOG` | 负责注册登录、角色权限、地址、操作日志；其他模块记录后台操作日志时调用 `IOperationLogService`。 |
-| 第 3 人 | `"CATEGORY"`、`PRODUCT`、`PRODUCT_IMAGE`、`PRODUCT_SPEC`、`SKU`、`INVENTORY_LOG` | `"USER"`、`ORDER_MAIN` | 负责商品、分类、图片、规格、SKU、库存和库存日志；订单模块只能通过 `IInventoryService` 锁定、释放、扣减库存。 |
-| 第 4 人 | `CART`、`ORDER_MAIN`、`ORDER_ITEM`、`ORDER_LOG` | `"USER"`、`ADDRESS`、`USER_COUPON`、`SKU`、`PRODUCT` | 负责购物车、订单主流程和订单日志；创建订单时依赖地址、SKU、库存锁定、优惠券校验。 |
-| 第 5 人 | `COUPON_TEMPLATE`、`USER_COUPON`、`PAYMENT`、`LOGISTICS`、`LOGISTICS_TRACK`、`REVIEW` | `"USER"`、`ORDER_MAIN`、`ORDER_ITEM`、`PRODUCT`、`SKU` | 负责优惠券、模拟支付、物流轨迹、评价；支付成功后通过订单和库存接口完成状态流转。 |
-| 第 6 人 | `ORDER_STAT_SNAPSHOT` | `ORDER_MAIN`、`ORDER_ITEM`、`PAYMENT`、`PRODUCT`、`SKU`、`INVENTORY_LOG`、`"USER"`、`REVIEW`、`LOGISTICS` | 负责统计、导出、后台首页和 UI 整合；统计和导出默认只读上游业务表，必要快照写入 `ORDER_STAT_SNAPSHOT`。 |
+| 数据库基础设施 | 全部表的建表脚本、索引、约束、数据库对象与初始化顺序 | 全部业务表 | 负责 `migration/init_database.sql`、`migration/database_objects.sql`、Oracle 连接、`IUnitOfWork`、部署配置；不承载业务 CRUD 规则。 |
+| 用户与权限 | `"USER"`、`"ROLE"`、`"PERMISSION"`、`USER_ROLE`、`ROLE_PERMISSION`、`ADDRESS`、`OPERATION_LOG` | 其他模块会引用 `"USER"` 和 `OPERATION_LOG` | 其他模块记录后台操作日志时调用 `IOperationLogService`。 |
+| 商品与库存 | `"CATEGORY"`、`PRODUCT`、`PRODUCT_IMAGE`、`PRODUCT_SPEC`、`SKU`、`INVENTORY_LOG` | `"USER"`、`ORDER_MAIN` | 订单模块通过 `IInventoryService` 锁定、释放和扣减库存。 |
+| 购物车与订单 | `CART`、`ORDER_MAIN`、`ORDER_ITEM`、`ORDER_LOG` | `"USER"`、`ADDRESS`、`USER_COUPON`、`SKU`、`PRODUCT` | 创建订单依赖地址、SKU、库存锁定和优惠券校验，不跨层直写上游表。 |
+| 支付与履约 | `COUPON_TEMPLATE`、`USER_COUPON`、`PAYMENT`、`LOGISTICS`、`LOGISTICS_TRACK`、`REVIEW` | `"USER"`、`ORDER_MAIN`、`ORDER_ITEM`、`PRODUCT`、`SKU` | 支付成功后通过订单和库存接口完成状态流转。 |
+| 统计与导出 | `ORDER_STAT_SNAPSHOT` | `ORDER_MAIN`、`ORDER_ITEM`、`PAYMENT`、`PRODUCT`、`SKU`、`INVENTORY_LOG`、`"USER"`、`REVIEW`、`LOGISTICS` | 统计和导出默认只读上游业务表，快照写入 `ORDER_STAT_SNAPSHOT`。 |
 
 ### 5.2 表级依赖关系
 
@@ -259,7 +252,7 @@ GET /api/v1/system/db-check
 - 查询 SKU 只用于校验，创建订单真正锁定库存仍必须调用 `IInventoryService.LockForOrderAsync`，不能直接修改 `SKU`。
 - 订单创建必须通过 `IInventoryService.LockForOrderAsync` 锁库存，通过 `ICouponService.ValidateAsync` 校验优惠券。
 - 订单取消必须通过 `IInventoryService.ReleaseForCancelledOrderAsync` 释放锁定库存。
-- 支付成功必须通过 `IOrderService.MarkPaidAsync`、`IInventoryService.DeductForPaidOrderAsync`、`ICouponService.UseForOrderAsync` 串起状态流转。
+- 订单创建必须在同一事务中写入订单、锁定库存并通过 `ICouponService.UseForOrderAsync` 原子核销优惠券；支付成功再通过 `IOrderService.MarkPaidAsync` 和 `IInventoryService.DeductForPaidOrderAsync` 串起状态流转。
 - 后台关键写操作统一通过 `IOperationLogService` 写 `OPERATION_LOG`。
 - 统计和导出默认只读上游表；如果要增加统计口径，先和对应业务表主责人确认状态含义。
 - 修改表结构、外键、状态字段、索引时，必须同步更新 `migration/init_database.sql`、`migration/database_objects.sql`（若对象依赖这些结构）、本文件和相关 DTO/Service 接口。
@@ -278,10 +271,12 @@ GET /api/v1/system/db-check
 | --- | --- |
 | `USER` | 普通用户，可以浏览商品、购物车、下单、评价。 |
 | `SERVICE` | 客服，可以处理后台订单、发货等客服相关操作。 |
-| `ADMIN` | 管理员，可以维护用户、商品、统计等后台功能。 |
+| `ADMIN` | 内置超级管理员，可以维护用户、商品、统计等后台功能；动态权限绑定只读，始终保留完整后台权限。 |
 | `CustomerOnly` | 需要登录用户。当前包含 `USER`、`SERVICE`、`ADMIN`，方便后台角色也能访问自己的用户功能。 |
 | `ServiceOrAdmin` | 客服或管理员可以访问。 |
 | `AdminOnly` | 只有管理员可以访问。 |
+
+账号允许绑定多个角色时，界面主角色统一按 `ADMIN > SERVICE > USER` 解析；首页、导航和登录落点必须使用同一优先级。当前管理员不能禁用自己或移除自己的 `ADMIN` 角色，系统也必须始终保留至少一个启用的管理员。
 
 Controller 上加权限时用 `[Authorize(Policy = AuthConstants.Policies.AdminOnly)]` 这类写法；公开页面和公开接口用 `[AllowAnonymous]`。
 
@@ -313,14 +308,14 @@ JSON API 权限要和页面入口匹配：
 - 系统健康检查、注册、登录、商品浏览和商品评价列表是公开接口，用 `[AllowAnonymous]`。
 - `POST /api/v1/auth/logout` 和 `GET /api/v1/auth/me` 必须是 `CustomerOnly`，只服务已登录用户。
 - 用户侧购物车、订单、地址、优惠券、支付、物流查询和评价创建接口使用 `CustomerOnly`。
-- 后台订单、发货、物流轨迹和后台首页摘要使用 `ServiceOrAdmin`。
+- 后台订单、取消待支付订单、发货、物流轨迹和后台首页摘要使用 `ServiceOrAdmin`。
 - 后台用户、商品、优惠券模板、评价审核、统计和导出使用 `AdminOnly`。
 
 路由写法说明：
 
 - `GET /api/v1/products`：查询列表。
-- `POST /api/v1/products`：新增数据。
-- `PUT /api/v1/products/{productId}`：修改指定 ID 的数据，`{productId}` 是路径参数。
+- `POST /api/v1/admin/products`：管理员新增商品。
+- `PUT /api/v1/admin/products/{productId}`：管理员修改指定商品，`{productId}` 是路径参数。
 - `DELETE /api/v1/cart/items/{cartItemId}`：删除指定 ID 的数据。
 - `GET|POST /api/v1/addresses`：同一个地址支持 GET 和 POST 两种方法，不是一个真的 HTTP 方法名。
 
@@ -393,6 +388,7 @@ JSON API 权限要和页面入口匹配：
 - `GET /api/v1/payments/{orderId}`
 - `POST /api/v1/payments/callback/simulated`
 - `POST /api/v1/admin/orders/{orderId}/shipments`
+- `GET /api/v1/admin/orders/{orderId}/logistics`
 - `GET /api/v1/logistics/{orderId}`
 - `POST /api/v1/admin/logistics/{logisticsId}/tracks`
 - `POST /api/v1/reviews`
@@ -535,7 +531,7 @@ src/ECommerce.Web/wwwroot/js/admin-dashboard.js
 - 需要绑定 class、style 时使用 `v-bind:class`、`v-bind:style`，写法保持清晰。
 - 当前没有引入 Vite/npm 前端构建流程；如果后续要改为独立 Vue 工程，必须先统一更新本文档和项目结构。
 
-Dashboard 样板当前使用示例数据，后续由第 6 人接入：
+Dashboard 已读取真实统计服务；后台首页展示运营摘要，统计页负责日/月趋势、热销排行和 Excel 导出：
 
 ```text
 GET /api/v1/admin/dashboard/summary
@@ -572,7 +568,7 @@ Controllers/Api/AdminXxxApiController.cs
 提交信息：
 
 ```text
-<type>(<scope>)：中文说明
+<type>(<scope>): 中文说明
 ```
 
 改完必须尽量运行：

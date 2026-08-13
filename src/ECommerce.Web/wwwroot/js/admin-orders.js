@@ -18,7 +18,8 @@
                     endTime: ''
                 },
                 statusCounts: {},
-                showShipModal: false,
+                shipping: false,
+                shipModal: null,
                 shipment: {
                     orderId: null,
                     companyName: '',
@@ -42,22 +43,34 @@
             }
         },
         mounted() {
+            this.shipModal = bootstrap.Modal.getOrCreateInstance(this.$refs.shipModalElement);
+            this.$refs.shipModalElement.addEventListener('shown.bs.modal', () => {
+                this.$refs.shipmentCompanyInput?.focus();
+            });
             this.loadOrders();
         },
+        beforeUnmount() {
+            this.shipModal?.dispose();
+        },
         methods: {
+            buildFilterParams(includePagination = false) {
+                const params = new URLSearchParams();
+                if (includePagination) {
+                    params.set('pageIndex', this.pageIndex);
+                    params.set('pageSize', this.pageSize);
+                }
+                if (this.filters.orderNo) params.append('orderNo', this.filters.orderNo);
+                if (this.filters.userId) params.append('userId', this.filters.userId);
+                if (this.filters.status !== '') params.append('status', this.filters.status);
+                if (this.filters.startTime) params.append('startTime', this.filters.startTime);
+                if (this.filters.endTime) params.append('endTime', this.filters.endTime);
+                return params;
+            },
+
             async loadOrders() {
                 this.loading = true;
                 try {
-                    const params = new URLSearchParams({
-                        pageIndex: this.pageIndex,
-                        pageSize: this.pageSize
-                    });
-
-                    if (this.filters.orderNo) params.append('orderNo', this.filters.orderNo);
-                    if (this.filters.userId) params.append('userId', this.filters.userId);
-                    if (this.filters.status) params.append('status', this.filters.status);
-                    if (this.filters.startTime) params.append('startTime', this.filters.startTime);
-                    if (this.filters.endTime) params.append('endTime', this.filters.endTime);
+                    const params = this.buildFilterParams(true);
 
                     const response = await fetch(`/api/v1/admin/orders?${params.toString()}`, {
                         headers: { 'Accept': 'application/json' }
@@ -77,6 +90,34 @@
                 } finally {
                     this.loading = false;
                 }
+            },
+
+            applyFilters() {
+                if (this.filters.startTime && this.filters.endTime
+                    && new Date(this.filters.startTime) > new Date(this.filters.endTime)) {
+                    window.appToast?.('开始时间不能晚于结束时间', 'warning');
+                    return;
+                }
+
+                this.pageIndex = 1;
+                this.loadOrders();
+            },
+
+            resetFilters() {
+                this.filters = {
+                    orderNo: '',
+                    userId: null,
+                    status: '',
+                    startTime: '',
+                    endTime: ''
+                };
+                this.pageIndex = 1;
+                this.loadOrders();
+            },
+
+            exportOrders() {
+                const params = this.buildFilterParams();
+                window.location.assign(`/api/v1/admin/exports/orders?${params.toString()}`);
             },
 
             calculateStatusCounts() {
@@ -125,7 +166,7 @@
                 this.shipment.orderId = orderId;
                 this.shipment.companyName = '';
                 this.shipment.trackingNo = '';
-                this.showShipModal = true;
+                this.shipModal?.show();
             },
 
             async submitShipment() {
@@ -134,6 +175,7 @@
                     return;
                 }
 
+                this.shipping = true;
                 try {
                     const response = await fetch(`/api/v1/admin/orders/${this.shipment.orderId}/shipments`, {
                         method: 'POST',
@@ -149,20 +191,23 @@
                     });
                     const result = await response.json();
 
-                    if (result.success) {
-                        this.showShipModal = false;
-                        this.loadOrders();
+                    if (response.ok && result.success) {
+                        this.shipModal?.hide();
+                        window.appToast?.('发货成功，物流信息已创建', 'success');
+                        await this.loadOrders();
                     } else {
-                        alert(result.message || '发货失败');
+                        window.appToast?.(result.message || '发货失败', 'danger');
                     }
                 } catch (error) {
                     console.error('发货异常:', error);
-                    alert('发货失败，请稍后重试');
+                    window.appToast?.('发货失败，请稍后重试', 'danger');
+                } finally {
+                    this.shipping = false;
                 }
             },
 
             async adminCancelOrder(orderId) {
-                if (!confirm('确定要强制取消这个订单吗？此操作不可恢复！')) return;
+                if (!confirm('确定要取消这个待支付订单吗？库存和优惠券将自动恢复。')) return;
 
                 try {
                     const response = await fetch(`/api/v1/admin/orders/${orderId}/cancel`, {
@@ -171,18 +216,19 @@
                             'Content-Type': 'application/json',
                             'Accept': 'application/json'
                         },
-                        body: JSON.stringify({ reason: '后台强制取消' })
+                        body: JSON.stringify({ reason: '后台取消' })
                     });
                     const result = await response.json();
 
-                    if (result.success) {
-                        this.loadOrders();
+                    if (response.ok && result.success) {
+                        window.appToast?.('订单已取消，相关资源已恢复', 'success');
+                        await this.loadOrders();
                     } else {
-                        alert(result.message || '取消订单失败');
+                        window.appToast?.(result.message || '取消订单失败', 'danger');
                     }
                 } catch (error) {
                     console.error('取消订单异常:', error);
-                    alert('取消订单失败，请稍后重试');
+                    window.appToast?.('取消订单失败，请稍后重试', 'danger');
                 }
             },
 

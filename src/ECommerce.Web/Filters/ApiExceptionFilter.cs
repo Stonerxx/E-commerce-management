@@ -4,6 +4,7 @@ using ECommerce.Shared.Exceptions;
 using ECommerce.Web.Errors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Oracle.ManagedDataAccess.Client;
 
 namespace ECommerce.Web.Filters;
@@ -14,14 +15,25 @@ namespace ECommerce.Web.Filters;
 public sealed class ApiExceptionFilter : IExceptionFilter
 {
     private readonly ILogger<ApiExceptionFilter> _logger;
+    private readonly IWebHostEnvironment _environment;
 
-    public ApiExceptionFilter(ILogger<ApiExceptionFilter> logger)
+    public ApiExceptionFilter(
+        ILogger<ApiExceptionFilter> logger,
+        IWebHostEnvironment environment)
     {
         _logger = logger;
+        _environment = environment;
     }
 
     public void OnException(ExceptionContext context)
     {
+        if (!context.ActionDescriptor.EndpointMetadata.Any(metadata => metadata is IApiBehaviorMetadata))
+        {
+            // MVC pages must continue to the HTML exception handler instead of
+            // rendering an API JSON envelope in the browser.
+            return;
+        }
+
         var traceId = context.HttpContext.TraceIdentifier;
 
         if (context.Exception is BusinessException businessException)
@@ -37,9 +49,18 @@ public sealed class ApiExceptionFilter : IExceptionFilter
 
         if (context.Exception is OracleException oracleException)
         {
-            _logger.LogError(oracleException, "Oracle database error. TraceId: {TraceId}", traceId);
+            _logger.LogError(
+                oracleException,
+                "Oracle database error {OracleErrorNumber}. TraceId: {TraceId}",
+                oracleException.Number,
+                traceId);
+
+            var message = _environment.IsDevelopment()
+                ? $"Oracle 错误 {oracleException.Number}: {oracleException.Message}"
+                : "数据库访问失败，请稍后重试";
+
             context.Result = new ObjectResult(
-                ApiResponse<object?>.Fail("ORACLE_DATABASE_ERROR", "数据库访问失败，请检查网络、环境变量或SQL语句", traceId))
+                ApiResponse<object?>.Fail("ORACLE_DATABASE_ERROR", message, traceId))
             {
                 StatusCode = StatusCodes.Status500InternalServerError
             };

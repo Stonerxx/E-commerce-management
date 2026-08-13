@@ -4,6 +4,7 @@ using ECommerce.Application.Services;
 using ECommerce.Domain.Entities;
 using ECommerce.Infrastructure.Repositories;
 using ECommerce.Shared.Exceptions;
+using ECommerce.Shared.Contracts;
 
 namespace ECommerce.Infrastructure.Services;
 
@@ -32,6 +33,11 @@ public sealed class SkuService : ISkuService
     public async Task<IReadOnlyList<SkuDto>> GetByProductAsync(long productId, CancellationToken cancellationToken = default)
     {
         return await _skuRepository.GetByProductAsync(productId, cancellationToken);
+    }
+
+    public Task<PagedResult<AdminSkuListItemDto>> SearchAdminAsync(AdminSkuQuery query, CancellationToken cancellationToken = default)
+    {
+        return _skuRepository.SearchAdminAsync(query, cancellationToken);
     }
 
     public async Task<long> CreateAsync(long productId, SkuSaveRequest request, long operatorId, CancellationToken cancellationToken = default)

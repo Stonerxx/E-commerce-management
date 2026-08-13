@@ -10,7 +10,8 @@ public sealed record CouponTemplateRequest(
     int TotalCount,
     DateTime StartTime,
     DateTime EndTime,
-    int Status);
+    int Status,
+    int? ApplicableCategoryId = null);
 
 public sealed record CouponTemplateQuery : PageQuery
 {
@@ -29,7 +30,9 @@ public sealed record CouponTemplateDto(
     int ReceivedCount,
     DateTime StartTime,
     DateTime EndTime,
-    int Status);
+    int Status,
+    int? ApplicableCategoryId = null,
+    string? ApplicableCategoryName = null);
 
 public sealed record UserCouponDto(
     long UserCouponId,
@@ -39,11 +42,23 @@ public sealed record UserCouponDto(
     int Status,
     DateTime ReceivedAt,
     DateTime? UsedAt,
-    long? OrderId);
+    long? OrderId,
+    DateTime StartTime,
+    DateTime EndTime,
+    int Type = 0,
+    decimal Amount = 0,
+    decimal MinAmount = 0,
+    int? ApplicableCategoryId = null,
+    string? ApplicableCategoryName = null);
 
-public sealed record CouponValidationRequest(decimal OrderAmount);
+public sealed record CouponValidationRequest(
+    decimal OrderAmount = 0,
+    IReadOnlyList<long>? CartItemIds = null);
 
 public sealed record CouponValidationDto(
     bool Available,
     decimal DiscountAmount,
-    string? Reason);
+    string? Reason,
+    decimal EligibleAmount = 0,
+    int? ApplicableCategoryId = null,
+    string? ApplicableCategoryName = null);

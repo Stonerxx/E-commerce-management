@@ -2,6 +2,7 @@ using ECommerce.Application.DTOs;
 using ECommerce.Application.Services;
 using ECommerce.Shared.Constants;
 using ECommerce.Shared.Exceptions;
+using ECommerce.Web.Security;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,6 +25,11 @@ public sealed class AccountController : Controller
     [AllowAnonymous]
     public IActionResult Login([FromQuery] string? returnUrl = null)
     {
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return RedirectAfterAuthentication();
+        }
+
         SetLoginViewData(returnUrl);
         return View();
     }
@@ -65,6 +71,11 @@ public sealed class AccountController : Controller
     [AllowAnonymous]
     public IActionResult Register()
     {
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return RedirectAfterAuthentication();
+        }
+
         return View();
     }
 
@@ -134,16 +145,12 @@ public sealed class AccountController : Controller
             return LocalRedirect(returnUrl);
         }
 
-        return Redirect(GetLoginRedirectUrl(session));
+        return Redirect(UserRoleResolver.GetLandingPath(session.Roles));
     }
 
-    private static string GetLoginRedirectUrl(UserSessionDto session)
+    private IActionResult RedirectAfterAuthentication()
     {
-        return session.Roles.Any(role =>
-            string.Equals(role, AuthConstants.Roles.Admin, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(role, AuthConstants.Roles.Service, StringComparison.OrdinalIgnoreCase))
-            ? "/admin"
-            : "/";
+        return Redirect(UserRoleResolver.GetLandingPath(User));
     }
 
     private void SetLoginViewData(string? returnUrl)

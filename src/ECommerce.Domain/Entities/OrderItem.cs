@@ -8,6 +8,9 @@ public class OrderItem
 
     public long SkuId { get; set; }
 
+    // 查询订单详情时由 SKU 关联得到，不是 ORDER_ITEM 表字段。
+    public long ProductId { get; set; }
+
     public string ProductNameSnap { get; set; } = string.Empty;
 
     public string SpecSnap { get; set; } = string.Empty;

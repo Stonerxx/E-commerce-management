@@ -21,7 +21,7 @@ public sealed record ReviewDto(
     long ReviewId,
     long OrderId,
     long ProductId,
-    long UserId,
+    long? UserId,
     int Rating,
     string? Content,
     IReadOnlyList<string> Images,

@@ -1,4 +1,5 @@
 using ECommerce.Application.DTOs;
+using ECommerce.Application.Services;
 using ECommerce.Shared.Constants;
 using ECommerce.Shared.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -10,22 +11,38 @@ namespace ECommerce.Web.Controllers.Api;
 [Authorize(Policy = AuthConstants.Policies.CustomerOnly)]
 public sealed class PaymentsApiController : ApiControllerBase
 {
-    [HttpPost("simulate")]
-    public ActionResult<ApiResponse<PaymentResultDto>> Simulate([FromBody] SimulatePaymentRequest request)
+    private readonly IPaymentService _paymentService;
+
+    public PaymentsApiController(IPaymentService paymentService)
     {
-        return NotReady<PaymentResultDto>("Simulated payment endpoint is defined and awaiting implementation.");
+        _paymentService = paymentService;
+    }
+
+    [HttpPost("simulate")]
+    public async Task<ActionResult<ApiResponse<PaymentResultDto>>> Simulate(
+        [FromBody] SimulatePaymentRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _paymentService.SimulatePayAsync(GetCurrentUserId(), request, cancellationToken);
+        return Ok(ApiResponse<PaymentResultDto>.Ok(result));
     }
 
     [HttpGet("{orderId:long}")]
-    public ActionResult<ApiResponse<PaymentDto>> GetByOrder(long orderId)
+    public async Task<ActionResult<ApiResponse<PaymentDto>>> GetByOrder(
+        long orderId,
+        CancellationToken cancellationToken)
     {
-        return NotReady<PaymentDto>("Payment query endpoint is defined and awaiting implementation.");
+        var result = await _paymentService.GetByOrderAsync(GetCurrentUserId(), orderId, cancellationToken);
+        return Ok(ApiResponse<PaymentDto>.Ok(result));
     }
 
     [HttpPost("callback/simulated")]
     [AllowAnonymous]
-    public ActionResult<ApiResponse<object?>> SimulatedCallback([FromBody] SimulatedPaymentCallback request)
+    public async Task<ActionResult<ApiResponse<object?>>> SimulatedCallback(
+        [FromBody] SimulatedPaymentCallback request,
+        CancellationToken cancellationToken)
     {
-        return NotReady<object?>("Simulated payment callback endpoint is defined and awaiting implementation.");
+        await _paymentService.SyncSimulatedCallbackAsync(request, cancellationToken);
+        return Ok(ApiResponse<object?>.Ok(null));
     }
 }

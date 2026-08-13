@@ -2,6 +2,7 @@
 using ECommerce.Application.Services;
 using ECommerce.Domain.Enums;
 using ECommerce.Shared.Abstractions;
+using ECommerce.Shared.Exceptions;
 using Microsoft.Extensions.Logging;
 using Oracle.ManagedDataAccess.Client;
 using System.Data.Common;
@@ -78,19 +79,32 @@ public class StatisticsService : IStatisticsService
 
     public async Task<OrderStatisticsDto> GetOrderStatisticsAsync(StatisticsQuery query, CancellationToken cancellationToken = default)
     {
-        var connection = await _unitOfWork.GetOpenConnectionAsync();
+        if (query.EndDate.Date < query.StartDate.Date)
+        {
+            throw new BusinessException("STATISTICS_RANGE_INVALID", "统计结束日期不能早于开始日期");
+        }
+
+        var dimension = query.Dimension?.Trim().ToLowerInvariant();
+        if (dimension is not "day" and not "month")
+        {
+            throw new BusinessException("STATISTICS_DIMENSION_INVALID", "统计维度只能是 day 或 month");
+        }
+
+        var connection = await _unitOfWork.GetOpenConnectionAsync(cancellationToken);
 
         await using var command = connection.CreateCommand();
 
-        command.CommandText = @"
-        SELECT 
-            s.STAT_DATE AS ""Date"", 
-            s.ORDER_COUNT AS OrderCount, 
-            s.PAID_COUNT AS PaidCount, 
-            s.SALES_AMOUNT AS SalesAmount
+        var dateExpression = dimension == "month" ? "TRUNC(s.STAT_DATE, 'MM')" : "s.STAT_DATE";
+        command.CommandText = $@"
+        SELECT
+            {dateExpression} AS ""Date"",
+            SUM(s.ORDER_COUNT) AS OrderCount,
+            SUM(s.PAID_COUNT) AS PaidCount,
+            SUM(s.SALES_AMOUNT) AS SalesAmount
         FROM ORDER_STAT_SNAPSHOT s
         WHERE s.STAT_DATE >= :StartDate AND s.STAT_DATE <= :EndDate
-        ORDER BY s.STAT_DATE ASC";
+        GROUP BY {dateExpression}
+        ORDER BY {dateExpression} ASC";
 
         command.Parameters.Add(new OracleParameter(":StartDate", OracleDbType.Date) { Value = query.StartDate.Date });
         command.Parameters.Add(new OracleParameter(":EndDate", OracleDbType.Date) { Value = query.EndDate.Date });

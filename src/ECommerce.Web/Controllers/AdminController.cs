@@ -18,7 +18,7 @@ public sealed class AdminController : Controller
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
     public IActionResult Statistics()
     {
-        return View("Dashboard");
+        return View();
     }
 
     [HttpGet("/admin/users")]
@@ -87,6 +87,20 @@ public sealed class AdminController : Controller
     [HttpGet("/admin/inventory/logs")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
     public IActionResult InventoryLogs()
+    {
+        return View();
+    }
+
+    [HttpGet("/admin/coupons")]
+    [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
+    public IActionResult Coupons()
+    {
+        return View();
+    }
+
+    [HttpGet("/admin/reviews")]
+    [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
+    public IActionResult Reviews()
     {
         return View();
     }

@@ -1,6 +1,7 @@
 using System.Data.Common;
 using System.Text;
 using ECommerce.Domain.Entities;
+using ECommerce.Infrastructure.Data;
 using ECommerce.Shared.Abstractions;
 
 namespace ECommerce.Infrastructure.Repositories;
@@ -112,7 +113,7 @@ public sealed class CategoryRepository : ICategoryRepository
         command.Parameters.Add(newIdParam);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
-        return Convert.ToInt32(newIdParam.Value);
+        return OracleValueConverter.ToInt32(newIdParam.Value);
     }
 
     public async Task<int> UpdateAsync(Category category, CancellationToken cancellationToken = default)

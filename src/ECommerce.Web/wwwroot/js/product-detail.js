@@ -10,50 +10,104 @@
             const selectedImage = ref('');
             const quantity = ref(1);
             const selectedSpecs = ref({});
+            const reviews = ref([]);
+            const reviewsLoading = ref(false);
+            const reviewPage = ref(1);
+            const reviewTotalCount = ref(0);
+            const reviewTotalPages = ref(1);
+            const recommendations = ref([]);
+            const recommendationsLoading = ref(false);
 
             const productId = parseInt(window.location.pathname.split('/')[2]);
 
-            const specGroups = computed(() => {
-                if (!product.value || !product.value.specs) return [];
-                const groups = {};
-                for (const spec of product.value.specs) {
-                    if (!groups[spec.specName]) {
-                        groups[spec.specName] = [];
-                    }
-                    if (!groups[spec.specName].includes(spec.specValue)) {
-                        groups[spec.specName].push(spec.specValue);
-                    }
+            function parseSkuSpecs(sku) {
+                try {
+                    const parsed = JSON.parse(sku.specDescJson);
+                    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+                        ? parsed
+                        : null;
+                } catch {
+                    return null;
                 }
-                return Object.entries(groups).map(([name, values]) => ({
-                    specName: name,
-                    values: values
-                }));
+            }
+
+            const enabledSkuSelections = computed(() => {
+                if (!product.value || !Array.isArray(product.value.skus)) return [];
+                return product.value.skus
+                    .filter(sku => Number(sku.status) === 1)
+                    .map(sku => ({ sku, specs: parseSkuSpecs(sku) }))
+                    .filter(item => item.specs);
             });
 
-            const currentSku = computed(() => {
-                if (!product.value || !product.value.skus) return null;
-                const enabledSkus = product.value.skus.filter(sku => sku.status === 1);
-                const selectedEntries = Object.entries(selectedSpecs.value)
-                    .filter(([_, v]) => v);
-                if (selectedEntries.length === 0) return enabledSkus[0] || null;
+            const specGroups = computed(() => {
+                if (!product.value) return [];
 
-                for (const sku of enabledSkus) {
-                    let specObj = {};
-                    try {
-                        specObj = JSON.parse(sku.specDescJson);
-                    } catch {
-                        continue;
-                    }
-                    let match = true;
-                    for (const [name, val] of selectedEntries) {
-                        if (specObj[name] !== val) {
-                            match = false;
-                            break;
+                // SKU 中的 JSON 才是实际下单组合。规格定义用于排序和文案，但旧数据若漏了
+                // 维度或选项，仍应以可售 SKU 为准，避免出现“选完了却不能购买”。
+                const skuGroups = new Map();
+                for (const item of enabledSkuSelections.value) {
+                    for (const [name, value] of Object.entries(item.specs)) {
+                        if (!skuGroups.has(name)) {
+                            skuGroups.set(name, []);
+                        }
+                        if (!skuGroups.get(name).includes(value)) {
+                            skuGroups.get(name).push(value);
                         }
                     }
-                    if (match) return sku;
                 }
-                return null;
+
+                if (skuGroups.size === 0) return [];
+
+                const definedOrder = [];
+                const definedValues = new Map();
+                for (const spec of (product.value.specs || [])) {
+                    if (!skuGroups.has(spec.specName)) continue;
+                    if (!definedValues.has(spec.specName)) {
+                        definedOrder.push(spec.specName);
+                        definedValues.set(spec.specName, []);
+                    }
+                    if (!definedValues.get(spec.specName).includes(spec.specValue)) {
+                        definedValues.get(spec.specName).push(spec.specValue);
+                    }
+                }
+
+                const names = [
+                    ...definedOrder,
+                    ...Array.from(skuGroups.keys()).filter(name => !definedValues.has(name))
+                ];
+
+                return names.map(name => {
+                    const skuValues = skuGroups.get(name);
+                    const preferredValues = (definedValues.get(name) || [])
+                        .filter(value => skuValues.includes(value));
+                    return {
+                        specName: name,
+                        values: [
+                            ...preferredValues,
+                            ...skuValues.filter(value => !preferredValues.includes(value))
+                        ]
+                    };
+                });
+            });
+
+            const missingSpecNames = computed(() => specGroups.value
+                .map(group => group.specName)
+                .filter(name => !selectedSpecs.value[name]));
+
+            const currentSku = computed(() => {
+                if (enabledSkuSelections.value.length === 0) return null;
+
+                const requiredNames = specGroups.value.map(group => group.specName);
+                if (requiredNames.length === 0) {
+                    return enabledSkuSelections.value.length === 1
+                        ? enabledSkuSelections.value[0].sku
+                        : null;
+                }
+                if (missingSpecNames.value.length > 0) return null;
+
+                const match = enabledSkuSelections.value.find(item =>
+                    requiredNames.every(name => item.specs[name] === selectedSpecs.value[name]));
+                return match ? match.sku : null;
             });
 
             const availableStock = computed(() => {
@@ -63,18 +117,63 @@
 
             const currentSkuSpecText = computed(() => {
                 if (!currentSku.value) return '';
-                try {
-                    const specObj = JSON.parse(currentSku.value.specDescJson);
-                    return Object.entries(specObj)
-                        .map(([k, v]) => `${k}: ${v}`)
-                        .join(' / ');
-                } catch {
-                    return '';
-                }
+                return specGroups.value
+                    .map(group => `${group.specName}: ${selectedSpecs.value[group.specName]}`)
+                    .join(' / ');
             });
 
+            const canPurchase = computed(() => Boolean(currentSku.value) && availableStock.value > 0);
+
+            const selectionHint = computed(() => {
+                if (enabledSkuSelections.value.length === 0) return '暂无可购买规格';
+                if (missingSpecNames.value.length > 0) {
+                    return `请选择：${missingSpecNames.value.join('、')}`;
+                }
+                if (!currentSku.value) return '该规格组合暂不可购买，请重新选择';
+                if (availableStock.value <= 0) return '当前规格库存不足';
+                return '';
+            });
+
+            function isSpecOptionAvailable(specName, specValue) {
+                const groupIndex = specGroups.value.findIndex(group => group.specName === specName);
+                if (groupIndex < 0) return false;
+
+                const candidate = { [specName]: specValue };
+                for (let index = 0; index < groupIndex; index++) {
+                    const previousName = specGroups.value[index].specName;
+                    const previousValue = selectedSpecs.value[previousName];
+                    if (previousValue) candidate[previousName] = previousValue;
+                }
+
+                return enabledSkuSelections.value.some(item =>
+                    Object.entries(candidate).every(([name, value]) => item.specs[name] === value));
+            }
+
             function selectSpec(specName, specValue) {
-                selectedSpecs.value[specName] = specValue;
+                if (!isSpecOptionAvailable(specName, specValue)) return;
+
+                const groupIndex = specGroups.value.findIndex(group => group.specName === specName);
+                const nextSelection = { ...selectedSpecs.value, [specName]: specValue };
+                const hasMatchingSku = selection => enabledSkuSelections.value.some(item =>
+                    Object.entries(selection).every(([name, value]) => item.specs[name] === value));
+
+                // 更改前置维度时，仅清理与新选择冲突的后续维度；兼容组合保留。
+                if (!hasMatchingSku(nextSelection)) {
+                    for (let index = specGroups.value.length - 1; index > groupIndex; index--) {
+                        delete nextSelection[specGroups.value[index].specName];
+                        if (hasMatchingSku(nextSelection)) break;
+                    }
+                }
+                selectedSpecs.value = nextSelection;
+                quantity.value = 1;
+            }
+
+            function normalizeQuantity() {
+                const normalized = Math.floor(Number(quantity.value));
+                quantity.value = Number.isFinite(normalized) ? Math.max(1, normalized) : 1;
+                if (availableStock.value > 0) {
+                    quantity.value = Math.min(quantity.value, availableStock.value);
+                }
             }
 
             async function loadProduct() {
@@ -89,15 +188,7 @@
                     if (result.success && result.data) {
                         product.value = result.data;
                         selectedImage.value = result.data.mainImage;
-
-                        if (result.data.skus && result.data.skus.length > 0) {
-                            try {
-                                const firstSkuSpecs = JSON.parse(result.data.skus[0].specDescJson);
-                                selectedSpecs.value = { ...firstSkuSpecs };
-                            } catch {
-                                selectedSpecs.value = {};
-                            }
-                        }
+                        selectedSpecs.value = {};
                     } else {
                         errorMsg.value = result.message || '商品不存在';
                     }
@@ -111,6 +202,12 @@
 
             async function addToCart() {
                 if (!currentSku.value) return;
+
+                normalizeQuantity();
+                if (availableStock.value <= 0 || quantity.value > availableStock.value) {
+                    window.appToast?.('当前库存不足，请调整购买数量', 'warning');
+                    return;
+                }
 
                 addingToCart.value = true;
                 try {
@@ -131,29 +228,98 @@
                         return;
                     }
                     if (response.status === 403) {
-                        alert('当前账号没有加入购物车权限');
+                        window.appToast?.('当前账号没有加入购物车权限', 'warning');
                         return;
                     }
 
                     const result = await response.json().catch(() => null);
 
                     if (response.ok && result?.success) {
-                        alert('已添加到购物车');
+                        window.appToast?.('已添加到购物车', 'success');
                     } else {
-                        alert(result?.message || '添加失败');
+                        window.appToast?.(result?.message || '添加失败', 'danger');
                     }
                 } catch (error) {
                     console.error('加入购物车失败:', error);
-                    alert('添加失败，请稍后重试');
+                    window.appToast?.('添加失败，请稍后重试', 'danger');
                 } finally {
                     addingToCart.value = false;
                 }
             }
 
+            async function loadReviews(page = 1) {
+                if (page < 1) return;
+                reviewsLoading.value = true;
+                try {
+                    const response = await fetch(`/api/v1/products/${productId}/reviews?pageIndex=${page}&pageSize=5`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) {
+                        throw new Error(result.message || '评价加载失败');
+                    }
+                    reviews.value = result.data.items || [];
+                    reviewPage.value = result.data.pageIndex || page;
+                    reviewTotalCount.value = result.data.totalCount || 0;
+                    reviewTotalPages.value = Math.max(1, result.data.totalPages || 1);
+                } catch (error) {
+                    console.error('加载评价失败:', error);
+                    reviews.value = [];
+                } finally {
+                    reviewsLoading.value = false;
+                }
+            }
+
+            async function loadRecommendations() {
+                recommendationsLoading.value = true;
+                try {
+                    const response = await fetch(`/api/v1/products/${productId}/recommendations?limit=6`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const result = await response.json();
+                    recommendations.value = response.ok && result.success ? (result.data || []) : [];
+                } catch (error) {
+                    console.error('加载推荐商品失败:', error);
+                    recommendations.value = [];
+                } finally {
+                    recommendationsLoading.value = false;
+                }
+            }
+
+            function formatReviewDate(value) {
+                return value ? new Date(value).toLocaleString('zh-CN') : '-';
+            }
+
             async function buyNow() {
                 if (!currentSku.value) return;
 
+                normalizeQuantity();
+                if (availableStock.value <= 0 || quantity.value > availableStock.value) {
+                    window.appToast?.('当前库存不足，请调整购买数量', 'warning');
+                    return;
+                }
+
                 try {
+                    const addressResponse = await fetch('/api/v1/addresses', {
+                        headers: { 'Accept': 'application/json' }
+                    });
+
+                    if (addressResponse.status === 401) {
+                        window.location.href = '/account/login';
+                        return;
+                    }
+
+                    const addressResult = await addressResponse.json().catch(() => null);
+                    if (!addressResponse.ok || !addressResult?.success) {
+                        window.appToast?.(addressResult?.message || '收货地址检查失败', 'danger');
+                        return;
+                    }
+
+                    if (!Array.isArray(addressResult.data) || addressResult.data.length === 0) {
+                        window.appToast?.('请先添加收货地址后再购买', 'warning');
+                        return;
+                    }
+
                     const addResponse = await fetch('/api/v1/cart/items', {
                         method: 'POST',
                         headers: {
@@ -172,13 +338,13 @@
                     }
 
                     if (addResponse.status === 403) {
-                        alert('当前账号没有立即购买权限');
+                        window.appToast?.('当前账号没有立即购买权限', 'warning');
                         return;
                     }
 
                     const addResult = await addResponse.json().catch(() => null);
                     if (!addResponse.ok || !addResult?.success) {
-                        alert(addResult?.message || '操作失败');
+                        window.appToast?.(addResult?.message || '操作失败', 'danger');
                         return;
                     }
 
@@ -196,16 +362,18 @@
                             return;
                         }
                     }
-                    alert('请前往购物车结算');
+                    window.appToast?.('商品已加入购物车，请在购物车中结算', 'info');
                     window.location.href = '/cart';
                 } catch (error) {
                     console.error('立即购买失败:', error);
-                    alert('操作失败，请稍后重试');
+                    window.appToast?.('操作失败，请稍后重试', 'danger');
                 }
             }
 
             onMounted(() => {
                 loadProduct();
+                loadReviews();
+                loadRecommendations();
             });
 
             return {
@@ -216,11 +384,24 @@
                 selectedImage,
                 quantity,
                 selectedSpecs,
+                reviews,
+                reviewsLoading,
+                reviewPage,
+                reviewTotalCount,
+                reviewTotalPages,
+                recommendations,
+                recommendationsLoading,
                 specGroups,
                 currentSku,
                 availableStock,
                 currentSkuSpecText,
+                canPurchase,
+                selectionHint,
+                isSpecOptionAvailable,
                 selectSpec,
+                normalizeQuantity,
+                loadReviews,
+                formatReviewDate,
                 addToCart,
                 buyNow
             };

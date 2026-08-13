@@ -6,30 +6,47 @@
         data() {
             return {
                 loading: false,
-                order: null
+                order: null,
+                errorMessage: '',
+                logistics: null,
+                logisticsLoading: false,
+                logisticsError: '',
+                reviewForm: null,
+                submittingReview: false
             };
         },
         mounted() {
             if (orderId > 0) {
                 this.loadOrderDetail();
+            } else {
+                this.errorMessage = '订单编号无效';
             }
         },
         methods: {
             async loadOrderDetail() {
                 this.loading = true;
+                this.errorMessage = '';
                 try {
                     const response = await fetch(`/api/v1/orders/${orderId}`, {
                         headers: { 'Accept': 'application/json' }
                     });
-                    const result = await response.json();
+                    const result = await response.json().catch(() => null);
 
-                    if (result.success && result.data) {
-                        this.order = result.data;
+                    if (!response.ok || !result?.success || !result.data) {
+                        throw new Error(result?.message || '订单详情加载失败');
+                    }
+
+                    this.order = result.data;
+                    if (this.order.status === 2 || this.order.status === 3) {
+                        await this.loadLogistics();
                     } else {
-                        console.error('加载订单详情失败:', result.message);
+                        this.logistics = null;
+                        this.logisticsError = '';
                     }
                 } catch (error) {
                     console.error('加载订单详情异常:', error);
+                    this.order = null;
+                    this.errorMessage = error instanceof Error ? error.message : '订单详情加载失败';
                 } finally {
                     this.loading = false;
                 }
@@ -67,7 +84,17 @@
                 if (!jsonStr) return '无收货信息';
                 try {
                     const data = JSON.parse(jsonStr);
-                    return `${data.receiverName}，${data.receiverPhone}，${data.province}${data.city}${data.district}${data.detailAddress}`;
+                    const valueOf = (name) => data[name]
+                        ?? data[name.charAt(0).toUpperCase() + name.slice(1)]
+                        ?? '';
+                    const contact = [valueOf('receiverName'), valueOf('receiverPhone')]
+                        .filter(Boolean)
+                        .join('，');
+                    const address = ['province', 'city', 'district', 'detailAddress']
+                        .map(valueOf)
+                        .filter(Boolean)
+                        .join('');
+                    return [contact, address].filter(Boolean).join('，') || '无收货信息';
                 } catch {
                     return jsonStr;
                 }
@@ -103,7 +130,7 @@
                     const result = await response.json();
 
                     if (result.success) {
-                        this.loadOrderDetail();
+                        await this.loadOrderDetail();
                     } else {
                         alert(result.message || '取消订单失败');
                     }
@@ -124,7 +151,7 @@
                     const result = await response.json();
 
                     if (result.success) {
-                        this.loadOrderDetail();
+                        await this.loadOrderDetail();
                     } else {
                         alert(result.message || '确认收货失败');
                     }
@@ -134,8 +161,84 @@
                 }
             },
 
+            async loadLogistics() {
+                this.logisticsLoading = true;
+                this.logisticsError = '';
+                try {
+                    const response = await fetch(`/api/v1/logistics/${orderId}`, { headers: { 'Accept': 'application/json' } });
+                    const result = await response.json().catch(() => null);
+                    if (response.ok && result?.success) {
+                        this.logistics = result.data;
+                    } else if (result?.code === 'LOGISTICS_NOT_FOUND') {
+                        this.logistics = null;
+                    } else {
+                        throw new Error(result?.message || '物流信息加载失败');
+                    }
+                } catch (error) {
+                    console.error('加载物流失败:', error);
+                    this.logistics = null;
+                    this.logisticsError = error instanceof Error ? error.message : '物流信息加载失败';
+                } finally {
+                    this.logisticsLoading = false;
+                }
+            },
+
+            logisticsStatusText(status) {
+                return ({ 0: '已揽收', 1: '运输中', 2: '派送中', 3: '已签收' })[status] || '未知';
+            },
+
+            openReview(item) {
+                this.reviewForm = {
+                    productId: item.productId,
+                    productName: item.productName,
+                    rating: 5,
+                    content: '',
+                    imageUrls: '',
+                    isAnonymous: false
+                };
+            },
+
+            async submitReview() {
+                if (!this.reviewForm) return;
+                this.submittingReview = true;
+                const images = this.reviewForm.imageUrls.split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+                try {
+                    const response = await fetch('/api/v1/reviews', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({
+                            orderId,
+                            productId: this.reviewForm.productId,
+                            rating: this.reviewForm.rating,
+                            content: this.reviewForm.content || null,
+                            images,
+                            isAnonymous: this.reviewForm.isAnonymous
+                        })
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) throw new Error(result.message || '评价提交失败');
+                    alert('评价已提交，审核通过后将在商品页展示。');
+                    this.reviewForm = null;
+                } catch (error) {
+                    alert(error.message || '评价提交失败');
+                } finally {
+                    this.submittingReview = false;
+                }
+            },
+
+            formatSpecs(value) {
+                if (!value) return '默认规格';
+                try {
+                    const specs = typeof value === 'string' ? JSON.parse(value) : value;
+                    return Object.entries(specs)
+                        .map(([name, item]) => `${name}：${item}`)
+                        .join(' · ') || '默认规格';
+                } catch {
+                    return String(value);
+                }
+            },
+
             goPay(orderId) {
-                // TEMP_DEMO_PAYMENT: member5 合入前先跳转到临时模拟支付页。
                 window.location.href = `/payment/${orderId}`;
             }
         }

@@ -1,4 +1,5 @@
 ﻿using ECommerce.Domain.Entities;
+using ECommerce.Infrastructure.Data;
 using ECommerce.Infrastructure.Models;
 using ECommerce.Shared.Abstractions;
 using Oracle.ManagedDataAccess.Client;
@@ -28,12 +29,16 @@ public class CartRepository : ICartRepository
                 c.id AS CartItemId,
                 c.sku_id AS SkuId,
                 p.id AS ProductId,
+                p.category_id AS CategoryId,
                 p.name AS ProductName,
                 s.spec_desc AS SpecDescJson,
                 COALESCE(s.sku_image, p.main_image) AS MainImage,
                 s.price AS UnitPrice,
                 c.quantity AS Quantity,
                 c.selected AS Selected,
+                GREATEST(s.stock - s.locked_stock, 0) AS AvailableStock,
+                s.status AS SkuStatus,
+                p.status AS ProductStatus,
                 c.updated_at AS UpdatedAt
             FROM cart c
             JOIN sku s ON c.sku_id = s.id
@@ -59,12 +64,16 @@ public class CartRepository : ICartRepository
                 CartItemId = reader.GetInt64(reader.GetOrdinal("CartItemId")),
                 SkuId = reader.GetInt64(reader.GetOrdinal("SkuId")),
                 ProductId = reader.GetInt64(reader.GetOrdinal("ProductId")),
+                CategoryId = reader.GetInt32(reader.GetOrdinal("CategoryId")),
                 ProductName = reader.GetString(reader.GetOrdinal("ProductName")),
                 SpecDescJson = reader.GetString(reader.GetOrdinal("SpecDescJson")),
                 MainImage = reader.GetString(reader.GetOrdinal("MainImage")),
                 UnitPrice = reader.GetDecimal(reader.GetOrdinal("UnitPrice")),
                 Quantity = reader.GetInt32(reader.GetOrdinal("Quantity")),
                 Selected = reader.GetInt32(reader.GetOrdinal("Selected")) == 1,
+                AvailableStock = reader.GetInt32(reader.GetOrdinal("AvailableStock")),
+                SkuStatus = reader.GetInt32(reader.GetOrdinal("SkuStatus")),
+                ProductStatus = reader.GetInt32(reader.GetOrdinal("ProductStatus")),
                 UpdatedAt = reader.GetDateTime(reader.GetOrdinal("UpdatedAt"))
             });
         }
@@ -154,7 +163,7 @@ public class CartRepository : ICartRepository
         cmd.Parameters.Add(pId);
 
         await cmd.ExecuteNonQueryAsync(cancellationToken);
-        cart.Id = Convert.ToInt64(pId.Value);
+        cart.Id = OracleValueConverter.ToInt64(pId.Value);
     }
 
     public async Task<int> TryIncreaseQuantityAsync(
@@ -175,6 +184,10 @@ public class CartRepository : ICartRepository
             """;
 
         await using var command = Connection.CreateCommand();
+        if (command is OracleCommand oracleCommand)
+        {
+            oracleCommand.BindByName = true;
+        }
         command.CommandText = sql;
         command.Transaction = Transaction;
         command.Parameters.Add(CreateParameter("Quantity", quantity));

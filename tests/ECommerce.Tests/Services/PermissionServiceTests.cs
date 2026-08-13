@@ -3,6 +3,7 @@ using ECommerce.Infrastructure.Repositories;
 using ECommerce.Infrastructure.Services;
 using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Constants;
+using Microsoft.Extensions.Caching.Memory;
 using Moq;
 using Xunit;
 
@@ -14,6 +15,7 @@ public sealed class PermissionServiceTests
     [InlineData("/api/v1/admin/**", "/api/v1/admin/orders/1", true)]
     [InlineData("/api/v1/admin/**", "/api/v1/admin", true)]
     [InlineData("/api/v1/admin/orders/*/shipments", "/api/v1/admin/orders/12/shipments", true)]
+    [InlineData("/api/v1/admin/orders/*/cancel", "/api/v1/admin/orders/12/cancel", true)]
     [InlineData("/api/v1/admin/orders/*/shipments", "/api/v1/admin/orders/12/logs/shipments", false)]
     [InlineData("/admin/*", "/admin/orders", true)]
     [InlineData("/admin/*", "/admin/orders/1", false)]
@@ -67,6 +69,51 @@ public sealed class PermissionServiceTests
         Assert.True(allowed);
     }
 
+    [Fact]
+    public async Task CanAccessAsync_RepeatedChecks_ShouldReuseCachedRules()
+    {
+        var rule = new PermissionDto(1, "CUSTOMER_ORDER_GET", "/api/v1/orders/**", "GET", null);
+        var repository = CreateRepository(new[] { rule }, new[] { rule });
+        var service = CreateService(repository);
+
+        Assert.True(await service.CanAccessAsync(
+            new[] { AuthConstants.Roles.User },
+            "/api/v1/orders/1",
+            "GET"));
+        Assert.True(await service.CanAccessAsync(
+            new[] { AuthConstants.Roles.User },
+            "/api/v1/orders/2",
+            "GET"));
+
+        repository.Verify(x => x.GetPermissionRulesByActionAsync(
+            "GET",
+            It.IsAny<CancellationToken>()), Times.Once);
+        repository.Verify(x => x.GetRolePermissionRulesByActionAsync(
+            It.IsAny<IReadOnlyList<string>>(),
+            "GET",
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task BindRolePermissionsAsync_AdminRole_ShouldRejectFakeEditableBindings()
+    {
+        var repository = new Mock<IPermissionRepository>();
+        repository.Setup(item => item.GetRoleNameAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(AuthConstants.Roles.Admin);
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var service = new PermissionService(repository.Object, unitOfWork.Object, CreateCache());
+
+        var exception = await Assert.ThrowsAsync<ECommerce.Shared.Exceptions.BusinessException>(() =>
+            service.BindRolePermissionsAsync(1, [1, 2, 3]));
+
+        Assert.Equal(ECommerce.Shared.Errors.ErrorCodes.AuthForbidden, exception.Code);
+        repository.Verify(item => item.ReplaceRolePermissionsAsync(
+            It.IsAny<int>(),
+            It.IsAny<IReadOnlyList<int>>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        unitOfWork.Verify(item => item.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static Mock<IPermissionRepository> CreateRepository(
         IReadOnlyList<PermissionDto> allRules,
         IReadOnlyList<PermissionDto> roleRules)
@@ -81,5 +128,8 @@ public sealed class PermissionServiceTests
 
     private static PermissionService CreateService(Mock<IPermissionRepository> repository) => new(
         repository.Object,
-        new Mock<IUnitOfWork>().Object);
+        new Mock<IUnitOfWork>().Object,
+        CreateCache());
+
+    private static IMemoryCache CreateCache() => new MemoryCache(new MemoryCacheOptions());
 }

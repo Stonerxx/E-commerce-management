@@ -106,7 +106,7 @@ CREATE TABLE "PERMISSION" (
 COMMENT ON TABLE "PERMISSION" IS '权限表';
 COMMENT ON COLUMN "PERMISSION".id IS '权限ID，自增主键';
 COMMENT ON COLUMN "PERMISSION".perm_name IS '权限名称，如订单查看';
-COMMENT ON COLUMN "PERMISSION".resource_path IS '资源路径，如/api/order/**';
+COMMENT ON COLUMN "PERMISSION".resource_path IS '资源路径，如/api/v1/orders/**';
 COMMENT ON COLUMN "PERMISSION".action IS 'HTTP 方法：GET/POST/PUT/DELETE';
 COMMENT ON COLUMN "PERMISSION".description IS '描述';
 
@@ -361,9 +361,15 @@ CREATE TABLE COUPON_TEMPLATE (
     start_time       DATE NOT NULL,
     end_time         DATE NOT NULL,
     status           NUMBER(1) DEFAULT 1 NOT NULL,
+    applicable_category_id NUMBER(10),
+    CONSTRAINT fk_coup_category FOREIGN KEY (applicable_category_id) REFERENCES "CATEGORY"(id),
     CONSTRAINT ch_coup_type CHECK (type IN (1,2)),
     CONSTRAINT ch_coup_status CHECK (status IN (0,1)),
-    CONSTRAINT ch_coup_time CHECK (end_time > start_time)
+    CONSTRAINT ch_coup_time CHECK (end_time > start_time),
+    CONSTRAINT ch_coup_amount CHECK ((type = 1 AND amount > 0 AND min_amount >= amount) OR (type = 2 AND amount > 0 AND amount <= 1)),
+    CONSTRAINT ch_coup_min_amount CHECK (min_amount >= 0),
+    CONSTRAINT ch_coup_total CHECK (total_count = -1 OR total_count >= 0),
+    CONSTRAINT ch_coup_received CHECK (received_count >= 0 AND (total_count = -1 OR received_count <= total_count))
 );
 COMMENT ON TABLE COUPON_TEMPLATE IS '优惠券模板表';
 COMMENT ON COLUMN COUPON_TEMPLATE.id IS '券模板ID，自增主键';
@@ -376,6 +382,7 @@ COMMENT ON COLUMN COUPON_TEMPLATE.received_count IS '已领取数量';
 COMMENT ON COLUMN COUPON_TEMPLATE.start_time IS '有效期开始';
 COMMENT ON COLUMN COUPON_TEMPLATE.end_time IS '有效期结束';
 COMMENT ON COLUMN COUPON_TEMPLATE.status IS '状态：0=停用，1=启用';
+COMMENT ON COLUMN COUPON_TEMPLATE.applicable_category_id IS '适用的末级商品分类ID，NULL表示全场通用';
 
 -- 15. user_coupon 表（用户优惠券表）
 CREATE TABLE USER_COUPON (
@@ -388,6 +395,7 @@ CREATE TABLE USER_COUPON (
     order_id            NUMBER(19),
     CONSTRAINT fk_uc_user FOREIGN KEY (user_id) REFERENCES "USER"(id),
     CONSTRAINT fk_uc_template FOREIGN KEY (coupon_template_id) REFERENCES COUPON_TEMPLATE(id),
+    CONSTRAINT uk_uc_user_template UNIQUE (user_id, coupon_template_id),
     CONSTRAINT ch_uc_status CHECK (status IN (0,1,2))
 );
 COMMENT ON TABLE USER_COUPON IS '用户优惠券表';
@@ -582,6 +590,7 @@ CREATE TABLE REVIEW (
     CONSTRAINT fk_rev_order FOREIGN KEY (order_id) REFERENCES ORDER_MAIN(id),
     CONSTRAINT fk_rev_product FOREIGN KEY (product_id) REFERENCES PRODUCT(id),
     CONSTRAINT fk_rev_user FOREIGN KEY (user_id) REFERENCES "USER"(id),
+    CONSTRAINT uk_review_order_product_user UNIQUE (order_id, product_id, user_id),
     CONSTRAINT ch_rev_rating CHECK (rating BETWEEN 1 AND 5),
     CONSTRAINT ch_rev_anonymous CHECK (is_anonymous IN (0,1)),
     CONSTRAINT ch_rev_status CHECK (status IN (0,1,2)),
@@ -644,7 +653,7 @@ COMMENT ON COLUMN ORDER_STAT_SNAPSHOT.stat_date IS '统计日期，唯一';
 COMMENT ON COLUMN ORDER_STAT_SNAPSHOT.order_count IS '当日订单总数';
 COMMENT ON COLUMN ORDER_STAT_SNAPSHOT.paid_count IS '当日已支付订单数';
 COMMENT ON COLUMN ORDER_STAT_SNAPSHOT.sales_amount IS '当日销售额';
-COMMENT ON COLUMN ORDER_STAT_SNAPSHOT.refund_amount IS '当日退款金额';
+COMMENT ON COLUMN ORDER_STAT_SNAPSHOT.refund_amount IS '当日退款金额，当前退款流程未实现，快照写0并预留扩展';
 COMMENT ON COLUMN ORDER_STAT_SNAPSHOT.avg_order_amount IS '客单价';
 COMMENT ON COLUMN ORDER_STAT_SNAPSHOT.new_user_count IS '当日新增用户数';
 
@@ -652,8 +661,16 @@ COMMENT ON COLUMN ORDER_STAT_SNAPSHOT.new_user_count IS '当日新增用户数';
 -- 可选：为常用查询字段创建索引（提升性能）
 -- ============================================================
 CREATE INDEX idx_address_user_id ON ADDRESS(user_id);
+-- Oracle 的函数索引只在“有效且默认”时产生键值，从数据库层保证每个用户至多一个默认地址。
+CREATE UNIQUE INDEX uk_address_one_default ON ADDRESS (
+    CASE WHEN is_deleted = 0 AND is_default = 1 THEN user_id END
+);
+CREATE INDEX idx_category_parent_status ON "CATEGORY"(parent_id, status);
 CREATE INDEX idx_product_category ON PRODUCT(category_id);
 CREATE INDEX idx_product_status ON PRODUCT(status);
+CREATE INDEX idx_product_status_created ON PRODUCT(status, created_at DESC);
+CREATE INDEX idx_product_image_product_sort ON PRODUCT_IMAGE(product_id, sort_order);
+CREATE INDEX idx_product_spec_product_sort ON PRODUCT_SPEC(product_id, sort_order);
 CREATE INDEX idx_sku_product ON SKU(product_id);
 CREATE INDEX idx_inventory_log_sku ON INVENTORY_LOG(sku_id);
 CREATE INDEX idx_inventory_log_created ON INVENTORY_LOG(created_at);
@@ -661,12 +678,14 @@ CREATE INDEX idx_cart_user ON CART(user_id);
 CREATE INDEX idx_order_main_user_id ON ORDER_MAIN(user_id);
 CREATE INDEX idx_order_main_status ON ORDER_MAIN(status);
 CREATE INDEX idx_order_main_created ON ORDER_MAIN(created_at);
+CREATE INDEX idx_order_user_status_created ON ORDER_MAIN(user_id, status, created_at DESC);
 CREATE INDEX idx_order_main_pay_expire ON ORDER_MAIN(pay_expire_time, status);
 CREATE INDEX idx_order_item_order ON ORDER_ITEM(order_id);
 CREATE INDEX idx_order_log_order ON ORDER_LOG(order_id);
 CREATE INDEX idx_logistics_track_logistics ON LOGISTICS_TRACK(logistics_id);
 CREATE INDEX idx_review_product ON REVIEW(product_id);
 CREATE INDEX idx_review_user ON REVIEW(user_id);
+CREATE INDEX idx_review_prod_status_created ON REVIEW(product_id, status, created_at DESC);
 CREATE INDEX idx_operation_log_operator ON OPERATION_LOG(operator_id);
 CREATE INDEX idx_operation_log_created ON OPERATION_LOG(created_at);
 CREATE INDEX idx_user_coupon_user ON USER_COUPON(user_id);

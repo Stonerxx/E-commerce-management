@@ -53,20 +53,27 @@
                     }
                 ],
                 topProducts: [],
+                trendDimension: "day",
                 trendData: {
                     dates: [],
                     orderCounts: [],
                     salesAmounts: []
                 },
-                chartInstance: null
+                chartInstance: null,
+                themeChangeHandler: null
             };
         },
         mounted() {
             this.refreshAll();
             window.addEventListener("resize", this.resizeChart);
+            this.themeChangeHandler = () => this.renderChart();
+            window.addEventListener("app:theme-changed", this.themeChangeHandler);
         },
         beforeUnmount() {
             window.removeEventListener("resize", this.resizeChart);
+            if (this.themeChangeHandler) {
+                window.removeEventListener("app:theme-changed", this.themeChangeHandler);
+            }
             if (this.chartInstance) {
                 this.chartInstance.dispose();
                 this.chartInstance = null;
@@ -118,17 +125,18 @@
             },
 
             async loadTrendData() {
-                const params = this.buildRangeParams(30);
+                const days = this.trendDimension === "month" ? 365 : 30;
+                const params = this.buildRangeParams(days, this.trendDimension);
                 const data = await this.apiGet(`/api/v1/admin/statistics/orders?${params}`);
                 const points = data?.points || [];
 
-                this.trendData.dates = points.map(point => this.formatShortDate(point.date));
+                this.trendData.dates = points.map(point => this.formatTrendDate(point.date));
                 this.trendData.orderCounts = points.map(point => point.orderCount || 0);
                 this.trendData.salesAmounts = points.map(point => Number(point.salesAmount || 0));
                 this.renderChart();
             },
 
-            buildRangeParams(days) {
+            buildRangeParams(days, dimension = "day") {
                 const end = new Date();
                 const start = new Date();
                 start.setDate(start.getDate() - days);
@@ -136,8 +144,26 @@
                 return new URLSearchParams({
                     startDate: this.formatDateInput(start),
                     endDate: this.formatDateInput(end),
-                    dimension: "day"
+                    dimension
                 });
+            },
+
+            async setTrendDimension(dimension) {
+                if (this.trendDimension === dimension) {
+                    return;
+                }
+
+                this.trendDimension = dimension;
+                this.loading = true;
+                this.errorMessage = "";
+                try {
+                    await this.loadTrendData();
+                    this.lastUpdated = new Date().toLocaleString();
+                } catch (error) {
+                    this.errorMessage = error.message || "加载统计数据失败";
+                } finally {
+                    this.loading = false;
+                }
             },
 
             renderChart() {
@@ -151,9 +177,15 @@
                 }
 
                 const hasData = this.trendData.dates.length > 0;
+                const dark = window.appTheme?.current() === "dark";
+                const textColor = dark ? "#a2a8bb" : "#687086";
+                const gridColor = dark ? "#303344" : "#e2e5ef";
                 this.chartInstance.setOption({
+                    backgroundColor: "transparent",
+                    color: [dark ? "#818cf8" : "#4f46e5", dark ? "#34d399" : "#059669"],
+                    textStyle: { color: textColor },
                     tooltip: { trigger: "axis" },
-                    legend: { top: 0 },
+                    legend: { top: 0, textStyle: { color: textColor } },
                     grid: {
                         left: "3%",
                         right: "4%",
@@ -163,11 +195,13 @@
                     },
                     xAxis: {
                         type: "category",
-                        data: hasData ? this.trendData.dates : ["暂无数据"]
+                        data: hasData ? this.trendData.dates : ["暂无数据"],
+                        axisLabel: { color: textColor },
+                        axisLine: { lineStyle: { color: gridColor } }
                     },
                     yAxis: [
-                        { type: "value", name: "订单数" },
-                        { type: "value", name: "销售额" }
+                        { type: "value", name: "订单数", nameTextStyle: { color: textColor }, axisLabel: { color: textColor }, splitLine: { lineStyle: { color: gridColor } } },
+                        { type: "value", name: "销售额", nameTextStyle: { color: textColor }, axisLabel: { color: textColor }, splitLine: { show: false } }
                     ],
                     series: [
                         {
@@ -183,7 +217,7 @@
                             data: hasData ? this.trendData.salesAmounts : [0]
                         }
                     ]
-                });
+                }, true);
             },
 
             resizeChart() {
@@ -198,16 +232,23 @@
             },
 
             formatDateInput(date) {
-                return date.toISOString().slice(0, 10);
+                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
             },
 
-            formatShortDate(value) {
+            formatTrendDate(value) {
                 const date = new Date(value);
                 if (Number.isNaN(date.getTime())) {
                     return "";
                 }
 
-                return `${date.getMonth() + 1}/${date.getDate()}`;
+                return this.trendDimension === "month"
+                    ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+                    : `${date.getMonth() + 1}/${date.getDate()}`;
+            }
+        },
+        computed: {
+            trendTitle() {
+                return this.trendDimension === "month" ? "近 12 个月订单趋势" : "近 30 日订单趋势";
             }
         }
     }).mount("#dashboardApp");

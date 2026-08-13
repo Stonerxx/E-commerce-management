@@ -1,4 +1,5 @@
 using ECommerce.Application.DTOs;
+using ECommerce.Application.Services;
 using ECommerce.Shared.Constants;
 using ECommerce.Shared.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -9,31 +10,52 @@ namespace ECommerce.Web.Controllers.Api;
 [Route("api/v1")]
 public sealed class ReviewsApiController : ApiControllerBase
 {
+    private readonly IReviewService _reviewService;
+
+    public ReviewsApiController(IReviewService reviewService)
+    {
+        _reviewService = reviewService;
+    }
+
     [HttpPost("reviews")]
     [Authorize(Policy = AuthConstants.Policies.CustomerOnly)]
-    public ActionResult<ApiResponse<long>> Create([FromBody] ReviewRequest request)
+    public async Task<ActionResult<ApiResponse<long>>> Create(
+        [FromBody] ReviewRequest request,
+        CancellationToken cancellationToken)
     {
-        return NotReady<long>("Review create endpoint is defined and awaiting implementation.");
+        var reviewId = await _reviewService.CreateAsync(GetCurrentUserId(), request, cancellationToken);
+        return Ok(ApiResponse<long>.Ok(reviewId));
     }
 
     [HttpGet("products/{productId:long}/reviews")]
     [AllowAnonymous]
-    public ActionResult<ApiResponse<PagedResult<ReviewDto>>> ProductReviews(long productId, [FromQuery] PageQuery query)
+    public async Task<ActionResult<ApiResponse<PagedResult<ReviewDto>>>> ProductReviews(
+        long productId,
+        [FromQuery] PageQuery query,
+        CancellationToken cancellationToken)
     {
-        return NotReady<PagedResult<ReviewDto>>("Product review list endpoint is defined and awaiting implementation.");
+        var result = await _reviewService.SearchByProductAsync(productId, query, cancellationToken);
+        return Ok(ApiResponse<PagedResult<ReviewDto>>.Ok(result));
     }
 
     [HttpGet("admin/reviews")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
-    public ActionResult<ApiResponse<PagedResult<ReviewDto>>> AdminReviews([FromQuery] ReviewQuery query)
+    public async Task<ActionResult<ApiResponse<PagedResult<ReviewDto>>>> AdminReviews(
+        [FromQuery] ReviewQuery query,
+        CancellationToken cancellationToken)
     {
-        return NotReady<PagedResult<ReviewDto>>("Admin review search endpoint is defined and awaiting implementation.");
+        var result = await _reviewService.SearchAdminAsync(query, cancellationToken);
+        return Ok(ApiResponse<PagedResult<ReviewDto>>.Ok(result));
     }
 
     [HttpPut("admin/reviews/{reviewId:long}/status")]
     [Authorize(Policy = AuthConstants.Policies.AdminOnly)]
-    public ActionResult<ApiResponse<object?>> SetStatus(long reviewId, [FromBody] StatusUpdateRequest request)
+    public async Task<ActionResult<ApiResponse<object?>>> SetStatus(
+        long reviewId,
+        [FromBody] StatusUpdateRequest request,
+        CancellationToken cancellationToken)
     {
-        return NotReady<object?>("Review status endpoint is defined and awaiting implementation.");
+        await _reviewService.SetStatusAsync(reviewId, request.Status, GetCurrentUserId(), cancellationToken);
+        return Ok(ApiResponse<object?>.Ok(null));
     }
 }

@@ -1,5 +1,6 @@
 using System.Data.Common;
 using ECommerce.Domain.Entities;
+using ECommerce.Infrastructure.Data;
 using ECommerce.Shared.Abstractions;
 
 namespace ECommerce.Infrastructure.Repositories;
@@ -74,7 +75,7 @@ public sealed class ProductSpecRepository : IProductSpecRepository
         command.Parameters.Add(newIdParam);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
-        return Convert.ToInt64(newIdParam.Value);
+        return OracleValueConverter.ToInt64(newIdParam.Value);
     }
 
     public async Task<int> DeleteByProductAsync(long productId, CancellationToken cancellationToken = default)

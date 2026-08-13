@@ -1,4 +1,3 @@
-using System.Text.Json;
 using ECommerce.Application.DTOs;
 using ECommerce.Application.Services;
 using ECommerce.Shared.Constants;
@@ -14,12 +13,10 @@ namespace ECommerce.Web.Controllers.Api;
 public sealed class AdminUsersApiController : ApiControllerBase
 {
     private readonly IUserService _userService;
-    private readonly IOperationLogService _operationLogService;
 
-    public AdminUsersApiController(IUserService userService, IOperationLogService operationLogService)
+    public AdminUsersApiController(IUserService userService)
     {
         _userService = userService;
-        _operationLogService = operationLogService;
     }
 
     [HttpGet]
@@ -38,12 +35,6 @@ public sealed class AdminUsersApiController : ApiControllerBase
         CancellationToken cancellationToken)
     {
         await _userService.SetUserStatusAsync(userId, request.Status, User.GetUserId(), cancellationToken);
-        await WriteLogAsync(
-            "用户管理",
-            "修改用户状态",
-            $"管理员修改用户 {userId} 状态为 {request.Status}",
-            request,
-            cancellationToken);
 
         return ApiResponse<object?>.Ok(null, HttpContext.TraceIdentifier, "用户状态修改成功");
     }
@@ -55,26 +46,7 @@ public sealed class AdminUsersApiController : ApiControllerBase
         CancellationToken cancellationToken)
     {
         await _userService.AssignRolesAsync(userId, request.RoleIds, User.GetUserId(), cancellationToken);
-        await WriteLogAsync(
-            "用户管理",
-            "分配用户角色",
-            $"管理员为用户 {userId} 分配角色",
-            request,
-            cancellationToken);
 
         return ApiResponse<object?>.Ok(null, HttpContext.TraceIdentifier, "用户角色分配成功");
-    }
-
-    private async Task WriteLogAsync(string module, string action, string description, object request, CancellationToken cancellationToken)
-    {
-        await _operationLogService.WriteAsync(new OperationLogRequest(
-            User.GetUserId(),
-            User.GetUsername(),
-            module,
-            action,
-            description,
-            GetClientIpAddress(),
-            JsonSerializer.Serialize(request),
-            1), cancellationToken);
     }
 }

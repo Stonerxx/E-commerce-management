@@ -39,4 +39,14 @@ public sealed class CatalogApiController : ApiControllerBase
         var product = await _productService.GetPublicDetailAndTrackAsync(productId, cancellationToken);
         return Ok(ApiResponse<ProductDetailDto>.Ok(product));
     }
+
+    [HttpGet("products/{productId:long}/recommendations")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<ProductListItemDto>>>> ProductRecommendations(
+        long productId,
+        [FromQuery] int limit = 6,
+        CancellationToken cancellationToken = default)
+    {
+        var products = await _productService.GetRecommendationsAsync(productId, limit, cancellationToken);
+        return Ok(ApiResponse<IReadOnlyList<ProductListItemDto>>.Ok(products));
+    }
 }

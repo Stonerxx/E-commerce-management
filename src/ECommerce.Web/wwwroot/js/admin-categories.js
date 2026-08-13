@@ -6,6 +6,9 @@
             const loading = ref(false);
             const showDisabled = ref(false);
             const treeData = ref([]);
+            const allCategories = ref([]);
+            const keyword = ref('');
+            const loadError = ref('');
 
             const isEdit = ref(false);
             const editingId = ref(null);
@@ -29,17 +32,6 @@
                         flattenTree(node.children, result);
                     }
                 }
-            }
-
-            function findNodeById(nodes, id) {
-                for (const node of nodes) {
-                    if (node.categoryId === id) return node;
-                    if (node.children && node.children.length > 0) {
-                        const found = findNodeById(node.children, id);
-                        if (found) return found;
-                    }
-                }
-                return null;
             }
 
             function filterTree(nodes, includeDisabled) {
@@ -79,6 +71,16 @@
                 return nodes;
             });
 
+            const displayedCategories = computed(() => {
+                const term = keyword.value.trim().toLowerCase();
+                if (!term) return flatTreeData.value;
+                return flatTreeData.value.filter(item => item.name.toLowerCase().includes(term));
+            });
+
+            const rootCount = computed(() => allCategories.value.filter(item => !item.parentId).length);
+            const activeCount = computed(() => allCategories.value.filter(item => item.status === 1).length);
+            const disabledCount = computed(() => allCategories.value.filter(item => item.status === 0).length);
+
             function findParentLevel(parentId) {
                 if (!parentId) return 0;
                 for (const node of parentOptions.value) {
@@ -104,17 +106,25 @@
 
             async function loadCategories() {
                 loading.value = true;
+                loadError.value = '';
                 try {
                     const response = await fetch('/api/v1/admin/categories', {
                         headers: { 'Accept': 'application/json' }
                     });
                     const payload = await response.json();
 
-                    if (payload.success && payload.data) {
-                        treeData.value = filterTree(payload.data, showDisabled.value);
+                    if (!response.ok || !payload.success || !payload.data) {
+                        throw new Error(payload.message || `请求失败（${response.status}）`);
                     }
+
+                    const flat = [];
+                    flattenTree(payload.data, flat);
+                    allCategories.value = flat;
+                    treeData.value = filterTree(payload.data, showDisabled.value);
                 } catch (error) {
-                    console.warn('API请求失败:', error.message);
+                    treeData.value = [];
+                    allCategories.value = [];
+                    loadError.value = error.message || '分类数据加载失败，请稍后重试';
                 } finally {
                     loading.value = false;
                 }
@@ -135,7 +145,6 @@
             }
 
             function openCreateModal(parentNode) {
-                console.log('openCreateModal called with:', parentNode);
                 resetForm();
                 if (parentNode) {
                     form.value.parentId = parentNode.categoryId;
@@ -244,44 +253,6 @@
                 node.expanded = !node.expanded;
             }
 
-            function handleButtonClick(event) {
-                const target = event.currentTarget;
-                const action = target.getAttribute('data-action');
-                const categoryId = parseInt(target.getAttribute('data-id'));
-                
-                console.log('handleButtonClick:', action, categoryId);
-                
-                if (!isNaN(categoryId)) {
-                    const node = findNodeById(treeData.value, categoryId);
-                    console.log('Found node:', node);
-                    if (node) {
-                        switch (action) {
-                            case 'create-child':
-                                openCreateModal(node);
-                                break;
-                            case 'edit':
-                                openEditModal(node);
-                                break;
-                            case 'delete':
-                                deleteCategory(node);
-                                break;
-                        }
-                    }
-                }
-            }
-
-            function handleCreateChild(parentNode) {
-                openCreateModal(parentNode);
-            }
-
-            function handleEdit(node) {
-                openEditModal(node);
-            }
-
-            function handleDelete(node) {
-                deleteCategory(node);
-            }
-
             onMounted(() => {
                 loadCategories();
             });
@@ -289,10 +260,17 @@
             return {
                 loading,
                 showDisabled,
+                keyword,
+                loadError,
                 treeData,
                 flatTreeData,
+                displayedCategories,
+                rootCount,
+                activeCount,
+                disabledCount,
                 parentOptions,
                 isEdit,
+                editingId,
                 submitting,
                 errorMsg,
                 form,
@@ -303,8 +281,7 @@
                 openEditModal,
                 saveCategory,
                 deleteCategory,
-                toggleExpand,
-                handleButtonClick
+                toggleExpand
             };
         }
     }).mount('#categoriesApp');

@@ -1,0 +1,169 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "统计报表";
+}
+
+<div id="statisticsApp" v-cloak>
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">统计报表</h1>
+            <p class="text-muted mb-0">按日期和统计维度分析订单、销售与热销商品，并导出所选周期的业务明细。</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-outline-success" type="button" v-on:click="exportOrders" v-bind:disabled="loading">
+                <i class="fa-solid fa-file-excel"></i> 导出订单明细
+            </button>
+            <button class="btn btn-outline-success" type="button" v-on:click="exportInventory" v-bind:disabled="loading">
+                <i class="fa-solid fa-file-excel"></i> 导出库存变动
+            </button>
+            <button class="btn btn-primary" type="button" v-on:click="loadReport" v-bind:disabled="loading">
+                <span v-if="loading" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                <i v-else class="fa-solid fa-magnifying-glass-chart"></i> 生成报表
+            </button>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-3">
+                    <label class="form-label" for="statisticsStartDate">开始日期</label>
+                    <input id="statisticsStartDate" type="date" class="form-control" v-model="filters.startDate" />
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label" for="statisticsEndDate">结束日期</label>
+                    <input id="statisticsEndDate" type="date" class="form-control" v-model="filters.endDate" />
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label" for="statisticsDimension">统计维度</label>
+                    <select id="statisticsDimension" class="form-select" v-model="filters.dimension">
+                        <option value="day">按日</option>
+                        <option value="month">按月</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">快捷周期</label>
+                    <div class="btn-group w-100" role="group" aria-label="快捷统计周期">
+                        <button class="btn btn-outline-secondary" type="button" v-on:click="setRange(7)">7 天</button>
+                        <button class="btn btn-outline-secondary" type="button" v-on:click="setRange(30)">30 天</button>
+                        <button class="btn btn-outline-secondary" type="button" v-on:click="setRange(365, 'month')">12 月</button>
+                    </div>
+                </div>
+            </div>
+            <p class="small text-muted mb-0 mt-3">导出按钮会使用当前开始、结束日期，单次最多导出 5,000 条明细。</p>
+        </div>
+    </div>
+
+    <div v-if="errorMessage" class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>{{ errorMessage }}</span>
+    </div>
+
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4">
+        <div class="col">
+            <div class="card h-100 border-primary-subtle">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">订单总数</p>
+                    <p class="h3 mb-0">{{ report.orderCount }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100 border-success-subtle">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">已支付订单</p>
+                    <p class="h3 mb-0 text-success">{{ report.paidCount }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100 border-info-subtle">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">销售额</p>
+                    <p class="h3 mb-0 text-info-emphasis">{{ formatMoney(report.salesAmount) }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100 border-warning-subtle">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">平均订单金额</p>
+                    <p class="h3 mb-0 text-warning-emphasis">{{ formatMoney(report.avgOrderAmount) }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-xl-8">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">订单与销售趋势</h2>
+                    <span class="small text-muted">{{ rangeLabel }}</span>
+                </div>
+                <div class="card-body">
+                    <div id="statisticsTrendChart" style="width: 100%; height: 360px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-xl-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h2 class="h5 mb-0">热销商品 Top 10</h2>
+                </div>
+                <div class="card-body p-0">
+                    <div v-if="topProducts.length === 0" class="text-center text-muted py-5">
+                        <i class="fa-regular fa-folder-open fs-2 d-block mb-2"></i>
+                        当前周期暂无销售数据
+                    </div>
+                    <div v-else class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center gap-2"
+                             v-for="(item, index) in topProducts" v-bind:key="item.productId">
+                            <div class="d-flex align-items-center gap-2 overflow-hidden">
+                                <span class="badge text-bg-secondary">{{ index + 1 }}</span>
+                                <span class="text-truncate">{{ item.productName }}</span>
+                            </div>
+                            <span class="small text-nowrap">{{ item.salesCount }} 件<br />{{ formatMoney(item.salesAmount) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h5 mb-0">周期明细</h2>
+            <span class="small text-muted">共 {{ report.points.length }} 个统计周期</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>周期</th>
+                        <th class="text-end">订单数</th>
+                        <th class="text-end">已支付</th>
+                        <th class="text-end">销售额</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-if="report.points.length === 0">
+                        <td colspan="4" class="text-center text-muted py-4">暂无统计数据</td>
+                    </tr>
+                    <tr v-for="point in report.points" v-bind:key="point.date">
+                        <td>{{ formatPeriod(point.date) }}</td>
+                        <td class="text-end">{{ point.orderCount }}</td>
+                        <td class="text-end">{{ point.paidCount }}</td>
+                        <td class="text-end fw-semibold">{{ formatMoney(point.salesAmount) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script src="~/js/admin-statistics.js" asp-append-version="true"></script>
+}

@@ -1,5 +1,6 @@
 ﻿using ECommerce.Application.DTOs;
 using ECommerce.Domain.Entities;
+using ECommerce.Infrastructure.Data;
 using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Contracts;
 using Oracle.ManagedDataAccess.Client;
@@ -61,7 +62,7 @@ public class OrderRepository : IOrderRepository
         cmd.Parameters.Add(pId);
 
         await cmd.ExecuteNonQueryAsync(cancellationToken);
-        order.Id = Convert.ToInt64(pId.Value);
+        order.Id = OracleValueConverter.ToInt64(pId.Value);
         return order.Id;
     }
 
@@ -171,7 +172,11 @@ public class OrderRepository : IOrderRepository
         if (order == null) return null;
 
         // 加载明细
-        const string itemSql = "SELECT * FROM order_item WHERE order_id = :OrderId";
+        const string itemSql = @"
+            SELECT oi.*, s.product_id
+            FROM order_item oi
+            INNER JOIN sku s ON s.id = oi.sku_id
+            WHERE oi.order_id = :OrderId";
         await using var cmdItem = Connection.CreateCommand();
         cmdItem.CommandText = itemSql;
         cmdItem.Transaction = Transaction;
@@ -498,6 +503,7 @@ public class OrderRepository : IOrderRepository
             Id = reader.GetInt64(reader.GetOrdinal("id")),
             OrderId = reader.GetInt64(reader.GetOrdinal("order_id")),
             SkuId = reader.GetInt64(reader.GetOrdinal("sku_id")),
+            ProductId = reader.GetInt64(reader.GetOrdinal("product_id")),
             ProductNameSnap = reader.GetString(reader.GetOrdinal("product_name_snap")),
             SpecSnap = reader.GetString(reader.GetOrdinal("spec_snap")),
             MainImageSnap = reader.GetString(reader.GetOrdinal("main_image_snap")),

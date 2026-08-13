@@ -9,7 +9,8 @@ public sealed record SimulatedPaymentCallback(
     string TradeNo,
     int Status,
     decimal PayAmount,
-    string RawData);
+    string RawData,
+    string Signature);
 
 public sealed record PaymentDto(
     long PaymentId,

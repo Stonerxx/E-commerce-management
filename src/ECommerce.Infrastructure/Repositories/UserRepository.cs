@@ -1,6 +1,7 @@
 using System.Data;
 using ECommerce.Application.DTOs;
 using ECommerce.Domain.Entities;
+using ECommerce.Infrastructure.Data;
 using ECommerce.Shared.Abstractions;
 using ECommerce.Shared.Contracts;
 using Oracle.ManagedDataAccess.Client;
@@ -85,7 +86,7 @@ public sealed class UserRepository : IUserRepository
             userCommand.Parameters.Add(userIdParameter);
             await userCommand.ExecuteNonQueryAsync(cancellationToken);
 
-            var userId = Convert.ToInt64(userIdParameter.Value.ToString());
+            var userId = OracleValueConverter.ToInt64(userIdParameter.Value);
 
             var userRole = new UserRole
             {
@@ -171,6 +172,54 @@ public sealed class UserRepository : IUserRepository
         }
 
         return result;
+    }
+
+    public async Task<int?> GetRoleIdByNameAsync(string roleName, CancellationToken cancellationToken = default)
+    {
+        var connection = await GetConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        AttachTransaction(command);
+        command.BindByName = true;
+        command.CommandText = """SELECT id FROM "ROLE" WHERE UPPER(role_name) = UPPER(:role_name)""";
+        command.Parameters.Add(new OracleParameter("role_name", roleName));
+
+        var value = await command.ExecuteScalarAsync(cancellationToken);
+        return value is null or DBNull ? null : Convert.ToInt32(value);
+    }
+
+    public async Task<int> CountActiveUsersInRoleAsync(string roleName, CancellationToken cancellationToken = default)
+    {
+        var connection = await GetConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        AttachTransaction(command);
+        command.BindByName = true;
+        command.CommandText = """
+            SELECT COUNT(DISTINCT u.id)
+            FROM "USER" u
+            JOIN USER_ROLE ur ON ur.user_id = u.id
+            JOIN "ROLE" r ON r.id = ur.role_id
+            WHERE u.status = 1
+              AND UPPER(r.role_name) = UPPER(:role_name)
+            """;
+        command.Parameters.Add(new OracleParameter("role_name", roleName));
+
+        return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken));
+    }
+
+    public async Task LockRoleAsync(string roleName, CancellationToken cancellationToken = default)
+    {
+        var connection = await GetConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        AttachTransaction(command);
+        command.BindByName = true;
+        command.CommandText = """SELECT id FROM "ROLE" WHERE UPPER(role_name) = UPPER(:role_name) FOR UPDATE""";
+        command.Parameters.Add(new OracleParameter("role_name", roleName));
+
+        var value = await command.ExecuteScalarAsync(cancellationToken);
+        if (value is null)
+        {
+            throw new InvalidOperationException($"Role {roleName} is missing.");
+        }
     }
 
     public async Task<PagedResult<UserDto>> SearchUsersAsync(UserQuery query, CancellationToken cancellationToken = default)

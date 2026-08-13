@@ -5,6 +5,7 @@ using ECommerce.Infrastructure.Services;
 using ECommerce.Shared.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Oracle.ManagedDataAccess.Client;
 
 namespace ECommerce.Infrastructure;
 
@@ -14,8 +15,14 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Repository SQL uses named bind variables and may reuse a placeholder.
+        // ODP.NET defaults to positional binding, which causes ORA-01008 in that case.
+        OracleConfiguration.BindByName = true;
+
         services.Configure<OracleOptions>(configuration.GetSection(OracleOptions.SectionName));
         services.Configure<StatisticsSnapshotOptions>(configuration.GetSection(StatisticsSnapshotOptions.SectionName));
+        services.Configure<PaymentOptions>(configuration.GetSection(PaymentOptions.SectionName));
+        services.AddMemoryCache();
         services.AddScoped<IOracleConnectionFactory, OracleConnectionFactory>();
         services.AddScoped<IDatabaseHealthCheck, DatabaseHealthCheck>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -33,6 +40,9 @@ public static class DependencyInjection
         services.AddScoped<ICartRepository, CartRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<ICouponRepository, CouponRepository>();
+        services.AddScoped<IReviewRepository, ReviewRepository>();
+        services.AddScoped<ILogisticsRepository, LogisticsRepository>();
+        services.AddScoped<IPaymentRepository, PaymentRepository>();
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
@@ -47,6 +57,9 @@ public static class DependencyInjection
         services.AddScoped<ICartService, CartService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<ICouponService, CouponService>();
+        services.AddScoped<IReviewService, ReviewService>();
+        services.AddScoped<ILogisticsService, LogisticsService>();
+        services.AddScoped<IPaymentService, PaymentService>();
 
         services.AddHostedService<OrderTimeoutHostedService>();
 

@@ -9,17 +9,23 @@ public class CouponTemplate
     
     public int Type { get; set; }
     
-    public decimal FaceValue { get; set; }
+    public decimal Amount { get; set; }
     
-    public decimal MinConsumption { get; set; }
+    public decimal MinAmount { get; set; }
     
-    public int TotalIssue { get; set; }
+    public int TotalCount { get; set; }
     
-    public int IssuedCount { get; set; }
+    public int ReceivedCount { get; set; }
     
-    public DateTime ValidStartTime { get; set; }
+    public DateTime StartTime { get; set; }
     
-    public DateTime ValidEndTime { get; set; }
+    public DateTime EndTime { get; set; }
     
     public int Status { get; set; }
+
+    /// <summary>限定的末级商品分类；NULL 表示全场通用。</summary>
+    public int? ApplicableCategoryId { get; set; }
+
+    /// <summary>联表查询得到的分类名称，不持久化到优惠券模板表。</summary>
+    public string? ApplicableCategoryName { get; set; }
 }
