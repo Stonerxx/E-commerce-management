@@ -1,0 +1,77 @@
+<mxfile host="app.diagrams.net" agent="5.0">
+  <diagram id="uc-user-other" name="用户侧其他用例图">
+    <mxGraphModel dx="1193" dy="767" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="760" pageHeight="660" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="102" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="新增收货地址" vertex="1">
+          <mxGeometry height="44" width="140" x="260" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="103" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="编辑收货地址" vertex="1">
+          <mxGeometry height="44" width="140" x="260" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="104" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="删除收货地址" vertex="1">
+          <mxGeometry height="44" width="140" x="260" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="105" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="设为默认地址" vertex="1">
+          <mxGeometry height="44" width="140" x="260" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="106" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="领取优惠券" vertex="1">
+          <mxGeometry height="44" width="140" x="480" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="107" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="查看我的优惠券" vertex="1">
+          <mxGeometry height="44" width="140" x="480" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="108" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="查看物流轨迹" vertex="1">
+          <mxGeometry height="44" width="140" x="480" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="109" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="提交商品评价" vertex="1">
+          <mxGeometry height="44" width="140" x="480" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="110" edge="1" parent="1" style="endArrow=block;endFill=0;" target="102" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="221.28571428571433" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="111" edge="1" parent="1" style="endArrow=block;endFill=0;" target="103" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="230.57142857142856" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="112" edge="1" parent="1" style="endArrow=block;endFill=0;" target="104" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="239.8571428571429" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="113" edge="1" parent="1" style="endArrow=block;endFill=0;" target="105" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="249.1428571428571" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="114" edge="1" parent="1" style="endArrow=block;endFill=0;" target="106" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="226.27966101694915" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="115" edge="1" parent="1" style="endArrow=block;endFill=0;" target="107" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="231.2372881355932" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="116" edge="1" parent="1" style="endArrow=block;endFill=0;" target="108" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="236.19491525423734" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="117" edge="1" parent="1" style="endArrow=block;endFill=0;" target="109" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="241.15254237288138" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="y7em-_c5ivwan32AszdJ-117" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="普通用户&amp;nbsp;" vertex="1">
+          <mxGeometry height="60" width="30" x="70" y="210" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,53 @@
+<mxfile host="app.diagrams.net" agent="5.0">
+  <diagram id="uc-service" name="后台订单处理与发货用例图">
+    <mxGraphModel dx="1193" dy="767" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="700" pageHeight="480" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="102" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="后台订单查询与筛选" vertex="1">
+          <mxGeometry height="44" width="140" x="240" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="103" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="查看订单详情" vertex="1">
+          <mxGeometry height="44" width="140" x="240" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="104" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="订单发货（填物流信息）" vertex="1">
+          <mxGeometry height="44" width="140" x="240" y="186" as="geometry" />
+        </mxCell>
+        <mxCell id="105" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="新增物流轨迹" vertex="1">
+          <mxGeometry height="44" width="140" x="240" y="264" as="geometry" />
+        </mxCell>
+        <mxCell id="106" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="后台取消待支付订单" vertex="1">
+          <mxGeometry height="44" width="140" x="240" y="342" as="geometry" />
+        </mxCell>
+        <mxCell id="107" edge="1" parent="1" style="endArrow=block;endFill=0;" target="102" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="144.24137931034488" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="108" edge="1" parent="1" style="endArrow=block;endFill=0;" target="103" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="150.29310344827582" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="109" edge="1" parent="1" style="endArrow=block;endFill=0;" target="104" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="156.34482758620686" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="110" edge="1" parent="1" style="endArrow=block;endFill=0;" target="105" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="162.3965517241379" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="111" edge="1" parent="1" style="endArrow=block;endFill=0;" target="106" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="168.44827586206895" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hLW0d1qELGYtqVFTxtZZ-111" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="客服" vertex="1">
+          <mxGeometry height="60" width="30" x="70" y="130" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

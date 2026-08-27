@@ -1,0 +1,45 @@
+<mxfile host="app.diagrams.net" agent="5.0">
+  <diagram id="uc-browse" name="商品浏览与搜索用例图">
+    <mxGraphModel dx="1193" dy="767" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="700" pageHeight="460" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="102" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="按分类筛选商品" vertex="1">
+          <mxGeometry height="44" width="140" x="240" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="103" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="按关键词搜索商品" vertex="1">
+          <mxGeometry height="44" width="140" x="240" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="104" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="按价格/热度排序" vertex="1">
+          <mxGeometry height="44" width="140" x="240" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="105" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="查看商品详情" vertex="1">
+          <mxGeometry height="44" width="140" x="240" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="106" edge="1" parent="1" style="endArrow=block;endFill=0;" target="102" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="163.4655172413793" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="107" edge="1" parent="1" style="endArrow=block;endFill=0;" target="103" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="169.6724137931035" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="108" edge="1" parent="1" style="endArrow=block;endFill=0;" target="104" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="175.87931034482756" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="109" edge="1" parent="1" style="endArrow=block;endFill=0;" target="105" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="182.08620689655174" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="qhuuwZhuYfvOUrlyY_1q-109" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="游客/用户" vertex="1">
+          <mxGeometry height="60" width="30" x="70" y="140" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

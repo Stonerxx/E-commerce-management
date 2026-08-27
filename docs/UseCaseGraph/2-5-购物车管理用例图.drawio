@@ -1,0 +1,53 @@
+<mxfile host="app.diagrams.net" agent="5.0">
+  <diagram id="uc-cart" name="购物车管理用例图">
+    <mxGraphModel dx="1193" dy="767" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="700" pageHeight="480" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="102" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="加入购物车" vertex="1">
+          <mxGeometry height="44" width="140" x="240" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="103" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="修改商品数量" vertex="1">
+          <mxGeometry height="44" width="140" x="240" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="104" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="勾选/取消商品" vertex="1">
+          <mxGeometry height="44" width="140" x="240" y="186" as="geometry" />
+        </mxCell>
+        <mxCell id="105" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="删除购物车项" vertex="1">
+          <mxGeometry height="44" width="140" x="240" y="264" as="geometry" />
+        </mxCell>
+        <mxCell id="106" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="清空购物车" vertex="1">
+          <mxGeometry height="44" width="140" x="240" y="342" as="geometry" />
+        </mxCell>
+        <mxCell id="107" edge="1" parent="1" style="endArrow=block;endFill=0;" target="102" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="162.68965517241384" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="108" edge="1" parent="1" style="endArrow=block;endFill=0;" target="103" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="168.74137931034488" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="109" edge="1" parent="1" style="endArrow=block;endFill=0;" target="104" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="174.79310344827582" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="110" edge="1" parent="1" style="endArrow=block;endFill=0;" target="105" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="180.84482758620686" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="111" edge="1" parent="1" style="endArrow=block;endFill=0;" target="106" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="186.8965517241379" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="8EExkPjIcFECgmlPmH5G-111" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="普通用户" vertex="1">
+          <mxGeometry height="60" width="30" x="70" y="140" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

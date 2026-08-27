@@ -1,0 +1,29 @@
+<mxfile host="app.diagrams.net" agent="5.0">
+  <diagram id="uc-pay" name="模拟支付用例图">
+    <mxGraphModel dx="1193" dy="767" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="700" pageHeight="460" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="102" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="发起模拟支付" vertex="1">
+          <mxGeometry height="44" width="140" x="240" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="103" parent="1" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=middle;fontSize=12;" value="支付结果回调与订单同步" vertex="1">
+          <mxGeometry height="44" width="140" x="240" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="104" edge="1" parent="1" style="endArrow=block;endFill=0;" target="102" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="228.12068965517244" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="105" edge="1" parent="1" style="endArrow=block;endFill=0;" target="103" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="96" y="235.87931034482756" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="BH3oH9y6mAg6THOK0LGY-105" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="普通用户" vertex="1">
+          <mxGeometry height="60" width="30" x="70" y="204" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
