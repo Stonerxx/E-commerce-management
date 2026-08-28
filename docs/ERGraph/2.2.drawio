@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net">
   <diagram name="第 1 页" id="34Xkj49b_nGUhAzkvtNm">
-    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="2166" dy="918" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -80,7 +80,7 @@
           <mxGeometry height="30" width="160" y="146" as="geometry" />
         </mxCell>
         <mxCell id="Mwf9S876gMMJYYCAnnzR-22" parent="1" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;align=center;fontSize=14;fillColor=#cce5ff;strokeColor=#36393d;" value="收货地址" vertex="1">
-          <mxGeometry height="296" width="160" x="-480" y="20" as="geometry" />
+          <mxGeometry height="326" width="160" x="-480" y="20" as="geometry" />
         </mxCell>
         <mxCell id="Mwf9S876gMMJYYCAnnzR-23" parent="Mwf9S876gMMJYYCAnnzR-22" style="text;strokeColor=none;fillColor=none;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;whiteSpace=wrap;html=1;" value="&lt;u&gt;地址ID&lt;/u&gt;" vertex="1">
           <mxGeometry height="30" width="160" y="26" as="geometry" />
@@ -106,8 +106,11 @@
         <mxCell id="Mwf9S876gMMJYYCAnnzR-26" parent="Mwf9S876gMMJYYCAnnzR-22" style="text;strokeColor=none;fillColor=none;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;whiteSpace=wrap;html=1;" value="是否默认" vertex="1">
           <mxGeometry height="30" width="160" y="236" as="geometry" />
         </mxCell>
-        <mxCell id="HoeYMA0CGNeSm9IITyDf-36" parent="Mwf9S876gMMJYYCAnnzR-22" style="text;strokeColor=none;fillColor=none;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;whiteSpace=wrap;html=1;" value="创建时间" vertex="1">
+        <mxCell id="b2pnoN8FirebrF8uCPaw-1" parent="Mwf9S876gMMJYYCAnnzR-22" style="text;strokeColor=none;fillColor=none;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;whiteSpace=wrap;html=1;" value="软删除标记" vertex="1">
           <mxGeometry height="30" width="160" y="266" as="geometry" />
+        </mxCell>
+        <mxCell id="HoeYMA0CGNeSm9IITyDf-36" parent="Mwf9S876gMMJYYCAnnzR-22" style="text;strokeColor=none;fillColor=none;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;whiteSpace=wrap;html=1;" value="创建时间" vertex="1">
+          <mxGeometry height="30" width="160" y="296" as="geometry" />
         </mxCell>
         <mxCell id="Mwf9S876gMMJYYCAnnzR-37" parent="1" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;align=center;fontSize=14;fillColor=#cce5ff;strokeColor=#36393d;" value="操作日志" vertex="1">
           <mxGeometry height="296" width="160" x="270" y="20" as="geometry" />
