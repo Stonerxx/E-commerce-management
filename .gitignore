@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# 系统设计与实现文档（LaTeX 编译目录，不提交编译产物与源码副本）
+docs/系统设计与实现文档/
